@@ -162,6 +162,10 @@ def main():
     # Track the current N64 texture image state set by G_SETTIMG.
     current_texture_image = None
 
+    # Track the palette most recently loaded into TMEM by G_LOADTLUT.
+    # This will later let texel loads refer back to their palette source.
+    current_palette = None
+
     # Track the eight N64 tile descriptors configured by G_SETTILE.
     # Later commands such as G_LOADBLOCK and G_SETTILESIZE refer back
     # to these descriptors by tile number.
@@ -334,6 +338,19 @@ def main():
             else:
                 load_source = "unknown"
 
+            if current_palette is not None:
+                palette_image = current_palette["image"]
+                palette_source = f"0x{palette_image['address']:08X}"
+
+                palette_texture = palette_image["texture"]
+                if palette_texture is not None:
+                    palette_source += (
+                        f" Texture[{palette_texture['index']}]"
+                        f"+0x{palette_image['relative_offset']:X}"
+                    )
+            else:
+                palette_source = "none"
+
             print(
                 f"0x{offset:08X}: "
                 f"G_LOADBLOCK "
@@ -343,12 +360,22 @@ def main():
                 f"lrs={lrs} "
                 f"dxt={dxt} "
                 f"source={load_source} "
+                f"palette={palette_source} "
                 f"state={tile_description}"
             )
 
         elif opcode == 0xF0:
             tile = (w1 >> 24) & 0x7
             count = (w1 >> 14) & 0x3FF
+
+            if current_texture_image is not None:
+                current_palette = {
+                    "image": current_texture_image.copy(),
+                    "tile": tile,
+                    "entries": count + 1,
+                }
+            else:
+                current_palette = None
 
             if current_texture_image is not None:
                 source = f"0x{current_texture_image['address']:08X}"
