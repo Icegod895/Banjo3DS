@@ -187,6 +187,49 @@ def main():
                     f"G_SETTIMG address=0x{address:08X}"
                 )
 
+        elif opcode == 0xF5:
+            fmt = (w0 >> 21) & 0x7
+            siz = (w0 >> 19) & 0x3
+            line = (w0 >> 9) & 0x1FF
+            tmem = w0 & 0x1FF
+
+            tile = (w1 >> 24) & 0x7
+            palette = (w1 >> 20) & 0xF
+            cmt = (w1 >> 18) & 0x3
+            maskt = (w1 >> 14) & 0xF
+            shiftt = (w1 >> 10) & 0xF
+            cms = (w1 >> 8) & 0x3
+            masks = (w1 >> 4) & 0xF
+            shifts = w1 & 0xF
+
+            format_names = {
+                0: "RGBA",
+                1: "YUV",
+                2: "CI",
+                3: "IA",
+                4: "I",
+            }
+
+            size_names = {
+                0: "4b",
+                1: "8b",
+                2: "16b",
+                3: "32b",
+            }
+
+            print(
+                f"0x{offset:08X}: "
+                f"G_SETTILE "
+                f"fmt={format_names.get(fmt, str(fmt))} "
+                f"siz={size_names.get(siz, str(siz))} "
+                f"line={line} "
+                f"tmem=0x{tmem:X} "
+                f"tile={tile} "
+                f"palette={palette} "
+                f"cms={cms} masks={masks} shifts={shifts} "
+                f"cmt={cmt} maskt={maskt} shiftt={shiftt}"
+            )
+
         elif opcode == 0xF2:
             uls = (w0 >> 12) & 0xFFF
             ult = w0 & 0xFFF
