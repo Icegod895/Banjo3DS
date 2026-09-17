@@ -37,6 +37,14 @@ class BanjoTriangle:
 
 
 @dataclass
+class BanjoPixel:
+    r: int
+    g: int
+    b: int
+    a: int
+
+
+@dataclass
 class BanjoTextureLoad:
     texture_index: int
     texture_type: str
@@ -68,6 +76,10 @@ class BKModel:
         self.texture_size = struct.unpack_from(">I", self.data, self.texture_offset)[0]
         self.texture_count = struct.unpack_from(">H", self.data, self.texture_offset + 4)[0]
         self.texture_infos_offset = self.texture_offset + 8
+        self.texture_data_offset = (
+            self.texture_infos_offset
+            + self.texture_count * TEXTURE_INFO_SIZE
+        )
 
         self.vertex_count = struct.unpack_from(
             ">H", self.data, self.vtx_offset + 0x14
@@ -116,6 +128,22 @@ class BKModel:
             "palette_size": palette_size,
             "size": texture_size,
         }
+
+    def read_texture_pixels(self, index):
+        texture = self.read_texture(index)
+
+        if texture["type"] != 0x08:
+            raise NotImplementedError(
+                f'Pixel decoding not implemented for {texture["type_name"]}'
+            )
+
+        start = self.texture_data_offset + texture["offset"]
+        pixel_count = texture["width"] * texture["height"]
+
+        return [
+            BanjoPixel(*self.data[offset:offset + 4])
+            for offset in range(start, start + pixel_count * 4, 4)
+        ]
 
     def find_texture_containing_offset(self, offset):
         for i in range(self.texture_count):

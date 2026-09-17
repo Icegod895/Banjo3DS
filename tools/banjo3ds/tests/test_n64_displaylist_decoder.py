@@ -2,6 +2,8 @@ import struct
 import unittest
 
 from tools.banjo3ds.n64_displaylist_decoder import (
+    BKModel,
+    BanjoPixel,
     BanjoTextureLoad,
     BanjoTriangle,
     BanjoVertex,
@@ -54,6 +56,37 @@ class FakeModel:
 
 
 class TestN64DisplayListDecoder(unittest.TestCase):
+    def test_reads_rgba32_texture_pixels(self):
+        model_data = bytearray(0x60)
+
+        struct.pack_into(">I", model_data, 0x08, 0x38)
+        struct.pack_into(">I", model_data, 0x38, 0x20)
+        struct.pack_into(">H", model_data, 0x3C, 1)
+
+        struct.pack_into(">I", model_data, 0x40, 0)
+        struct.pack_into(">H", model_data, 0x44, 0x08)
+        model_data[0x48] = 2
+        model_data[0x49] = 1
+
+        model_data[0x50:0x58] = bytes.fromhex(
+            "48 4f fe 00 ff 80 40 ff"
+        )
+
+        model = BKModel.__new__(BKModel)
+        model.data = bytes(model_data)
+        model.texture_offset = 0x38
+        model.texture_count = 1
+        model.texture_infos_offset = 0x40
+        model.texture_data_offset = 0x50
+
+        self.assertEqual(
+            model.read_texture_pixels(0),
+            [
+                BanjoPixel(72, 79, 254, 0),
+                BanjoPixel(255, 128, 64, 255),
+            ],
+        )
+
     def test_interprets_ci4_texture_load(self):
         commands = [
             (0xFD100000, 0x02000100),
