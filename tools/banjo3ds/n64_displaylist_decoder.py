@@ -130,6 +130,42 @@ class BKModel:
         }
 
 
+def interpret_display_list(model):
+    """Interpret a Banjo-Kazooie N64 display list into platform-independent data."""
+    gfx_size = struct.unpack_from(">I", model.data, model.gfx_offset)[0]
+    gfx_start = model.gfx_offset + 8
+    gfx_end = gfx_start + gfx_size
+
+    texture_loads = []
+    current_texture_image = None
+
+    offset = gfx_start
+    while offset < gfx_end:
+        w0, w1 = struct.unpack_from(">II", model.data, offset)
+        opcode = w0 >> 24
+
+        if opcode == 0xFD:
+            address = w1
+
+            current_texture_image = {
+                "address": address,
+                "texture": None,
+                "relative_offset": None,
+            }
+
+            if (address & 0xFF000000) == 0x02000000:
+                texture_offset = address & 0x00FFFFFF
+                match = model.find_texture_containing_offset(texture_offset)
+
+                if match is not None:
+                    current_texture_image["texture"] = match["texture"]
+                    current_texture_image["relative_offset"] = match["relative_offset"]
+
+        offset += 8
+
+    return texture_loads
+
+
 def main():
     if len(sys.argv) != 2:
         print(f"Usage: {sys.argv[0]} <model.bin>")
