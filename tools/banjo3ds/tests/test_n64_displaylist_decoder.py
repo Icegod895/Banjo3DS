@@ -86,6 +86,14 @@ class TestN64DisplayListDecoder(unittest.TestCase):
 
         result = interpret_display_list(FakeModel(commands))
 
+        self.assertEqual(
+            result.vertices,
+            [
+                BanjoVertex(10, 20, 30, 0, 0, 255, 0, 0, 255),
+                BanjoVertex(40, 50, 60, 32, 0, 0, 255, 0, 255),
+                BanjoVertex(70, 80, 90, 0, 32, 0, 0, 255, 255),
+            ],
+        )
         self.assertEqual(result.triangles, [BanjoTriangle(0, 1, 2)])
 
     def test_interprets_triangle(self):

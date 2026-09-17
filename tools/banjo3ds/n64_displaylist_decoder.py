@@ -311,8 +311,25 @@ def interpret_display_list(model):
 
         offset += 8
 
+    vertices = []
+    for index in range(model.vertex_count):
+        vertex = model.read_vertex(index)
+        vertices.append(
+            BanjoVertex(
+                x=vertex["x"],
+                y=vertex["y"],
+                z=vertex["z"],
+                s=vertex["s"],
+                t=vertex["t"],
+                r=vertex["r"],
+                g=vertex["g"],
+                b=vertex["b"],
+                a=vertex["a"],
+            )
+        )
+
     return BanjoRenderData(
-        vertices=[],
+        vertices=vertices,
         triangles=triangles,
         texture_loads=texture_loads,
     )
