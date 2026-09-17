@@ -138,6 +138,8 @@ def interpret_display_list(model):
 
     texture_loads = []
     current_texture_image = None
+    current_palette = None
+    tile_state = [None] * 8
 
     offset = gfx_start
     while offset < gfx_end:
@@ -160,6 +162,73 @@ def interpret_display_list(model):
                 if match is not None:
                     current_texture_image["texture"] = match["texture"]
                     current_texture_image["relative_offset"] = match["relative_offset"]
+
+        elif opcode == 0xF5:
+            fmt = (w0 >> 21) & 0x7
+            siz = (w0 >> 19) & 0x3
+            line = (w0 >> 9) & 0x1FF
+            tmem = w0 & 0x1FF
+
+            tile = (w1 >> 24) & 0x7
+            palette = (w1 >> 20) & 0xF
+            cmt = (w1 >> 18) & 0x3
+            maskt = (w1 >> 14) & 0xF
+            shiftt = (w1 >> 10) & 0xF
+            cms = (w1 >> 8) & 0x3
+            masks = (w1 >> 4) & 0xF
+            shifts = w1 & 0xF
+
+            tile_state[tile] = {
+                "fmt": fmt,
+                "siz": siz,
+                "line": line,
+                "tmem": tmem,
+                "palette": palette,
+                "cmt": cmt,
+                "maskt": maskt,
+                "shiftt": shiftt,
+                "cms": cms,
+                "masks": masks,
+                "shifts": shifts,
+            }
+
+        elif opcode == 0xF0:
+            tile = (w1 >> 24) & 0x7
+            count = (w1 >> 14) & 0x3FF
+
+            if current_texture_image is not None:
+                current_palette = {
+                    "image": current_texture_image.copy(),
+                    "tile": tile,
+                    "entries": count + 1,
+                }
+            else:
+                current_palette = None
+
+        elif opcode == 0xF3:
+            tile = (w1 >> 24) & 0x7
+
+            if (
+                current_texture_image is not None
+                and current_texture_image["texture"] is not None
+                and current_palette is not None
+                and current_palette["image"]["texture"] is not None
+                and current_texture_image["texture"]["index"]
+                == current_palette["image"]["texture"]["index"]
+            ):
+                texture = current_texture_image["texture"]
+
+                texture_loads.append(
+                    BanjoTextureLoad(
+                        texture_index=texture["index"],
+                        texture_type=texture["type_name"],
+                        width=texture["width"],
+                        height=texture["height"],
+                        palette_offset=current_palette["image"]["relative_offset"],
+                        texel_offset=current_texture_image["relative_offset"],
+                        load_tile=tile,
+                    )
+                )
 
         offset += 8
 
