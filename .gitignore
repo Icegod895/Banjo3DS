@@ -76,3 +76,9 @@ tmp/
 tmp/*
 
 .venv
+
+# Banjo3DS build outputs
+/platform/3ds/build/
+/platform/3ds/*.3dsx
+/platform/3ds/*.elf
+/platform/3ds/*.smdh
