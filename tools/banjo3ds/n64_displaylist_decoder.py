@@ -183,6 +183,9 @@ def main():
     # to these descriptors by tile number.
     tile_state = [None] * 8
 
+    # Platform-independent texture loads produced by the N64 interpreter.
+    texture_loads = []
+
     offset = gfx_start
 
     while offset < gfx_end:
@@ -384,6 +387,7 @@ def main():
                     texel_offset=current_texture_image["relative_offset"],
                     load_tile=tile,
                 )
+                texture_loads.append(texture_load)
 
             print(
                 f"0x{offset:08X}: "
