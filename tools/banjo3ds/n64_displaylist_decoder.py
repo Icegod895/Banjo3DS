@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from pathlib import Path
 import struct
 import sys
@@ -13,6 +14,17 @@ TEXTURE_TYPES = {
     0x04: "RGBA16",
     0x08: "RGBA32",
 }
+
+
+@dataclass
+class BanjoTextureLoad:
+    texture_index: int
+    texture_type: str
+    width: int
+    height: int
+    palette_offset: int | None
+    texel_offset: int
+    load_tile: int
 
 
 class BKModel:
@@ -350,6 +362,28 @@ def main():
                     )
             else:
                 palette_source = "none"
+
+            texture_load = None
+
+            if (
+                current_texture_image is not None
+                and current_texture_image["texture"] is not None
+                and current_palette is not None
+                and current_palette["image"]["texture"] is not None
+                and current_texture_image["texture"]["index"]
+                == current_palette["image"]["texture"]["index"]
+            ):
+                texture = current_texture_image["texture"]
+
+                texture_load = BanjoTextureLoad(
+                    texture_index=texture["index"],
+                    texture_type=texture["type_name"],
+                    width=texture["width"],
+                    height=texture["height"],
+                    palette_offset=current_palette["image"]["relative_offset"],
+                    texel_offset=current_texture_image["relative_offset"],
+                    load_tile=tile,
+                )
 
             print(
                 f"0x{offset:08X}: "
