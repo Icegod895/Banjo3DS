@@ -17,6 +17,26 @@ TEXTURE_TYPES = {
 
 
 @dataclass
+class BanjoVertex:
+    x: int
+    y: int
+    z: int
+    s: int
+    t: int
+    r: int
+    g: int
+    b: int
+    a: int
+
+
+@dataclass
+class BanjoTriangle:
+    v0: int
+    v1: int
+    v2: int
+
+
+@dataclass
 class BanjoTextureLoad:
     texture_index: int
     texture_type: str
@@ -25,6 +45,13 @@ class BanjoTextureLoad:
     palette_offset: int | None
     texel_offset: int
     load_tile: int
+
+
+@dataclass
+class BanjoRenderData:
+    vertices: list[BanjoVertex]
+    triangles: list[BanjoTriangle]
+    texture_loads: list[BanjoTextureLoad]
 
 
 class BKModel:
@@ -137,6 +164,8 @@ def interpret_display_list(model):
     gfx_end = gfx_start + gfx_size
 
     texture_loads = []
+    triangles = []
+    vertex_cache = [None] * 32
     current_texture_image = None
     current_palette = None
     tile_state = [None] * 8
@@ -146,7 +175,43 @@ def interpret_display_list(model):
         w0, w1 = struct.unpack_from(">II", model.data, offset)
         opcode = w0 >> 24
 
-        if opcode == 0xFD:
+        if opcode == 0x04:
+            n = (w0 & 0xFFFF) >> 10
+            v0 = (w0 >> 16) & 0xFF
+            address = w1
+
+            if (
+                0x01000000 <= address
+                < 0x01000000 + model.vertex_count * VTX_SIZE
+            ):
+                vertex_index = (address - 0x01000000) // VTX_SIZE
+
+                for i in range(n):
+                    if v0 + i < len(vertex_cache):
+                        vertex_cache[v0 + i] = vertex_index + i
+
+        elif opcode == 0xB1:
+            slots = (
+                ((w0 >> 16) & 0xFF) // 2,
+                ((w0 >> 8) & 0xFF) // 2,
+                (w0 & 0xFF) // 2,
+                ((w1 >> 16) & 0xFF) // 2,
+                ((w1 >> 8) & 0xFF) // 2,
+                (w1 & 0xFF) // 2,
+            )
+
+            for a, b, c in (slots[:3], slots[3:]):
+                if all(0 <= slot < len(vertex_cache) for slot in (a, b, c)):
+                    indices = (
+                        vertex_cache[a],
+                        vertex_cache[b],
+                        vertex_cache[c],
+                    )
+
+                    if all(index is not None for index in indices):
+                        triangles.append(BanjoTriangle(*indices))
+
+        elif opcode == 0xFD:
             address = w1
 
             current_texture_image = {
@@ -232,7 +297,11 @@ def interpret_display_list(model):
 
         offset += 8
 
-    return texture_loads
+    return BanjoRenderData(
+        vertices=[],
+        triangles=triangles,
+        texture_loads=texture_loads,
+    )
 
 
 def main():

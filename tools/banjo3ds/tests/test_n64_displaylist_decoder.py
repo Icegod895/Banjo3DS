@@ -3,6 +3,8 @@ import unittest
 
 from tools.banjo3ds.n64_displaylist_decoder import (
     BanjoTextureLoad,
+    BanjoTriangle,
+    BanjoVertex,
     interpret_display_list,
 )
 
@@ -16,6 +18,13 @@ class FakeModel:
             for w0, w1 in commands
         )
 
+        self.vertex_count = 3
+        self.vertices = [
+            {"index": 0, "x": 10, "y": 20, "z": 30, "s": 0, "t": 0, "r": 255, "g": 0, "b": 0, "a": 255},
+            {"index": 1, "x": 40, "y": 50, "z": 60, "s": 32, "t": 0, "r": 0, "g": 255, "b": 0, "a": 255},
+            {"index": 2, "x": 70, "y": 80, "z": 90, "s": 0, "t": 32, "r": 0, "g": 0, "b": 255, "a": 255},
+        ]
+
         self.texture = {
             "index": 0,
             "offset": 0x100,
@@ -27,6 +36,9 @@ class FakeModel:
             "palette_size": 32,
             "size": 0x820,
         }
+
+    def read_vertex(self, index):
+        return self.vertices[index]
 
     def find_texture_containing_offset(self, offset):
         start = self.texture["offset"]
@@ -52,7 +64,8 @@ class TestN64DisplayListDecoder(unittest.TestCase):
             (0xF3000000, 0x073FF200),
         ]
 
-        loads = interpret_display_list(FakeModel(commands))
+        result = interpret_display_list(FakeModel(commands))
+        loads = result.texture_loads
 
         self.assertEqual(len(loads), 1)
 
@@ -64,6 +77,18 @@ class TestN64DisplayListDecoder(unittest.TestCase):
         self.assertEqual(load.palette_offset, 0x00)
         self.assertEqual(load.texel_offset, 0x20)
         self.assertEqual(load.load_tile, 7)
+
+    def test_interprets_triangle(self):
+        commands = [
+            (0x04003000, 0x01000000),
+            (0xB1000204, 0x00040200),
+        ]
+
+        result = interpret_display_list(FakeModel(commands))
+
+        self.assertEqual(len(result.triangles), 2)
+        self.assertEqual(result.triangles[0], BanjoTriangle(0, 1, 2))
+        self.assertEqual(result.triangles[1], BanjoTriangle(2, 1, 0))
 
     def test_banjo_texture_load(self):
         load = BanjoTextureLoad(
