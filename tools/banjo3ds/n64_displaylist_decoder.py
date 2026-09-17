@@ -145,6 +145,9 @@ def main():
     # Each entry contains the actual Vtx index currently occupying that slot.
     vertex_cache = [None] * 32
 
+    # Track the current N64 texture image state set by G_SETTIMG.
+    current_texture_image = None
+
     offset = gfx_start
 
     while offset < gfx_end:
@@ -153,6 +156,11 @@ def main():
 
         if opcode == 0xFD:
             address = w1
+
+            current_texture_image = {
+                "address": address,
+                "texture": None,
+            }
 
             if (address & 0xFF000000) == 0x02000000:
                 texture_offset = address & 0x00FFFFFF
@@ -165,6 +173,8 @@ def main():
 
                 if matches:
                     tex = matches[0]
+                    current_texture_image["texture"] = tex
+
                     print(
                         f"0x{offset:08X}: "
                         f"G_SETTIMG "
@@ -272,12 +282,22 @@ def main():
             tile = (w1 >> 24) & 0x7
             count = (w1 >> 14) & 0x3FF
 
+            if current_texture_image is not None:
+                source = f"0x{current_texture_image['address']:08X}"
+
+                source_texture = current_texture_image["texture"]
+                if source_texture is not None:
+                    source += f" Texture[{source_texture['index']}]"
+            else:
+                source = "unknown"
+
             print(
                 f"0x{offset:08X}: "
                 f"G_LOADTLUT "
                 f"tile={tile} "
                 f"count={count} "
-                f"entries={count + 1}"
+                f"entries={count + 1} "
+                f"source={source}"
             )
 
         elif opcode == 0x04:
