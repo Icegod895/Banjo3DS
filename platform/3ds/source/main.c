@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include "vshader_shbin.h"
+#include "generated_model.h"
 
 #define CLEAR_COLOR 0x68B0D8FF
 
@@ -11,23 +12,6 @@
      GX_TRANSFER_RAW_COPY(0) | GX_TRANSFER_IN_FORMAT(GX_TRANSFER_FMT_RGBA8) | \
      GX_TRANSFER_OUT_FORMAT(GX_TRANSFER_FMT_RGB8) | \
      GX_TRANSFER_SCALING(GX_TRANSFER_SCALE_NO))
-
-typedef struct {
-    float x;
-    float y;
-    float z;
-} Banjo3DSVertex;
-
-/*
- * Real vertex positions from Banjo-Kazooie model 0x08A1.
- */
-static const Banjo3DSVertex vertex_list[] = {
-    {  0.0f,  18.0f, 0.0f },
-    {-18.0f, -18.0f, 0.0f },
-    { 18.0f, -18.0f, 0.0f },
-};
-
-#define VERTEX_COUNT (sizeof(vertex_list) / sizeof(vertex_list[0]))
 
 static DVLB_s *vshader_dvlb;
 static shaderProgram_s program;
@@ -53,8 +37,8 @@ static void sceneInit(void)
 
     Mtx_OrthoTilt(&projection, -40.0f, 40.0f, -24.0f, 24.0f, -1.0f, 1.0f, true);
 
-    vbo_data = linearAlloc(sizeof(vertex_list));
-    memcpy(vbo_data, vertex_list, sizeof(vertex_list));
+    vbo_data = linearAlloc(sizeof(banjo_vertices));
+    memcpy(vbo_data, banjo_vertices, sizeof(banjo_vertices));
 
     C3D_BufInfo *bufInfo = C3D_GetBufInfo();
     BufInfo_Init(bufInfo);
@@ -74,7 +58,7 @@ static void sceneRender(void)
         &projection
     );
 
-    C3D_DrawArrays(GPU_TRIANGLES, 0, VERTEX_COUNT);
+    C3D_DrawArrays(GPU_TRIANGLES, 0, BANJO_VERTEX_COUNT);
 }
 
 static void sceneExit(void)

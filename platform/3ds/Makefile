@@ -7,6 +7,11 @@ $(error "Please set DEVKITARM in your environment. export DEVKITARM=<path to>dev
 endif
 
 TOPDIR ?= $(CURDIR)
+REPO_ROOT := $(abspath $(TOPDIR)/../..)
+BANJO3DS_PYTHON := $(REPO_ROOT)/.venv/bin/python
+BANJO3DS_MODEL := $(REPO_ROOT)/assets/model/08A1.model.bin
+BANJO3DS_GENERATED_MODEL := $(TOPDIR)/source/generated_model.h
+
 include $(DEVKITARM)/3ds_rules
 
 #---------------------------------------------------------------------------------
@@ -161,8 +166,12 @@ endif
 .PHONY: all clean
 
 #---------------------------------------------------------------------------------
-all: $(BUILD) $(GFXBUILD) $(DEPSDIR) $(ROMFS_T3XFILES) $(T3XHFILES)
+all: $(BANJO3DS_GENERATED_MODEL) $(BUILD) $(GFXBUILD) $(DEPSDIR) $(ROMFS_T3XFILES) $(T3XHFILES)
 	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile
+
+$(BANJO3DS_GENERATED_MODEL): $(BANJO3DS_MODEL) $(REPO_ROOT)/tools/banjo3ds/export_3ds_model.py $(REPO_ROOT)/tools/banjo3ds/n64_displaylist_decoder.py
+	@echo generating $(notdir $@)
+	@cd $(REPO_ROOT) && $(BANJO3DS_PYTHON) -m tools.banjo3ds.export_3ds_model $(BANJO3DS_MODEL) $(BANJO3DS_GENERATED_MODEL)
 
 $(BUILD):
 	@mkdir -p $@

@@ -82,3 +82,6 @@ tmp/*
 /platform/3ds/*.3dsx
 /platform/3ds/*.elf
 /platform/3ds/*.smdh
+
+# Banjo3DS generated model data
+/platform/3ds/source/generated_model.h
