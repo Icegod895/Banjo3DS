@@ -290,24 +290,33 @@ def interpret_display_list(model):
             if (
                 current_texture_image is not None
                 and current_texture_image["texture"] is not None
-                and current_palette is not None
-                and current_palette["image"]["texture"] is not None
-                and current_texture_image["texture"]["index"]
-                == current_palette["image"]["texture"]["index"]
             ):
                 texture = current_texture_image["texture"]
+                palette_offset = None
+                valid_load = texture["palette_size"] == 0
 
-                texture_loads.append(
-                    BanjoTextureLoad(
-                        texture_index=texture["index"],
-                        texture_type=texture["type_name"],
-                        width=texture["width"],
-                        height=texture["height"],
-                        palette_offset=current_palette["image"]["relative_offset"],
-                        texel_offset=current_texture_image["relative_offset"],
-                        load_tile=tile,
+                if (
+                    texture["palette_size"] > 0
+                    and current_palette is not None
+                    and current_palette["image"]["texture"] is not None
+                    and texture["index"]
+                    == current_palette["image"]["texture"]["index"]
+                ):
+                    palette_offset = current_palette["image"]["relative_offset"]
+                    valid_load = True
+
+                if valid_load:
+                    texture_loads.append(
+                        BanjoTextureLoad(
+                            texture_index=texture["index"],
+                            texture_type=texture["type_name"],
+                            width=texture["width"],
+                            height=texture["height"],
+                            palette_offset=palette_offset,
+                            texel_offset=current_texture_image["relative_offset"],
+                            load_tile=tile,
+                        )
                     )
-                )
 
         offset += 8
 

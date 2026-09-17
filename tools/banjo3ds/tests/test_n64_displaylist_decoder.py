@@ -10,7 +10,7 @@ from tools.banjo3ds.n64_displaylist_decoder import (
 
 
 class FakeModel:
-    def __init__(self, commands):
+    def __init__(self, commands, texture=None):
         self.gfx_offset = 0
         self.data = struct.pack(">I", len(commands)) + bytes(4)
         self.data += b"".join(
@@ -25,7 +25,7 @@ class FakeModel:
             {"index": 2, "x": 70, "y": 80, "z": 90, "s": 0, "t": 32, "r": 0, "g": 0, "b": 255, "a": 255},
         ]
 
-        self.texture = {
+        self.texture = texture or {
             "index": 0,
             "offset": 0x100,
             "type": 0x01,
@@ -77,6 +77,42 @@ class TestN64DisplayListDecoder(unittest.TestCase):
         self.assertEqual(load.palette_offset, 0x00)
         self.assertEqual(load.texel_offset, 0x20)
         self.assertEqual(load.load_tile, 7)
+
+    def test_interprets_rgba32_texture_load_without_palette(self):
+        texture = {
+            "index": 0,
+            "offset": 0x000,
+            "type": 0x08,
+            "type_name": "RGBA32",
+            "width": 8,
+            "height": 8,
+            "bit_depth": 32,
+            "palette_size": 0,
+            "size": 0x100,
+        }
+
+        commands = [
+            (0xFD180000, 0x02000000),
+            (0xF5180000, 0x0708C230),
+            (0xF3000000, 0x0703F200),
+        ]
+
+        result = interpret_display_list(FakeModel(commands, texture=texture))
+
+        self.assertEqual(
+            result.texture_loads,
+            [
+                BanjoTextureLoad(
+                    texture_index=0,
+                    texture_type="RGBA32",
+                    width=8,
+                    height=8,
+                    palette_offset=None,
+                    texel_offset=0x00,
+                    load_tile=7,
+                )
+            ],
+        )
 
     def test_interprets_single_triangle(self):
         commands = [
