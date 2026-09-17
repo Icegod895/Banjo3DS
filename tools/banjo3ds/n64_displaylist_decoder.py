@@ -159,7 +159,8 @@ class BKModel:
 
 def interpret_display_list(model):
     """Interpret a Banjo-Kazooie N64 display list into platform-independent data."""
-    gfx_size = struct.unpack_from(">I", model.data, model.gfx_offset)[0]
+    gfx_count = struct.unpack_from(">I", model.data, model.gfx_offset)[0]
+    gfx_size = gfx_count * 8
     gfx_start = model.gfx_offset + 8
     gfx_end = gfx_start + gfx_size
 
@@ -189,6 +190,19 @@ def interpret_display_list(model):
                 for i in range(n):
                     if v0 + i < len(vertex_cache):
                         vertex_cache[v0 + i] = vertex_index + i
+
+        elif opcode == 0xBF:
+            slots = (
+                ((w1 >> 16) & 0xFF) // 2,
+                ((w1 >> 8) & 0xFF) // 2,
+                (w1 & 0xFF) // 2,
+            )
+
+            if all(0 <= slot < len(vertex_cache) for slot in slots):
+                indices = tuple(vertex_cache[slot] for slot in slots)
+
+                if all(index is not None for index in indices):
+                    triangles.append(BanjoTriangle(*indices))
 
         elif opcode == 0xB1:
             slots = (
@@ -332,11 +346,13 @@ def main():
         )
     print()
 
-    gfx_size = struct.unpack_from(">I", model.data, model.gfx_offset)[0]
+    gfx_count = struct.unpack_from(">I", model.data, model.gfx_offset)[0]
+    gfx_size = gfx_count * 8
     gfx_start = model.gfx_offset + 8
     gfx_end = gfx_start + gfx_size
 
     print()
+    print(f"Gfx commands:    {gfx_count}")
     print(f"Gfx size:        {gfx_size} bytes")
     print(f"Gfx range:       0x{gfx_start:X} - 0x{gfx_end:X}")
     print()

@@ -12,7 +12,7 @@ from tools.banjo3ds.n64_displaylist_decoder import (
 class FakeModel:
     def __init__(self, commands):
         self.gfx_offset = 0
-        self.data = struct.pack(">I", len(commands) * 8) + bytes(4)
+        self.data = struct.pack(">I", len(commands)) + bytes(4)
         self.data += b"".join(
             struct.pack(">II", w0, w1)
             for w0, w1 in commands
@@ -77,6 +77,16 @@ class TestN64DisplayListDecoder(unittest.TestCase):
         self.assertEqual(load.palette_offset, 0x00)
         self.assertEqual(load.texel_offset, 0x20)
         self.assertEqual(load.load_tile, 7)
+
+    def test_interprets_single_triangle(self):
+        commands = [
+            (0x04000C2F, 0x01000000),
+            (0xBF000000, 0x00000204),
+        ]
+
+        result = interpret_display_list(FakeModel(commands))
+
+        self.assertEqual(result.triangles, [BanjoTriangle(0, 1, 2)])
 
     def test_interprets_triangle(self):
         commands = [
