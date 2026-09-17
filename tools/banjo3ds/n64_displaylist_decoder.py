@@ -78,6 +78,20 @@ class BKModel:
             "size": texture_size,
         }
 
+    def find_texture_containing_offset(self, offset):
+        for i in range(self.texture_count):
+            texture = self.read_texture(i)
+            start = texture["offset"]
+            end = start + texture["size"]
+
+            if start <= offset < end:
+                return {
+                    "texture": texture,
+                    "relative_offset": offset - start,
+                }
+
+        return None
+
     def read_vertex(self, index):
         if not 0 <= index < self.vertex_count:
             raise IndexError(f"Vertex index out of range: {index}")
@@ -165,20 +179,19 @@ def main():
             current_texture_image = {
                 "address": address,
                 "texture": None,
+                "relative_offset": None,
             }
 
             if (address & 0xFF000000) == 0x02000000:
                 texture_offset = address & 0x00FFFFFF
+                match = model.find_texture_containing_offset(texture_offset)
 
-                matches = []
-                for i in range(model.texture_count):
-                    tex = model.read_texture(i)
-                    if tex["offset"] == texture_offset:
-                        matches.append(tex)
+                if match is not None:
+                    tex = match["texture"]
+                    relative_offset = match["relative_offset"]
 
-                if matches:
-                    tex = matches[0]
                     current_texture_image["texture"] = tex
+                    current_texture_image["relative_offset"] = relative_offset
 
                     print(
                         f"0x{offset:08X}: "
@@ -187,7 +200,7 @@ def main():
                         f"-> Texture[{tex['index']}] "
                         f"{tex['type_name']} "
                         f"{tex['width']}x{tex['height']} "
-                        f"offset=0x{tex['offset']:X}"
+                        f"+0x{relative_offset:X}"
                     )
                 else:
                     print(
