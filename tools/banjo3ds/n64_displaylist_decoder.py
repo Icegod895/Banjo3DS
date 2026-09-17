@@ -148,6 +148,11 @@ def main():
     # Track the current N64 texture image state set by G_SETTIMG.
     current_texture_image = None
 
+    # Track the eight N64 tile descriptors configured by G_SETTILE.
+    # Later commands such as G_LOADBLOCK and G_SETTILESIZE refer back
+    # to these descriptors by tile number.
+    tile_state = [None] * 8
+
     offset = gfx_start
 
     while offset < gfx_end:
@@ -212,6 +217,20 @@ def main():
             masks = (w1 >> 4) & 0xF
             shifts = w1 & 0xF
 
+            tile_state[tile] = {
+                "fmt": fmt,
+                "siz": siz,
+                "line": line,
+                "tmem": tmem,
+                "palette": palette,
+                "cmt": cmt,
+                "maskt": maskt,
+                "shiftt": shiftt,
+                "cms": cms,
+                "masks": masks,
+                "shifts": shifts,
+            }
+
             format_names = {
                 0: "RGBA",
                 1: "YUV",
@@ -268,6 +287,40 @@ def main():
             lrs = (w1 >> 12) & 0xFFF
             dxt = w1 & 0xFFF
 
+            load_tile = tile_state[tile]
+
+            if load_tile is not None:
+                load_format = {
+                    0: "RGBA",
+                    1: "YUV",
+                    2: "CI",
+                    3: "IA",
+                    4: "I",
+                }.get(load_tile["fmt"], str(load_tile["fmt"]))
+
+                load_size = {
+                    0: "4b",
+                    1: "8b",
+                    2: "16b",
+                    3: "32b",
+                }.get(load_tile["siz"], str(load_tile["siz"]))
+
+                tile_description = (
+                    f"{load_format}/{load_size} "
+                    f"tmem=0x{load_tile['tmem']:X}"
+                )
+            else:
+                tile_description = "unknown"
+
+            if current_texture_image is not None:
+                load_source = f"0x{current_texture_image['address']:08X}"
+
+                source_texture = current_texture_image["texture"]
+                if source_texture is not None:
+                    load_source += f" Texture[{source_texture['index']}]"
+            else:
+                load_source = "unknown"
+
             print(
                 f"0x{offset:08X}: "
                 f"G_LOADBLOCK "
@@ -275,7 +328,9 @@ def main():
                 f"uls={uls} "
                 f"ult={ult} "
                 f"lrs={lrs} "
-                f"dxt={dxt}"
+                f"dxt={dxt} "
+                f"source={load_source} "
+                f"state={tile_description}"
             )
 
         elif opcode == 0xF0:
