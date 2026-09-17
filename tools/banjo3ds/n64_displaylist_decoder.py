@@ -45,6 +45,13 @@ class BanjoPixel:
 
 
 @dataclass
+class BanjoTexture:
+    width: int
+    height: int
+    pixels: list[BanjoPixel]
+
+
+@dataclass
 class BanjoTextureLoad:
     texture_index: int
     texture_type: str
@@ -59,6 +66,7 @@ class BanjoTextureLoad:
 class BanjoRenderData:
     vertices: list[BanjoVertex]
     triangles: list[BanjoTriangle]
+    textures: list[BanjoTexture]
     texture_loads: list[BanjoTextureLoad]
 
 
@@ -365,9 +373,31 @@ def interpret_display_list(model):
             )
         )
 
+    textures = []
+    seen_texture_indices = set()
+
+    for load in texture_loads:
+        if load.texture_index in seen_texture_indices:
+            continue
+
+        try:
+            pixels = model.read_texture_pixels(load.texture_index)
+        except NotImplementedError:
+            continue
+
+        textures.append(
+            BanjoTexture(
+                width=load.width,
+                height=load.height,
+                pixels=pixels,
+            )
+        )
+        seen_texture_indices.add(load.texture_index)
+
     return BanjoRenderData(
         vertices=vertices,
         triangles=triangles,
+        textures=textures,
         texture_loads=texture_loads,
     )
 
