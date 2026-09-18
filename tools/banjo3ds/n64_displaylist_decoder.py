@@ -60,7 +60,8 @@ class BanjoTextureLoad:
     palette_offset: int | None
     texel_offset: int
     load_tile: int
-
+    scale_s: int = 0xFFFF
+    scale_t: int = 0xFFFF
 
 @dataclass
 class BanjoRenderData:
@@ -205,6 +206,8 @@ def interpret_display_list(model):
     vertex_cache = [None] * 32
     current_texture_image = None
     current_palette = None
+    texture_scale_s = 0xFFFF
+    texture_scale_t = 0xFFFF
     tile_state = [None] * 8
 
     offset = gfx_start
@@ -260,6 +263,11 @@ def interpret_display_list(model):
 
                     if all(index is not None for index in indices):
                         triangles.append(BanjoTriangle(*indices))
+
+        elif opcode == 0xBB:
+            texture_scale_s = (w1 >> 16) & 0xFFFF
+            texture_scale_t = w1 & 0xFFFF
+
 
         elif opcode == 0xFD:
             address = w1
@@ -351,6 +359,8 @@ def interpret_display_list(model):
                             palette_offset=palette_offset,
                             texel_offset=current_texture_image["relative_offset"],
                             load_tile=tile,
+                            scale_s=texture_scale_s,
+                            scale_t=texture_scale_t,
                         )
                     )
 

@@ -164,6 +164,7 @@ class TestN64DisplayListDecoder(unittest.TestCase):
         }
 
         commands = [
+            (0xBB000001, 0x80008000),
             (0xFD180000, 0x02000000),
             (0xF5180000, 0x0708C230),
             (0xF3000000, 0x0703F200),
@@ -193,6 +194,8 @@ class TestN64DisplayListDecoder(unittest.TestCase):
                     palette_offset=None,
                     texel_offset=0x00,
                     load_tile=7,
+                    scale_s=0x8000,
+                    scale_t=0x8000,
                 )
             ],
         )

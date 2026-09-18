@@ -18,6 +18,7 @@ static shaderProgram_s program;
 static int uLoc_projection;
 static C3D_Mtx projection;
 static void *vbo_data;
+static C3D_Tex texture;
 
 static void sceneInit(void)
 {
@@ -32,8 +33,7 @@ static void sceneInit(void)
     C3D_AttrInfo *attrInfo = C3D_GetAttrInfo();
     AttrInfo_Init(attrInfo);
     AttrInfo_AddLoader(attrInfo, 0, GPU_FLOAT, 3);
-    AttrInfo_AddFixed(attrInfo, 1);
-    C3D_FixedAttribSet(1, 1.0, 1.0, 1.0, 1.0);
+    AttrInfo_AddLoader(attrInfo, 1, GPU_FLOAT, 2);
 
     Mtx_OrthoTilt(&projection, -40.0f, 40.0f, -24.0f, 24.0f, -1.0f, 1.0f, true);
 
@@ -42,11 +42,21 @@ static void sceneInit(void)
 
     C3D_BufInfo *bufInfo = C3D_GetBufInfo();
     BufInfo_Init(bufInfo);
-    BufInfo_Add(bufInfo, vbo_data, sizeof(Banjo3DSVertex), 1, 0x0);
+    BufInfo_Add(bufInfo, vbo_data, sizeof(Banjo3DSVertex), 2, 0x10);
+    C3D_TexInit(
+        &texture,
+        BANJO_TEXTURE_WIDTH,
+        BANJO_TEXTURE_HEIGHT,
+        GPU_RGBA8
+    );
+    C3D_TexUpload(&texture, banjo_texture);
+    C3D_TexSetFilter(&texture, GPU_NEAREST, GPU_NEAREST);
+    C3D_TexSetWrap(&texture, GPU_CLAMP_TO_EDGE, GPU_CLAMP_TO_EDGE);
+    C3D_TexBind(0, &texture);
 
     C3D_TexEnv *env = C3D_GetTexEnv(0);
     C3D_TexEnvInit(env);
-    C3D_TexEnvSrc(env, C3D_Both, GPU_PRIMARY_COLOR, 0, 0);
+    C3D_TexEnvSrc(env, C3D_Both, GPU_TEXTURE0, 0, 0);
     C3D_TexEnvFunc(env, C3D_Both, GPU_REPLACE);
 }
 
@@ -63,6 +73,7 @@ static void sceneRender(void)
 
 static void sceneExit(void)
 {
+    C3D_TexDelete(&texture);
     linearFree(vbo_data);
     shaderProgramFree(&program);
     DVLB_Free(vshader_dvlb);
