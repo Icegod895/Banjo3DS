@@ -209,6 +209,22 @@ class TestExport3DSModelPipeline(unittest.TestCase):
             result,
         )
 
+    def test_exports_real_08a1_sampler_state(self):
+        from pathlib import Path
+        from tools.banjo3ds.export_3ds_model import export_model
+
+        result = export_model(Path("assets/model/08A1.model.bin"))
+
+        self.assertIn(
+            "#define BANJO_TEXTURE_WRAP_S BANJO_TEXTURE_WRAP_CLAMP",
+            result,
+        )
+        self.assertIn(
+            "#define BANJO_TEXTURE_WRAP_T BANJO_TEXTURE_WRAP_CLAMP",
+            result,
+        )
+
+
 class TestTextureCoordinates(unittest.TestCase):
     def test_converts_s10_5_to_texel_coordinate(self):
         from tools.banjo3ds.export_3ds_model import s10_5_to_texel

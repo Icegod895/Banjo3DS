@@ -52,6 +52,12 @@ class BanjoTexture:
 
 
 @dataclass
+class BanjoSampler:
+    wrap_s: str
+    wrap_t: str
+
+
+@dataclass
 class BanjoTextureLoad:
     texture_index: int
     texture_type: str
@@ -69,6 +75,7 @@ class BanjoRenderData:
     triangles: list[BanjoTriangle]
     textures: list[BanjoTexture]
     texture_loads: list[BanjoTextureLoad]
+    sampler: BanjoSampler | None = None
 
 
 class BKModel:
@@ -192,6 +199,10 @@ class BKModel:
             "b": b,
             "a": a,
         }
+
+
+def decode_texture_wrap(value):
+    return ("wrap", "mirror", "clamp", "mirror_clamp")[value & 0x3]
 
 
 def interpret_display_list(model):
@@ -363,8 +374,17 @@ def interpret_display_list(model):
                             scale_t=texture_scale_t,
                         )
                     )
-
         offset += 8
+
+    sampler = None
+    render_tile = tile_state[0]
+
+    if render_tile is not None:
+        sampler = BanjoSampler(
+            wrap_s=decode_texture_wrap(render_tile["cms"]),
+            wrap_t=decode_texture_wrap(render_tile["cmt"]),
+        )
+
 
     vertices = []
     for index in range(model.vertex_count):
@@ -409,6 +429,7 @@ def interpret_display_list(model):
         triangles=triangles,
         textures=textures,
         texture_loads=texture_loads,
+        sampler=sampler,
     )
 
 

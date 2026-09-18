@@ -20,6 +20,15 @@ def n64_texture_coordinate_to_uv(value, scale, texture_size):
     return normalize_texel_coordinate(scaled_coordinate, texture_size)
 
 
+def texture_wrap_to_c_constant(wrap):
+    return {
+        "wrap": "BANJO_TEXTURE_WRAP_WRAP",
+        "mirror": "BANJO_TEXTURE_WRAP_MIRROR",
+        "clamp": "BANJO_TEXTURE_WRAP_CLAMP",
+        "mirror_clamp": "BANJO_TEXTURE_WRAP_MIRROR_CLAMP",
+    }[wrap]
+
+
 def export_textured_vertex(
     vertex,
     scale_s,
@@ -120,6 +129,21 @@ def export_header(render_data):
     vertex_count = len(render_data.triangles) * 3
     texture_fields = ""
     texture_data = ""
+    sampler_data = ""
+
+    if render_data.sampler is not None:
+        wrap_s = texture_wrap_to_c_constant(render_data.sampler.wrap_s)
+        wrap_t = texture_wrap_to_c_constant(render_data.sampler.wrap_t)
+
+        sampler_data = (
+            "#define BANJO_TEXTURE_WRAP_WRAP 0\n"
+            "#define BANJO_TEXTURE_WRAP_MIRROR 1\n"
+            "#define BANJO_TEXTURE_WRAP_CLAMP 2\n"
+            "#define BANJO_TEXTURE_WRAP_MIRROR_CLAMP 3\n"
+            f"#define BANJO_TEXTURE_WRAP_S {wrap_s}\n"
+            f"#define BANJO_TEXTURE_WRAP_T {wrap_t}\n"
+            "\n"
+        )
 
     if len(render_data.texture_loads) == 1 and len(render_data.textures) == 1:
         texture = render_data.textures[0]
@@ -157,6 +181,7 @@ def export_header(render_data):
         "\n"
         f"#define BANJO_VERTEX_COUNT {vertex_count}\n"
         "\n"
+        f"{sampler_data}"
         f"{texture_data}"
     )
 

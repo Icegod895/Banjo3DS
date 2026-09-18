@@ -5,6 +5,7 @@ from tools.banjo3ds.n64_displaylist_decoder import (
     BKModel,
     BanjoPixel,
     BanjoRenderData,
+    BanjoSampler,
     BanjoTexture,
     BanjoTextureLoad,
     BanjoTriangle,
@@ -198,6 +199,22 @@ class TestN64DisplayListDecoder(unittest.TestCase):
                     scale_t=0x8000,
                 )
             ],
+        )
+
+    def test_uses_render_tile_sampler_state(self):
+        commands = [
+            (0xF5180000, 0x07000000),
+            (0xF5180400, 0x0008C230),
+        ]
+
+        result = interpret_display_list(FakeModel(commands))
+
+        self.assertEqual(
+            result.sampler,
+            BanjoSampler(
+                wrap_s="clamp",
+                wrap_t="clamp",
+            ),
         )
 
     def test_interprets_single_triangle(self):

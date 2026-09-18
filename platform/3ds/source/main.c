@@ -19,6 +19,20 @@ static int uLoc_projection;
 static C3D_Mtx projection;
 static void *vbo_data;
 static C3D_Tex texture;
+static GPU_TEXTURE_WRAP_PARAM textureWrapTo3DS(int wrap)
+{
+    switch (wrap) {
+        case BANJO_TEXTURE_WRAP_WRAP:
+            return GPU_REPEAT;
+        case BANJO_TEXTURE_WRAP_MIRROR:
+            return GPU_MIRRORED_REPEAT;
+        case BANJO_TEXTURE_WRAP_CLAMP:
+            return GPU_CLAMP_TO_EDGE;
+        case BANJO_TEXTURE_WRAP_MIRROR_CLAMP:
+        default:
+            return GPU_CLAMP_TO_EDGE;
+    }
+}
 
 static void sceneInit(void)
 {
@@ -51,7 +65,11 @@ static void sceneInit(void)
     );
     C3D_TexUpload(&texture, banjo_texture);
     C3D_TexSetFilter(&texture, GPU_NEAREST, GPU_NEAREST);
-    C3D_TexSetWrap(&texture, GPU_CLAMP_TO_EDGE, GPU_CLAMP_TO_EDGE);
+    C3D_TexSetWrap(
+        &texture,
+        textureWrapTo3DS(BANJO_TEXTURE_WRAP_S),
+        textureWrapTo3DS(BANJO_TEXTURE_WRAP_T)
+    );
     C3D_TexBind(0, &texture);
 
     C3D_TexEnv *env = C3D_GetTexEnv(0);
