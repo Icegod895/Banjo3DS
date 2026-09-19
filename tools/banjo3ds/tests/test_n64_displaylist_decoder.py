@@ -68,6 +68,7 @@ class FakeModel:
 class TestN64DisplayListDecoder(unittest.TestCase):
     def test_banjo_texture(self):
         texture = BanjoTexture(
+            texture_index=7,
             width=2,
             height=1,
             pixels=[
@@ -77,11 +78,13 @@ class TestN64DisplayListDecoder(unittest.TestCase):
         )
 
         self.assertEqual(texture.width, 2)
+        self.assertEqual(texture.texture_index, 7)
         self.assertEqual(texture.height, 1)
         self.assertEqual(len(texture.pixels), 2)
 
     def test_render_data_contains_textures(self):
         texture = BanjoTexture(
+            texture_index=0,
             width=1,
             height=1,
             pixels=[BanjoPixel(72, 79, 254, 0)],
@@ -177,6 +180,7 @@ class TestN64DisplayListDecoder(unittest.TestCase):
             result.textures,
             [
                 BanjoTexture(
+                    texture_index=0,
                     width=8,
                     height=8,
                     pixels=[BanjoPixel(72, 79, 254, 255)] * 64,
@@ -216,6 +220,33 @@ class TestN64DisplayListDecoder(unittest.TestCase):
                 wrap_t="clamp",
             ),
         )
+
+    def test_binds_triangle_to_loaded_texture_material(self):
+        texture = {
+            "index": 0,
+            "offset": 0x000,
+            "type": 0x08,
+            "type_name": "RGBA32",
+            "width": 8,
+            "height": 8,
+            "bit_depth": 32,
+            "palette_size": 0,
+            "size": 0x100,
+        }
+        commands = [
+            (0xBB000001, 0x80008000),
+            (0xFD180000, 0x02000000),
+            (0xF5180000, 0x0708C230),
+            (0xF3000000, 0x0703F200),
+            (0xF5180400, 0x0008C230),
+            (0x04000C2F, 0x01000000),
+            (0xBF000000, 0x00000204),
+        ]
+
+        result = interpret_display_list(FakeModel(commands, texture=texture))
+        self.assertEqual(result.triangles[0].material_index, 0)
+        self.assertEqual(result.materials[0].texture_load_index, 0)
+
 
     def test_interprets_single_triangle(self):
         commands = [

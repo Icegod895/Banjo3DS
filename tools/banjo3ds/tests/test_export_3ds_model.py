@@ -1,7 +1,7 @@
 import unittest
 
-from tools.banjo3ds.export_3ds_model import export_vertex_data
-from tools.banjo3ds.n64_displaylist_decoder import BanjoVertex
+from tools.banjo3ds.export_3ds_model import export_header, export_vertex_data
+from tools.banjo3ds.n64_displaylist_decoder import BanjoMaterial, BanjoPixel, BanjoRenderData, BanjoTexture, BanjoTextureLoad, BanjoVertex
 
 
 class TestExport3DSModel(unittest.TestCase):
@@ -137,6 +137,229 @@ class TestExport3DSTriangles(unittest.TestCase):
             ),
         )
 
+    def test_uses_triangle_material_texture(self):
+        from tools.banjo3ds.export_3ds_model import export_triangle_vertices
+        from tools.banjo3ds.n64_displaylist_decoder import (
+            BanjoMaterial,
+            BanjoPixel,
+            BanjoRenderData,
+            BanjoTexture,
+            BanjoTextureLoad,
+            BanjoTriangle,
+        )
+
+        vertices = [
+            BanjoVertex(0, 0, 0, 32, 64, 255, 255, 255, 255),
+            BanjoVertex(1, 0, 0, 32, 64, 255, 255, 255, 255),
+            BanjoVertex(0, 1, 0, 32, 64, 255, 255, 255, 255),
+        ]
+        textures = [
+            BanjoTexture(0, 4, 4, [BanjoPixel(0, 0, 0, 255)] * 16),
+            BanjoTexture(1, 8, 8, [BanjoPixel(0, 0, 0, 255)] * 64),
+        ]
+        texture_loads = [
+            BanjoTextureLoad(0, "RGBA32", 4, 4, None, 0, 7, 0x8000, 0x8000),
+            BanjoTextureLoad(1, "RGBA32", 8, 8, None, 0, 7, 0x8000, 0x8000),
+        ]
+        render_data = BanjoRenderData(
+            vertices=vertices,
+            triangles=[BanjoTriangle(0, 1, 2, material_index=0)],
+            textures=textures,
+            texture_loads=texture_loads,
+            materials=[BanjoMaterial(texture_load_index=1)],
+        )
+        result = export_triangle_vertices(render_data)
+
+        self.assertIn(
+            "{ 0.0f, 0.0f, 0.0f, 0.062500000f, 0.875000000f }",
+            result,
+        )
+
+    def test_exports_texture_fields_for_material_bound_triangle(self):
+        from tools.banjo3ds.export_3ds_model import export_header
+        from tools.banjo3ds.n64_displaylist_decoder import (
+            BanjoMaterial,
+            BanjoPixel,
+            BanjoRenderData,
+            BanjoTexture,
+            BanjoTextureLoad,
+            BanjoTriangle,
+        )
+
+        vertices = [
+            BanjoVertex(0, 0, 0, 32, 64, 255, 255, 255, 255),
+            BanjoVertex(1, 0, 0, 32, 64, 255, 255, 255, 255),
+            BanjoVertex(0, 1, 0, 32, 64, 255, 255, 255, 255),
+        ]
+        textures = [
+            BanjoTexture(0, 8, 8, [BanjoPixel(0, 0, 0, 255)] * 64),
+            BanjoTexture(1, 8, 8, [BanjoPixel(0, 0, 0, 255)] * 64),
+        ]
+        texture_loads = [
+            BanjoTextureLoad(0, "RGBA32", 4, 4, None, 0, 7, 0x8000, 0x8000),
+            BanjoTextureLoad(1, "RGBA32", 8, 8, None, 0, 7, 0x8000, 0x8000),
+        ]
+        render_data = BanjoRenderData(
+            vertices=vertices,
+            triangles=[BanjoTriangle(0, 1, 2, material_index=0)],
+            textures=textures,
+            texture_loads=texture_loads,
+            materials=[BanjoMaterial(texture_load_index=1)],
+        )
+
+        result = export_header(render_data)
+
+        self.assertIn("    float u;\n", result)
+        self.assertIn("    float v;\n", result)
+
+    def test_exports_draw_for_triangle_material(self):
+        from tools.banjo3ds.export_3ds_model import export_header
+        from tools.banjo3ds.n64_displaylist_decoder import (
+            BanjoMaterial,
+            BanjoPixel,
+            BanjoRenderData,
+            BanjoTexture,
+            BanjoTriangle,
+            BanjoTextureLoad,
+        )
+
+        render_data = BanjoRenderData(
+            vertices=[
+                BanjoVertex(0, 0, 0, 0, 0, 255, 255, 255, 255),
+                BanjoVertex(1, 0, 0, 0, 0, 255, 255, 255, 255),
+                BanjoVertex(0, 1, 0, 0, 0, 255, 255, 255, 255),
+            ],
+            triangles=[BanjoTriangle(0, 1, 2, material_index=0)],
+            textures=[
+                BanjoTexture(
+                    texture_index=0,
+                    width=8,
+                    height=8,
+                    pixels=[BanjoPixel(255, 255, 255, 255)] * 64,
+                ),
+            ],
+            texture_loads=[
+                BanjoTextureLoad(0, "RGBA32", 8, 8, None, 0, 7, 0x8000, 0x8000),
+            ],
+            materials=[BanjoMaterial(texture_load_index=0)],
+        )
+
+        result = export_header(render_data)
+
+        self.assertIn(
+            "    { 0, 3, 0 },\n",
+            result,
+        )
+
+        self.assertIn("#define BANJO_DRAW_COUNT 1", result)
+
+    def test_exports_multiple_texture_arrays(self):
+        from tools.banjo3ds.export_3ds_model import export_header
+        from tools.banjo3ds.n64_displaylist_decoder import (
+            BanjoPixel,
+            BanjoRenderData,
+            BanjoTexture,
+        )
+
+        textures = [
+            BanjoTexture(
+                texture_index=0,
+                width=8,
+                height=8,
+                pixels=[BanjoPixel(255, 0, 0, 255)] * 64,
+            ),
+            BanjoTexture(
+                texture_index=1,
+                width=8,
+                height=8,
+                pixels=[BanjoPixel(0, 255, 0, 255)] * 64,
+            ),
+        ]
+        render_data = BanjoRenderData(
+            vertices=[],
+            triangles=[],
+            textures=textures,
+            texture_loads=[],
+        )
+
+        result = export_header(render_data)
+
+        self.assertIn(
+            "static const unsigned char banjo_texture_0[] = {",
+            result,
+        )
+        self.assertIn(
+            "static const unsigned char banjo_texture_1[] = {",
+            result,
+        )
+        self.assertIn(
+            "typedef struct {\n"
+            "    unsigned int width;\n"
+            "    unsigned int height;\n"
+            "    const unsigned char *data;\n"
+            "} Banjo3DSTexture;\n",
+            result,
+        )
+        self.assertIn(
+            "    { 8, 8, banjo_texture_0 },\n"
+            "    { 8, 8, banjo_texture_1 },\n",
+            result,
+        )
+
+    def test_exports_material_texture_slot(self):
+        textures = [
+            BanjoTexture(
+                texture_index=7,
+                width=8,
+                height=8,
+                pixels=[BanjoPixel(255, 0, 0, 255)] * 64,
+            ),
+            BanjoTexture(
+                texture_index=42,
+                width=8,
+                height=8,
+                pixels=[BanjoPixel(0, 255, 0, 255)] * 64,
+            ),
+        ]
+        texture_loads = [
+            BanjoTextureLoad(
+                texture_index=42,
+                texture_type="RGBA32",
+                width=8,
+                height=8,
+                palette_offset=None,
+                texel_offset=0,
+                load_tile=7,
+                scale_s=1.0,
+                scale_t=1.0,
+            ),
+        ]
+        materials = [
+            BanjoMaterial(texture_load_index=0),
+        ]
+
+        render_data = BanjoRenderData(
+            vertices=[],
+            triangles=[],
+            textures=textures,
+            texture_loads=texture_loads,
+            materials=materials,
+        )
+
+        result = export_header(render_data)
+
+        self.assertIn(
+            "typedef struct {\n"
+            "    unsigned int texture_slot;\n"
+            "} Banjo3DSMaterial;\n",
+            result,
+        )
+        self.assertIn(
+            "    { 1 },\n",
+            result,
+        )
+        self.assertIn("#define BANJO_MATERIAL_COUNT 1", result)
+
 
 class TestExport3DSModelPipeline(unittest.TestCase):
     def test_exports_real_08a1_model(self):
@@ -171,15 +394,15 @@ class TestExport3DSModelPipeline(unittest.TestCase):
         result = export_model(Path("assets/model/08A1.model.bin"))
 
         self.assertIn(
-            "    { 0.0f, 18.0f, 0.0f, 0.482421875f, 1.410156250f },",
+            "    { 0.0f, 18.0f, 0.0f, 0.482421875f, -0.410156250f },",
             result,
         )
         self.assertIn(
-            "    { -18.0f, -18.0f, 0.0f, 1.146484375f, -0.062500000f },",
+            "    { -18.0f, -18.0f, 0.0f, 1.146484375f, 1.062500000f },",
             result,
         )
         self.assertIn(
-            "    { 18.0f, -18.0f, 0.0f, -0.285156250f, -0.062500000f },",
+            "    { 18.0f, -18.0f, 0.0f, -0.285156250f, 1.062500000f },",
             result,
         )
 
@@ -202,12 +425,15 @@ class TestExport3DSModelPipeline(unittest.TestCase):
 
         result = export_model(Path("assets/model/08A1.model.bin"))
 
-        self.assertIn("#define BANJO_TEXTURE_WIDTH 8", result)
-        self.assertIn("#define BANJO_TEXTURE_HEIGHT 8", result)
         self.assertIn(
-            "static const unsigned char banjo_texture[] = {",
+            "static const unsigned char banjo_texture_0[] = {",
             result,
         )
+        self.assertIn(
+            "    { 8, 8, banjo_texture_0 },",
+            result,
+        )
+        self.assertIn("#define BANJO_TEXTURE_COUNT 1", result)
 
     def test_exports_real_08a1_sampler_state(self):
         from pathlib import Path
@@ -300,7 +526,7 @@ class TestTextureCoordinates(unittest.TestCase):
 
         self.assertEqual(
             result,
-            "    { 0.0f, 18.0f, 0.0f, 0.482421875f, 1.410156250f },\n",
+            "    { 0.0f, 18.0f, 0.0f, 0.482421875f, -0.410156250f },\n",
         )
 
     def test_exports_textured_vertex_data(self):
@@ -323,9 +549,9 @@ class TestTextureCoordinates(unittest.TestCase):
         self.assertEqual(
             result,
             (
-                "    { 0.0f, 18.0f, 0.0f, 0.482421875f, 1.410156250f },\n"
-                "    { -18.0f, -18.0f, 0.0f, 1.146484375f, -0.062500000f },\n"
-                "    { 18.0f, -18.0f, 0.0f, -0.285156250f, -0.062500000f },\n"
+                "    { 0.0f, 18.0f, 0.0f, 0.482421875f, -0.410156250f },\n"
+                "    { -18.0f, -18.0f, 0.0f, 1.146484375f, 1.062500000f },\n"
+                "    { 18.0f, -18.0f, 0.0f, -0.285156250f, 1.062500000f },\n"
             ),
         )
 
@@ -364,7 +590,12 @@ class TestTextureCoordinates(unittest.TestCase):
             for y in range(8)
             for x in range(8)
         ]
-        texture = BanjoTexture(width=8, height=8, pixels=pixels)
+        texture = BanjoTexture(
+            texture_index=0,
+            width=8,
+            height=8,
+            pixels=pixels,
+        )
 
         result = encode_3ds_rgba8_texture(texture)
 

@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 import struct
 import sys
@@ -34,6 +34,7 @@ class BanjoTriangle:
     v0: int
     v1: int
     v2: int
+    material_index: int | None = None
 
 
 @dataclass
@@ -46,9 +47,15 @@ class BanjoPixel:
 
 @dataclass
 class BanjoTexture:
+    texture_index: int
     width: int
     height: int
     pixels: list[BanjoPixel]
+
+
+@dataclass
+class BanjoMaterial:
+    texture_load_index: int
 
 
 @dataclass
@@ -75,6 +82,7 @@ class BanjoRenderData:
     triangles: list[BanjoTriangle]
     textures: list[BanjoTexture]
     texture_loads: list[BanjoTextureLoad]
+    materials: list[BanjoMaterial] = field(default_factory=list)
     sampler: BanjoSampler | None = None
 
 
@@ -213,6 +221,8 @@ def interpret_display_list(model):
     gfx_end = gfx_start + gfx_size
 
     texture_loads = []
+    materials = []
+    current_material_index = None
     triangles = []
     vertex_cache = [None] * 32
     current_texture_image = None
@@ -252,7 +262,12 @@ def interpret_display_list(model):
                 indices = tuple(vertex_cache[slot] for slot in slots)
 
                 if all(index is not None for index in indices):
-                    triangles.append(BanjoTriangle(*indices))
+                    triangles.append(
+                        BanjoTriangle(
+                            *indices,
+                            material_index=current_material_index,
+                        )
+                    )
 
         elif opcode == 0xB1:
             slots = (
@@ -273,7 +288,12 @@ def interpret_display_list(model):
                     )
 
                     if all(index is not None for index in indices):
-                        triangles.append(BanjoTriangle(*indices))
+                        triangles.append(
+                            BanjoTriangle(
+                                *indices,
+                                material_index=current_material_index,
+                            )
+                        )
 
         elif opcode == 0xBB:
             texture_scale_s = (w1 >> 16) & 0xFFFF
@@ -374,6 +394,12 @@ def interpret_display_list(model):
                             scale_t=texture_scale_t,
                         )
                     )
+                    materials.append(
+                        BanjoMaterial(
+                            texture_load_index=len(texture_loads) - 1,
+                        )
+                    )
+                    current_material_index = len(materials) - 1
         offset += 8
 
     sampler = None
@@ -417,6 +443,7 @@ def interpret_display_list(model):
 
         textures.append(
             BanjoTexture(
+                texture_index=load.texture_index,
                 width=load.width,
                 height=load.height,
                 pixels=pixels,
@@ -429,6 +456,7 @@ def interpret_display_list(model):
         triangles=triangles,
         textures=textures,
         texture_loads=texture_loads,
+        materials=materials,
         sampler=sampler,
     )
 

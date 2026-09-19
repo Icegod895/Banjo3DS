@@ -18,7 +18,7 @@ static shaderProgram_s program;
 static int uLoc_projection;
 static C3D_Mtx projection;
 static void *vbo_data;
-static C3D_Tex texture;
+static C3D_Tex textures[BANJO_TEXTURE_COUNT];
 static GPU_TEXTURE_WRAP_PARAM textureWrapTo3DS(int wrap)
 {
     switch (wrap) {
@@ -57,20 +57,21 @@ static void sceneInit(void)
     C3D_BufInfo *bufInfo = C3D_GetBufInfo();
     BufInfo_Init(bufInfo);
     BufInfo_Add(bufInfo, vbo_data, sizeof(Banjo3DSVertex), 2, 0x10);
-    C3D_TexInit(
-        &texture,
-        BANJO_TEXTURE_WIDTH,
-        BANJO_TEXTURE_HEIGHT,
-        GPU_RGBA8
-    );
-    C3D_TexUpload(&texture, banjo_texture);
-    C3D_TexSetFilter(&texture, GPU_NEAREST, GPU_NEAREST);
-    C3D_TexSetWrap(
-        &texture,
-        textureWrapTo3DS(BANJO_TEXTURE_WRAP_S),
-        textureWrapTo3DS(BANJO_TEXTURE_WRAP_T)
-    );
-    C3D_TexBind(0, &texture);
+    for (unsigned int i = 0; i < BANJO_TEXTURE_COUNT; i++) {
+        C3D_TexInit(
+            &textures[i],
+            banjo_textures[i].width,
+            banjo_textures[i].height,
+            GPU_RGBA8
+        );
+        C3D_TexUpload(&textures[i], banjo_textures[i].data);
+        C3D_TexSetFilter(&textures[i], GPU_NEAREST, GPU_NEAREST);
+        C3D_TexSetWrap(
+            &textures[i],
+            textureWrapTo3DS(BANJO_TEXTURE_WRAP_S),
+            textureWrapTo3DS(BANJO_TEXTURE_WRAP_T)
+        );
+    }
 
     C3D_TexEnv *env = C3D_GetTexEnv(0);
     C3D_TexEnvInit(env);
@@ -86,12 +87,20 @@ static void sceneRender(void)
         &projection
     );
 
-    C3D_DrawArrays(GPU_TRIANGLES, 0, BANJO_VERTEX_COUNT);
+    for (unsigned int i = 0; i < BANJO_DRAW_COUNT; i++) {
+        const Banjo3DSDraw *draw = &banjo_draws[i];
+        const Banjo3DSMaterial *material = &banjo_materials[draw->material_index];
+
+        C3D_TexBind(0, &textures[material->texture_slot]);
+        C3D_DrawArrays(GPU_TRIANGLES, draw->first_vertex, draw->vertex_count);
+    }
 }
 
 static void sceneExit(void)
 {
-    C3D_TexDelete(&texture);
+    for (unsigned int i = 0; i < BANJO_TEXTURE_COUNT; i++) {
+        C3D_TexDelete(&textures[i]);
+    }
     linearFree(vbo_data);
     shaderProgramFree(&program);
     DVLB_Free(vshader_dvlb);
