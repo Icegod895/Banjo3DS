@@ -17,6 +17,7 @@
 ; Inputs (defined as aliases for convenience)
 .alias inpos v0
 .alias intex v1
+.alias inclr v2
 
 .proc main
 	; Force the w component of inpos to be 1.0
@@ -39,8 +40,8 @@
 	mov outtc0.st, intex
        mov outtc0.pq, zeros
 
-	; Keep the vertex color white
-	mov outclr, ones
+	; Pass the vertex color through to the fragment stage
+        mov outclr, inclr
 
 	; We're finished
 	end

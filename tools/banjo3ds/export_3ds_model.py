@@ -44,7 +44,7 @@ def export_textured_vertex(
         f"{float(vertex.y):.1f}f, "
         f"{float(vertex.z):.1f}f, "
         f"{u:.9f}f, "
-        f"{v:.9f}f }},\n"
+        f"{v:.9f}f, {vertex.r}, {vertex.g}, {vertex.b}, {vertex.a} }},\n"
     )
 
 def texture_3ds_swizzle_index(x, y):
@@ -128,7 +128,7 @@ def export_vertex_data(vertices):
     return "".join(
         f"    {{ {float(vertex.x):.1f}f, "
         f"{float(vertex.y):.1f}f, "
-        f"{float(vertex.z):.1f}f }},\n"
+        f"{float(vertex.z):.1f}f, {vertex.r}, {vertex.g}, {vertex.b}, {vertex.a} }},\n"
         for vertex in vertices
     )
 
@@ -260,6 +260,10 @@ def export_header(render_data):
         "    float y;\n"
         "    float z;\n"
         f"{texture_fields}"
+        "    unsigned char r;\n"
+        "    unsigned char g;\n"
+        "    unsigned char b;\n"
+        "    unsigned char a;\n"
         "} Banjo3DSVertex;\n"
         "\n"
         "static const Banjo3DSVertex banjo_vertices[] = {\n"

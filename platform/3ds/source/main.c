@@ -50,6 +50,7 @@ static void sceneInit(void)
     AttrInfo_Init(attrInfo);
     AttrInfo_AddLoader(attrInfo, 0, GPU_FLOAT, 3);
     AttrInfo_AddLoader(attrInfo, 1, GPU_FLOAT, 2);
+    AttrInfo_AddLoader(attrInfo, 2, GPU_UNSIGNED_BYTE, 4);
 
     Mtx_OrthoTilt(&projection, -60.0f, 100.0f, -130.0f, 210.0f, -250.0f, 250.0f, true);
     Mtx_Identity(&modelView);
@@ -60,7 +61,7 @@ static void sceneInit(void)
 
     C3D_BufInfo *bufInfo = C3D_GetBufInfo();
     BufInfo_Init(bufInfo);
-    BufInfo_Add(bufInfo, vbo_data, sizeof(Banjo3DSVertex), 2, 0x10);
+    BufInfo_Add(bufInfo, vbo_data, sizeof(Banjo3DSVertex), 3, 0x210);
     for (unsigned int i = 0; i < BANJO_TEXTURE_COUNT; i++) {
         C3D_TexInit(
             &textures[i],
@@ -79,8 +80,14 @@ static void sceneInit(void)
 
     C3D_TexEnv *env = C3D_GetTexEnv(0);
     C3D_TexEnvInit(env);
-    C3D_TexEnvSrc(env, C3D_Both, GPU_TEXTURE0, 0, 0);
-    C3D_TexEnvFunc(env, C3D_Both, GPU_REPLACE);
+    C3D_TexEnvSrc(
+    env,
+    C3D_Both,
+    GPU_TEXTURE0,
+    GPU_PRIMARY_COLOR,
+    GPU_PRIMARY_COLOR
+);
+C3D_TexEnvFunc(env, C3D_Both, GPU_MODULATE);
 }
 
 static void sceneRender(void)

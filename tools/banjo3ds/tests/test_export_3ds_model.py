@@ -47,9 +47,9 @@ class TestExport3DSModel(unittest.TestCase):
         self.assertEqual(
             result,
             (
-                "    { 0.0f, 18.0f, 0.0f },\n"
-                "    { -18.0f, -18.0f, 0.0f },\n"
-                "    { 18.0f, -18.0f, 0.0f },\n"
+                "    { 0.0f, 18.0f, 0.0f, 254, 254, 254, 255 },\n"
+                "    { -18.0f, -18.0f, 0.0f, 254, 254, 254, 255 },\n"
+                "    { 18.0f, -18.0f, 0.0f, 254, 254, 254, 255 },\n"
             ),
         )
 
@@ -95,7 +95,14 @@ class TestExport3DSHeader(unittest.TestCase):
             result,
         )
         self.assertIn(
-            "    { 0.0f, 18.0f, 0.0f },",
+            "    unsigned char r;\n"
+            "    unsigned char g;\n"
+            "    unsigned char b;\n"
+            "    unsigned char a;\n",
+            result,
+        )
+        self.assertIn(
+            "    { 0.0f, 18.0f, 0.0f, 254, 254, 254, 255 },",
             result,
         )
         self.assertIn(
@@ -131,9 +138,9 @@ class TestExport3DSTriangles(unittest.TestCase):
         self.assertEqual(
             result,
             (
-                "    { 30.0f, 0.0f, 0.0f },\n"
-                "    { 10.0f, 0.0f, 0.0f },\n"
-                "    { 20.0f, 0.0f, 0.0f },\n"
+                "    { 30.0f, 0.0f, 0.0f, 255, 255, 255, 255 },\n"
+                "    { 10.0f, 0.0f, 0.0f, 255, 255, 255, 255 },\n"
+                "    { 20.0f, 0.0f, 0.0f, 255, 255, 255, 255 },\n"
             ),
         )
 
@@ -171,7 +178,7 @@ class TestExport3DSTriangles(unittest.TestCase):
         result = export_triangle_vertices(render_data)
 
         self.assertIn(
-            "{ 0.0f, 0.0f, 0.0f, 0.062500000f, 0.875000000f }",
+        "{ 0.0f, 0.0f, 0.0f, 0.062500000f, 0.875000000f, 255, 255, 255, 255 }",
             result,
         )
 
@@ -394,15 +401,15 @@ class TestExport3DSModelPipeline(unittest.TestCase):
         result = export_model(Path("assets/model/08A1.model.bin"))
 
         self.assertIn(
-            "    { 0.0f, 18.0f, 0.0f, 0.482421875f, -0.410156250f },",
+            "    { 0.0f, 18.0f, 0.0f, 0.482421875f, -0.410156250f, 254, 254, 254, 255 },",
             result,
         )
         self.assertIn(
-            "    { -18.0f, -18.0f, 0.0f, 1.146484375f, 1.062500000f },",
+            "    { -18.0f, -18.0f, 0.0f, 1.146484375f, 1.062500000f, 254, 254, 254, 255 },",
             result,
         )
         self.assertIn(
-            "    { 18.0f, -18.0f, 0.0f, -0.285156250f, 1.062500000f },",
+            "    { 18.0f, -18.0f, 0.0f, -0.285156250f, 1.062500000f, 254, 254, 254, 255 },",
             result,
         )
 
@@ -526,7 +533,7 @@ class TestTextureCoordinates(unittest.TestCase):
 
         self.assertEqual(
             result,
-            "    { 0.0f, 18.0f, 0.0f, 0.482421875f, -0.410156250f },\n",
+        "    { 0.0f, 18.0f, 0.0f, 0.482421875f, -0.410156250f, 254, 254, 254, 255 },\n",
         )
 
     def test_exports_textured_vertex_data(self):
@@ -549,9 +556,9 @@ class TestTextureCoordinates(unittest.TestCase):
         self.assertEqual(
             result,
             (
-                "    { 0.0f, 18.0f, 0.0f, 0.482421875f, -0.410156250f },\n"
-                "    { -18.0f, -18.0f, 0.0f, 1.146484375f, 1.062500000f },\n"
-                "    { 18.0f, -18.0f, 0.0f, -0.285156250f, 1.062500000f },\n"
+                "    { 0.0f, 18.0f, 0.0f, 0.482421875f, -0.410156250f, 254, 254, 254, 255 },\n"
+                "    { -18.0f, -18.0f, 0.0f, 1.146484375f, 1.062500000f, 254, 254, 254, 255 },\n"
+                "    { 18.0f, -18.0f, 0.0f, -0.285156250f, 1.062500000f, 254, 254, 254, 255 },\n"
             ),
         )
 
