@@ -13,6 +13,7 @@ TEXTURE_TYPES = {
     0x02: "CI8",
     0x04: "RGBA16",
     0x08: "RGBA32",
+    0x10: "IA8",
 }
 
 
@@ -141,6 +142,7 @@ class BKModel:
             0x02: 8,
             0x04: 16,
             0x08: 32,
+            0x10: 8,
         }.get(texture_type, 0)
 
         palette_size = {
@@ -148,6 +150,7 @@ class BKModel:
             0x02: 512,
             0x04: 0,
             0x08: 0,
+            0x10: 0,
         }.get(texture_type, 0)
 
         texture_size = (
@@ -180,6 +183,28 @@ class BKModel:
                 )
                 for offset in range(start, start + pixel_count * 2, 2)
             ]
+
+        if texture["type"] == 0x10:
+            start = self.texture_data_offset + texture["offset"]
+            pixel_count = texture["width"] * texture["height"]
+            pixels = []
+
+            for value in self.data[start:start + pixel_count]:
+                intensity = (value >> 4) & 0x0F
+                alpha = value & 0x0F
+                intensity = (intensity << 4) | intensity
+                alpha = (alpha << 4) | alpha
+
+                pixels.append(
+                    BanjoPixel(
+                        intensity,
+                        intensity,
+                        intensity,
+                        alpha,
+                    )
+                )
+
+            return pixels
 
         if texture["type"] != 0x08:
             raise NotImplementedError(

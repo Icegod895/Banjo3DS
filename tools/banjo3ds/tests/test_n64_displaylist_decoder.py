@@ -50,6 +50,27 @@ class TestTextureDecoding(unittest.TestCase):
             ],
         )
 
+    def test_reads_ia8_texture_pixels(self):
+        model = BKModel.__new__(BKModel)
+        model.data = bytearray(16 + 3)
+        model.texture_data_offset = 0
+        model.texture_count = 1
+        model.texture_infos_offset = 0
+        model.data[0:4] = (16).to_bytes(4, "big")
+        model.data[4:6] = (0x10).to_bytes(2, "big")
+        model.data[8] = 3
+        model.data[9] = 1
+        model.data[16:19] = bytes.fromhex("00 1F F8")
+
+        self.assertEqual(
+            model.read_texture_pixels(0),
+            [
+                BanjoPixel(0, 0, 0, 0),
+                BanjoPixel(17, 17, 17, 255),
+                BanjoPixel(255, 255, 255, 136),
+            ],
+        )
+
     def test_reads_ci4_texture_load_pixels(self):
         model = BKModel.__new__(BKModel)
         model.data = bytes.fromhex(
