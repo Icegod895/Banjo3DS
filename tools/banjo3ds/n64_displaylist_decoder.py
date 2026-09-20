@@ -170,6 +170,17 @@ class BKModel:
     def read_texture_pixels(self, index):
         texture = self.read_texture(index)
 
+        if texture["type"] == 0x04:
+            start = self.texture_data_offset + texture["offset"]
+            pixel_count = texture["width"] * texture["height"]
+
+            return [
+                decode_rgba5551(
+                    int.from_bytes(self.data[offset:offset + 2], "big")
+                )
+                for offset in range(start, start + pixel_count * 2, 2)
+            ]
+
         if texture["type"] != 0x08:
             raise NotImplementedError(
                 f'Pixel decoding not implemented for {texture["type_name"]}'
