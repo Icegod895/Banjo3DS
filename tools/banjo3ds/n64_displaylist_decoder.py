@@ -36,7 +36,7 @@ class BanjoTriangle:
     v1: int
     v2: int
     material_index: int | None = None
-
+    combine: "BanjoCombine | None" = None
 
 @dataclass
 class BanjoPixel:
@@ -90,6 +90,25 @@ class BanjoTextureLoad:
     load_tile: int
     scale_s: int = 0xFFFF
     scale_t: int = 0xFFFF
+
+@dataclass
+class BanjoCombine:
+    a0: int
+    b0: int
+    c0: int
+    d0: int
+    Aa0: int
+    Ab0: int
+    Ac0: int
+    Ad0: int
+    a1: int
+    b1: int
+    c1: int
+    d1: int
+    Aa1: int
+    Ab1: int
+    Ac1: int
+    Ad1: int
 
 @dataclass
 class BanjoRenderData:
@@ -301,6 +320,27 @@ class BKModel:
         }
 
 
+def decode_combine(w0, w1):
+    return BanjoCombine(
+        a0=(w0 >> 20) & 0x0F,
+        b0=(w1 >> 28) & 0x0F,
+        c0=(w0 >> 15) & 0x1F,
+        d0=(w1 >> 15) & 0x07,
+        Aa0=(w0 >> 12) & 0x07,
+        Ab0=(w1 >> 12) & 0x07,
+        Ac0=(w0 >> 9) & 0x07,
+        Ad0=(w1 >> 9) & 0x07,
+        a1=(w1 >> 24) & 0x0F,
+        b1=(w0 >> 5) & 0x0F,
+        c1=w0 & 0x1F,
+        d1=(w1 >> 6) & 0x07,
+        Aa1=(w1 >> 21) & 0x07,
+        Ab1=(w1 >> 3) & 0x07,
+        Ac1=(w1 >> 18) & 0x07,
+        Ad1=w1 & 0x07,
+    )
+
+
 def decode_texture_wrap(value):
     return ("wrap", "mirror", "clamp", "mirror_clamp")[value & 0x3]
 
@@ -319,6 +359,7 @@ def interpret_display_list(model):
     vertex_cache = [None] * 32
     current_texture_image = None
     current_palette = None
+    current_combine = None
     texture_scale_s = 0xFFFF
     texture_scale_t = 0xFFFF
     tile_state = [None] * 8
@@ -328,7 +369,10 @@ def interpret_display_list(model):
         w0, w1 = struct.unpack_from(">II", model.data, offset)
         opcode = w0 >> 24
 
-        if opcode == 0x04:
+        if opcode == 0xFC:
+            current_combine = decode_combine(w0, w1)
+
+        elif opcode == 0x04:
             n = (w0 & 0xFFFF) >> 10
             v0 = (w0 >> 16) & 0xFF
             address = w1
@@ -358,6 +402,7 @@ def interpret_display_list(model):
                         BanjoTriangle(
                             *indices,
                             material_index=current_material_index,
+                            combine=current_combine,
                         )
                     )
 
@@ -384,6 +429,7 @@ def interpret_display_list(model):
                             BanjoTriangle(
                                 *indices,
                                 material_index=current_material_index,
+                                combine=current_combine,
                             )
                         )
 

@@ -2,6 +2,7 @@ import struct
 import unittest
 
 from tools.banjo3ds.n64_displaylist_decoder import (
+    BanjoCombine,
     BKModel,
     BanjoPixel,
     BanjoRenderData,
@@ -119,6 +120,36 @@ class TestTextureDecoding(unittest.TestCase):
                 BanjoPixel(255, 255, 255, 255),
                 BanjoPixel(0, 0, 0, 255),
             ],
+        )
+
+    def test_decodes_set_combine(self):
+        from tools.banjo3ds.n64_displaylist_decoder import decode_combine
+
+        result = decode_combine(
+            0xFC62FE04,
+            0x3F15F9FF,
+        )
+
+        self.assertEqual(
+            result,
+            BanjoCombine(
+                a0=6,
+                b0=3,
+                c0=5,
+                d0=3,
+                Aa0=7,
+                Ab0=7,
+                Ac0=7,
+                Ad0=4,
+                a1=15,
+                b1=0,
+                c1=4,
+                d1=7,
+                Aa1=0,
+                Ab1=7,
+                Ac1=5,
+                Ad1=7,
+            ),
         )
 
 
@@ -391,6 +422,37 @@ class TestN64DisplayListDecoder(unittest.TestCase):
             ],
         )
         self.assertEqual(result.triangles, [BanjoTriangle(0, 1, 2)])
+
+    def test_applies_combine_to_triangle(self):
+        commands = [
+            (0xFC62FE04, 0x3F15F9FF),
+            (0x04000C2F, 0x01000000),
+            (0xBF000000, 0x00000204),
+        ]
+
+        result = interpret_display_list(FakeModel(commands))
+
+        self.assertEqual(
+            result.triangles[0].combine,
+            BanjoCombine(
+                a0=6,
+                b0=3,
+                c0=5,
+                d0=3,
+                Aa0=7,
+                Ab0=7,
+                Ac0=7,
+                Ad0=4,
+                a1=15,
+                b1=0,
+                c1=4,
+                d1=7,
+                Aa1=0,
+                Ab1=7,
+                Ac1=5,
+                Ad1=7,
+            ),
+        )
 
     def test_interprets_triangle(self):
         commands = [
