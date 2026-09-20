@@ -47,9 +47,9 @@ class TestExport3DSModel(unittest.TestCase):
         self.assertEqual(
             result,
             (
-                "    { 0.0f, 18.0f, 0.0f, 254, 254, 254, 255 },\n"
-                "    { -18.0f, -18.0f, 0.0f, 254, 254, 254, 255 },\n"
-                "    { 18.0f, -18.0f, 0.0f, 254, 254, 254, 255 },\n"
+                "    { 0.0f, 18.0f, 0.0f, 0.0f, 0.0f, 254, 254, 254, 255 },\n"
+                "    { -18.0f, -18.0f, 0.0f, 0.0f, 0.0f, 254, 254, 254, 255 },\n"
+                "    { 18.0f, -18.0f, 0.0f, 0.0f, 0.0f, 254, 254, 254, 255 },\n"
             ),
         )
 
@@ -102,7 +102,7 @@ class TestExport3DSHeader(unittest.TestCase):
             result,
         )
         self.assertIn(
-            "    { 0.0f, 18.0f, 0.0f, 254, 254, 254, 255 },",
+            "    { 0.0f, 18.0f, 0.0f, 0.0f, 0.0f, 254, 254, 254, 255 },",
             result,
         )
         self.assertIn(
@@ -138,10 +138,36 @@ class TestExport3DSTriangles(unittest.TestCase):
         self.assertEqual(
             result,
             (
-                "    { 30.0f, 0.0f, 0.0f, 255, 255, 255, 255 },\n"
-                "    { 10.0f, 0.0f, 0.0f, 255, 255, 255, 255 },\n"
-                "    { 20.0f, 0.0f, 0.0f, 255, 255, 255, 255 },\n"
+                "    { 30.0f, 0.0f, 0.0f, 0.0f, 0.0f, 255, 255, 255, 255 },\n"
+                "    { 10.0f, 0.0f, 0.0f, 0.0f, 0.0f, 255, 255, 255, 255 },\n"
+                "    { 20.0f, 0.0f, 0.0f, 0.0f, 0.0f, 255, 255, 255, 255 },\n"
             ),
+        )
+
+    def test_exports_draw_for_untextured_triangle(self):
+        from tools.banjo3ds.export_3ds_model import export_header
+        from tools.banjo3ds.n64_displaylist_decoder import (
+            BanjoRenderData,
+            BanjoTriangle,
+        )
+
+        vertices = [
+            BanjoVertex(0, 0, 0, 0, 0, 255, 255, 255, 255),
+            BanjoVertex(1, 0, 0, 0, 0, 255, 255, 255, 255),
+            BanjoVertex(0, 1, 0, 0, 0, 255, 255, 255, 255),
+        ]
+        render_data = BanjoRenderData(
+            vertices=vertices,
+            triangles=[BanjoTriangle(0, 1, 2)],
+            textures=[],
+            texture_loads=[],
+        )
+
+        result = export_header(render_data)
+
+        self.assertIn(
+            "    { 0, 3, -1 },",
+            result,
         )
 
     def test_uses_triangle_material_texture(self):

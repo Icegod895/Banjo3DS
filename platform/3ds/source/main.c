@@ -18,7 +18,12 @@ static shaderProgram_s program;
 static int uLoc_projection, uLoc_modelView;
 static C3D_Mtx projection, modelView;
 static void *vbo_data;
+
+#if BANJO_TEXTURE_COUNT > 0
 static C3D_Tex textures[BANJO_TEXTURE_COUNT];
+#endif
+
+#if BANJO_TEXTURE_COUNT > 0
 static GPU_TEXTURE_WRAP_PARAM textureWrapTo3DS(int wrap)
 {
     switch (wrap) {
@@ -33,6 +38,7 @@ static GPU_TEXTURE_WRAP_PARAM textureWrapTo3DS(int wrap)
             return GPU_CLAMP_TO_EDGE;
     }
 }
+#endif
 
 static void sceneInit(void)
 {
@@ -62,6 +68,7 @@ static void sceneInit(void)
     C3D_BufInfo *bufInfo = C3D_GetBufInfo();
     BufInfo_Init(bufInfo);
     BufInfo_Add(bufInfo, vbo_data, sizeof(Banjo3DSVertex), 3, 0x210);
+#if BANJO_TEXTURE_COUNT > 0
     for (unsigned int i = 0; i < BANJO_TEXTURE_COUNT; i++) {
         C3D_TexInit(
             &textures[i],
@@ -77,17 +84,18 @@ static void sceneInit(void)
             textureWrapTo3DS(BANJO_TEXTURE_WRAP_T)
         );
     }
+#endif
 
     C3D_TexEnv *env = C3D_GetTexEnv(0);
     C3D_TexEnvInit(env);
     C3D_TexEnvSrc(
-    env,
-    C3D_Both,
-    GPU_TEXTURE0,
-    GPU_PRIMARY_COLOR,
-    GPU_PRIMARY_COLOR
-);
-C3D_TexEnvFunc(env, C3D_Both, GPU_MODULATE);
+        env,
+        C3D_Both,
+        GPU_TEXTURE0,
+        GPU_PRIMARY_COLOR,
+        GPU_PRIMARY_COLOR
+    );
+    C3D_TexEnvFunc(env, C3D_Both, GPU_MODULATE);
 }
 
 static void sceneRender(void)
@@ -97,22 +105,71 @@ static void sceneRender(void)
         uLoc_projection,
         &projection
     );
-    C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, uLoc_modelView, &modelView);
+    C3D_FVUnifMtx4x4(
+        GPU_VERTEX_SHADER,
+        uLoc_modelView,
+        &modelView
+    );
 
     for (unsigned int i = 0; i < BANJO_DRAW_COUNT; i++) {
         const Banjo3DSDraw *draw = &banjo_draws[i];
-        const Banjo3DSMaterial *material = &banjo_materials[draw->material_index];
 
-        C3D_TexBind(0, &textures[material->texture_slot]);
-        C3D_DrawArrays(GPU_TRIANGLES, draw->first_vertex, draw->vertex_count);
+#if BANJO_MATERIAL_COUNT > 0
+        if (draw->material_index >= 0) {
+            const Banjo3DSMaterial *material =
+                &banjo_materials[draw->material_index];
+
+            C3D_TexEnvSrc(
+                C3D_GetTexEnv(0),
+                C3D_Both,
+                GPU_TEXTURE0,
+                GPU_PRIMARY_COLOR,
+                GPU_PRIMARY_COLOR
+            );
+            C3D_TexEnvFunc(
+                C3D_GetTexEnv(0),
+                C3D_Both,
+                GPU_MODULATE
+            );
+            C3D_TexBind(
+                0,
+                &textures[material->texture_slot]
+            );
+        }
+#endif
+#if BANJO_MATERIAL_COUNT > 0
+        else
+#endif
+        {
+            C3D_TexEnvSrc(
+                C3D_GetTexEnv(0),
+                C3D_Both,
+                GPU_PRIMARY_COLOR,
+                GPU_PRIMARY_COLOR,
+                GPU_PRIMARY_COLOR
+            );
+            C3D_TexEnvFunc(
+                C3D_GetTexEnv(0),
+                C3D_Both,
+                GPU_REPLACE
+            );
+        }
+
+        C3D_DrawArrays(
+            GPU_TRIANGLES,
+            draw->first_vertex,
+            draw->vertex_count
+        );
     }
 }
 
 static void sceneExit(void)
 {
+#if BANJO_TEXTURE_COUNT > 0
     for (unsigned int i = 0; i < BANJO_TEXTURE_COUNT; i++) {
         C3D_TexDelete(&textures[i]);
     }
+#endif
     linearFree(vbo_data);
     shaderProgramFree(&program);
     DVLB_Free(vshader_dvlb);

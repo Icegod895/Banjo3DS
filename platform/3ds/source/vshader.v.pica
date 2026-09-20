@@ -6,6 +6,7 @@
 ; Constants
 .constf myconst(0.0, 1.0, -1.0, 0.1)
 .constf myconst2(0.3, 0.0, 0.0, 0.0)
+.constf colorScale(0.0039215686, 0.0039215686, 0.0039215686, 0.0039215686)
 .alias  zeros myconst.xxxx ; Vector full of zeros
 .alias  ones  myconst.yyyy ; Vector full of ones
 
@@ -38,10 +39,11 @@
 
 	; Pass texture coordinates through to the fragment stage
 	mov outtc0.st, intex
-       mov outtc0.pq, zeros
+        mov outtc0.pq, zeros
 
 	; Pass the vertex color through to the fragment stage
-        mov outclr, inclr
+        mov r2, colorScale
+        mul outclr, inclr, r2
 
 	; We're finished
 	end

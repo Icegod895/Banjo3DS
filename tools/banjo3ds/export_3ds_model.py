@@ -128,7 +128,7 @@ def export_vertex_data(vertices):
     return "".join(
         f"    {{ {float(vertex.x):.1f}f, "
         f"{float(vertex.y):.1f}f, "
-        f"{float(vertex.z):.1f}f, {vertex.r}, {vertex.g}, {vertex.b}, {vertex.a} }},\n"
+        f"{float(vertex.z):.1f}f, 0.0f, 0.0f, {vertex.r}, {vertex.g}, {vertex.b}, {vertex.a} }},\n"
         for vertex in vertices
     )
 
@@ -137,20 +137,34 @@ def export_header(render_data):
     vertex_data = export_triangle_vertices(render_data)
     vertex_count = len(render_data.triangles) * 3
     texture_fields = ""
-    texture_data = ""
-    material_data = ""
-    sampler_data = ""
+    texture_data = "#define BANJO_TEXTURE_COUNT 0\n\n"
+    material_data = (
+        "typedef struct {\n"
+        "    unsigned int texture_slot;\n"
+        "} Banjo3DSMaterial;\n"
+        "\n"
+        "#define BANJO_MATERIAL_COUNT 0\n"
+        "\n"
+    )
+
+    sampler_data = (
+        "#define BANJO_TEXTURE_WRAP_WRAP 0\n"
+        "#define BANJO_TEXTURE_WRAP_MIRROR 1\n"
+        "#define BANJO_TEXTURE_WRAP_CLAMP 2\n"
+        "#define BANJO_TEXTURE_WRAP_MIRROR_CLAMP 3\n"
+        "#define BANJO_TEXTURE_WRAP_S BANJO_TEXTURE_WRAP_WRAP\n"
+        "#define BANJO_TEXTURE_WRAP_T BANJO_TEXTURE_WRAP_WRAP\n"
+        "\n"
+    )
     draw_data = ""
 
     if render_data.sampler is not None:
         wrap_s = texture_wrap_to_c_constant(render_data.sampler.wrap_s)
         wrap_t = texture_wrap_to_c_constant(render_data.sampler.wrap_t)
 
-        sampler_data = (
-            "#define BANJO_TEXTURE_WRAP_WRAP 0\n"
-            "#define BANJO_TEXTURE_WRAP_MIRROR 1\n"
-            "#define BANJO_TEXTURE_WRAP_CLAMP 2\n"
-            "#define BANJO_TEXTURE_WRAP_MIRROR_CLAMP 3\n"
+        sampler_data += (
+            "#undef BANJO_TEXTURE_WRAP_S\n"
+            "#undef BANJO_TEXTURE_WRAP_T\n"
             f"#define BANJO_TEXTURE_WRAP_S {wrap_s}\n"
             f"#define BANJO_TEXTURE_WRAP_T {wrap_t}\n"
             "\n"
@@ -183,6 +197,7 @@ def export_header(render_data):
             f"{texture_descriptors}"
             "};\n"
             "\n"
+            "#undef BANJO_TEXTURE_COUNT\n"
             f"#define BANJO_TEXTURE_COUNT {len(render_data.textures)}\n"
             "\n"
         )
@@ -201,47 +216,35 @@ def export_header(render_data):
             f"    {{ {texture_slot} }},\n"
             for texture_slot in material_texture_slots
         )
-        material_data = (
-            "typedef struct {\n"
-            "    unsigned int texture_slot;\n"
-            "} Banjo3DSMaterial;\n"
-            "\n"
+        material_data += (
             "static const Banjo3DSMaterial banjo_materials[] = {\n"
             f"{material_descriptors}"
             "};\n"
             "\n"
+            "#undef BANJO_MATERIAL_COUNT\n"
             f"#define BANJO_MATERIAL_COUNT {len(material_texture_slots)}\n"
             "\n"
         )
 
-    has_textured_triangle = any(
-        triangle.material_index is not None
-        for triangle in render_data.triangles
+    texture_fields = (
+        "    float u;\n"
+        "    float v;\n"
     )
 
-    if has_textured_triangle:
-        texture_fields = (
-            "    float u;\n"
-            "    float v;\n"
-        )
     draws = "".join(
-        f"    {{ {triangle_index * 3}, 3, {triangle.material_index} }},\n"
+        f"    {{ {triangle_index * 3}, 3, "
+        f"{triangle.material_index if triangle.material_index is not None else -1} }},\n"
         for triangle_index, triangle in enumerate(render_data.triangles)
-        if triangle.material_index is not None
     )
 
-    draw_count = sum(
-        1
-        for triangle in render_data.triangles
-        if triangle.material_index is not None
-    )
+    draw_count = len(render_data.triangles)
 
     if draws:
         draw_data = (
             "typedef struct {\n"
             "    unsigned int first_vertex;\n"
             "    unsigned int vertex_count;\n"
-            "    unsigned int material_index;\n"
+            "    int material_index;\n"
             "} Banjo3DSDraw;\n"
             "\n"
             "static const Banjo3DSDraw banjo_draws[] = {\n"
