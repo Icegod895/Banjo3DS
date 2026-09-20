@@ -10,8 +10,50 @@ from tools.banjo3ds.n64_displaylist_decoder import (
     BanjoTextureLoad,
     BanjoTriangle,
     BanjoVertex,
+    decode_rgba5551,
     interpret_display_list,
 )
+
+
+class TestTextureDecoding(unittest.TestCase):
+    def test_decodes_rgba5551(self):
+        self.assertEqual(
+            decode_rgba5551(0xFFFF),
+            BanjoPixel(255, 255, 255, 255),
+        )
+        self.assertEqual(
+            decode_rgba5551(0x0001),
+            BanjoPixel(0, 0, 0, 255),
+        )
+        self.assertEqual(
+            decode_rgba5551(0xF800),
+            BanjoPixel(255, 0, 0, 0),
+        )
+
+    def test_reads_ci4_texture_load_pixels(self):
+        model = BKModel.__new__(BKModel)
+        model.data = bytes.fromhex(
+            "FFFF 0001" + " 0000" * 14 + " 01"
+        )
+        model.texture_data_offset = 0
+
+        load = BanjoTextureLoad(
+            texture_index=0,
+            texture_type="CI4",
+            width=2,
+            height=1,
+            palette_offset=0,
+            texel_offset=32,
+            load_tile=7,
+        )
+
+        self.assertEqual(
+            model.read_texture_load_pixels(load),
+            [
+                BanjoPixel(255, 255, 255, 255),
+                BanjoPixel(0, 0, 0, 255),
+            ],
+        )
 
 
 class FakeModel:
@@ -51,6 +93,13 @@ class FakeModel:
 
         pixel_count = self.texture["width"] * self.texture["height"]
         return [BanjoPixel(72, 79, 254, 255)] * pixel_count
+
+    def read_texture_load_pixels(self, load):
+        if load.texture_type != "CI4":
+            raise NotImplementedError
+
+        pixel_count = load.width * load.height
+        return [BanjoPixel(255, 255, 255, 255)] * pixel_count
 
     def find_texture_containing_offset(self, offset):
         start = self.texture["offset"]
@@ -142,6 +191,17 @@ class TestN64DisplayListDecoder(unittest.TestCase):
 
         result = interpret_display_list(FakeModel(commands))
         loads = result.texture_loads
+        self.assertEqual(
+            result.textures,
+            [
+                BanjoTexture(
+                    texture_index=0,
+                    width=64,
+                    height=64,
+                    pixels=[BanjoPixel(255, 255, 255, 255)] * (64 * 64),
+                )
+            ],
+        )
 
         self.assertEqual(len(loads), 1)
 

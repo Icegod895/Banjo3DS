@@ -45,6 +45,20 @@ class BanjoPixel:
     a: int
 
 
+def decode_rgba5551(value):
+    r = (value >> 11) & 0x1F
+    g = (value >> 6) & 0x1F
+    b = (value >> 1) & 0x1F
+    a = 255 if value & 1 else 0
+
+    return BanjoPixel(
+        (r << 3) | (r >> 2),
+        (g << 3) | (g >> 2),
+        (b << 3) | (b >> 2),
+        a,
+    )
+
+
 @dataclass
 class BanjoTexture:
     texture_index: int
@@ -168,6 +182,39 @@ class BKModel:
             BanjoPixel(*self.data[offset:offset + 4])
             for offset in range(start, start + pixel_count * 4, 4)
         ]
+
+    def read_texture_load_pixels(self, load):
+        if load.texture_type != "CI4":
+            raise NotImplementedError(
+                f"Load pixel decoding not implemented for {load.texture_type}"
+            )
+
+        palette_start = self.texture_data_offset + load.palette_offset
+        texel_start = self.texture_data_offset + load.texel_offset
+
+        palette = [
+            decode_rgba5551(
+                int.from_bytes(
+                    self.data[offset:offset + 2],
+                    "big",
+                )
+            )
+            for offset in range(palette_start, palette_start + 32, 2)
+        ]
+
+        pixel_count = load.width * load.height
+        pixels = []
+
+        for pixel_index in range(pixel_count):
+            packed = self.data[texel_start + pixel_index // 2]
+            palette_index = (
+                packed >> 4
+                if pixel_index % 2 == 0
+                else packed & 0x0F
+            )
+            pixels.append(palette[palette_index])
+
+        return pixels
 
     def find_texture_containing_offset(self, offset):
         for i in range(self.texture_count):
@@ -437,7 +484,10 @@ def interpret_display_list(model):
             continue
 
         try:
-            pixels = model.read_texture_pixels(load.texture_index)
+            if load.texture_type == "CI4":
+                pixels = model.read_texture_load_pixels(load)
+            else:
+                pixels = model.read_texture_pixels(load.texture_index)
         except NotImplementedError:
             continue
 

@@ -608,6 +608,39 @@ class TestTextureCoordinates(unittest.TestCase):
             ),
         )
 
+    def test_encodes_16x8_rgba_texture_as_two_3ds_tiles(self):
+        from tools.banjo3ds.export_3ds_model import encode_3ds_rgba8_texture
+        from tools.banjo3ds.n64_displaylist_decoder import BanjoPixel, BanjoTexture
+
+        pixels = [
+            BanjoPixel(
+                r=255 if x < 8 else 0,
+                g=0 if x < 8 else 255,
+                b=0,
+                a=255,
+            )
+            for y in range(8)
+            for x in range(16)
+        ]
+        texture = BanjoTexture(
+            texture_index=0,
+            width=16,
+            height=8,
+            pixels=pixels,
+        )
+
+        result = encode_3ds_rgba8_texture(texture)
+
+        self.assertEqual(len(result), 16 * 8 * 4)
+        self.assertEqual(
+            result[:8 * 8 * 4],
+            bytes([255, 0, 0, 255]) * (8 * 8),
+        )
+        self.assertEqual(
+            result[8 * 8 * 4:],
+            bytes([255, 0, 255, 0]) * (8 * 8),
+        )
+
 
 class TestExport3DSModelCLI(unittest.TestCase):
     def test_writes_exported_model_to_file(self):

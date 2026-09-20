@@ -66,15 +66,24 @@ def rgba_pixel_to_3ds_bytes(pixel):
     ])
 
 def encode_3ds_rgba8_texture(texture):
-    if texture.width != 8 or texture.height != 8:
-        raise ValueError("Only 8x8 RGBA8 textures are supported")
+    if texture.width % 8 != 0 or texture.height % 8 != 0:
+        raise ValueError("RGBA8 texture dimensions must be multiples of 8")
 
-    result = bytearray(8 * 8 * 4)
+    result = bytearray(texture.width * texture.height * 4)
+    tiles_per_row = texture.width // 8
 
-    for y in range(8):
-        for x in range(8):
-            source_index = y * 8 + x
-            destination_index = texture_3ds_swizzle_index(x, y)
+    for y in range(texture.height):
+        for x in range(texture.width):
+            source_index = y * texture.width + x
+
+            tile_x = x // 8
+            tile_y = y // 8
+            tile_index = tile_y * tiles_per_row + tile_x
+
+            local_x = x % 8
+            local_y = y % 8
+            swizzle_index = texture_3ds_swizzle_index(local_x, local_y)
+            destination_index = tile_index * 64 + swizzle_index
 
             pixel = texture.pixels[source_index]
             pixel_bytes = rgba_pixel_to_3ds_bytes(pixel)

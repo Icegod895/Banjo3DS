@@ -15,8 +15,8 @@
 
 static DVLB_s *vshader_dvlb;
 static shaderProgram_s program;
-static int uLoc_projection;
-static C3D_Mtx projection;
+static int uLoc_projection, uLoc_modelView;
+static C3D_Mtx projection, modelView;
 static void *vbo_data;
 static C3D_Tex textures[BANJO_TEXTURE_COUNT];
 static GPU_TEXTURE_WRAP_PARAM textureWrapTo3DS(int wrap)
@@ -43,13 +43,17 @@ static void sceneInit(void)
 
     uLoc_projection =
         shaderInstanceGetUniformLocation(program.vertexShader, "projection");
+    uLoc_modelView =
+        shaderInstanceGetUniformLocation(program.vertexShader, "modelView");
 
     C3D_AttrInfo *attrInfo = C3D_GetAttrInfo();
     AttrInfo_Init(attrInfo);
     AttrInfo_AddLoader(attrInfo, 0, GPU_FLOAT, 3);
     AttrInfo_AddLoader(attrInfo, 1, GPU_FLOAT, 2);
 
-    Mtx_OrthoTilt(&projection, -40.0f, 40.0f, -24.0f, 24.0f, -1.0f, 1.0f, true);
+    Mtx_OrthoTilt(&projection, -60.0f, 100.0f, -130.0f, 210.0f, -250.0f, 250.0f, true);
+    Mtx_Identity(&modelView);
+    Mtx_RotateX(&modelView, C3D_Angle(M_TAU / 4.0f), true);
 
     vbo_data = linearAlloc(sizeof(banjo_vertices));
     memcpy(vbo_data, banjo_vertices, sizeof(banjo_vertices));
@@ -86,6 +90,7 @@ static void sceneRender(void)
         uLoc_projection,
         &projection
     );
+    C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, uLoc_modelView, &modelView);
 
     for (unsigned int i = 0; i < BANJO_DRAW_COUNT; i++) {
         const Banjo3DSDraw *draw = &banjo_draws[i];
