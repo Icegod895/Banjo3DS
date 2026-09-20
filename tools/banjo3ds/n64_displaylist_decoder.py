@@ -195,13 +195,14 @@ class BKModel:
         ]
 
     def read_texture_load_pixels(self, load):
-        if load.texture_type != "CI4":
+        if load.texture_type not in ("CI4", "CI8"):
             raise NotImplementedError(
                 f"Load pixel decoding not implemented for {load.texture_type}"
             )
 
         palette_start = self.texture_data_offset + load.palette_offset
         texel_start = self.texture_data_offset + load.texel_offset
+        palette_size = 32 if load.texture_type == "CI4" else 512
 
         palette = [
             decode_rgba5551(
@@ -210,19 +211,27 @@ class BKModel:
                     "big",
                 )
             )
-            for offset in range(palette_start, palette_start + 32, 2)
+            for offset in range(
+                palette_start,
+                palette_start + palette_size,
+                2,
+            )
         ]
 
         pixel_count = load.width * load.height
         pixels = []
 
         for pixel_index in range(pixel_count):
-            packed = self.data[texel_start + pixel_index // 2]
-            palette_index = (
-                packed >> 4
-                if pixel_index % 2 == 0
-                else packed & 0x0F
-            )
+            if load.texture_type == "CI4":
+                packed = self.data[texel_start + pixel_index // 2]
+                palette_index = (
+                    packed >> 4
+                    if pixel_index % 2 == 0
+                    else packed & 0x0F
+                )
+            else:
+                palette_index = self.data[texel_start + pixel_index]
+
             pixels.append(palette[palette_index])
 
         return pixels
@@ -495,7 +504,7 @@ def interpret_display_list(model):
             continue
 
         try:
-            if load.texture_type == "CI4":
+            if load.texture_type in ("CI4", "CI8"):
                 pixels = model.read_texture_load_pixels(load)
             else:
                 pixels = model.read_texture_pixels(load.texture_index)

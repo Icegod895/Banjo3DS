@@ -75,6 +75,31 @@ class TestTextureDecoding(unittest.TestCase):
             ],
         )
 
+    def test_reads_ci8_texture_load_pixels(self):
+        model = BKModel.__new__(BKModel)
+        model.data = bytes.fromhex(
+            "FFFF 0001" + " 0000" * 254 + " 00 01"
+        )
+        model.texture_data_offset = 0
+
+        load = BanjoTextureLoad(
+            texture_index=0,
+            texture_type="CI8",
+            width=2,
+            height=1,
+            palette_offset=0,
+            texel_offset=512,
+            load_tile=7,
+        )
+
+        self.assertEqual(
+            model.read_texture_load_pixels(load),
+            [
+                BanjoPixel(255, 255, 255, 255),
+                BanjoPixel(0, 0, 0, 255),
+            ],
+        )
+
 
 class FakeModel:
     def __init__(self, commands, texture=None):
