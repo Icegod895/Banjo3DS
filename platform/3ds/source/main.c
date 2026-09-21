@@ -98,6 +98,68 @@ static void sceneInit(void)
     C3D_TexEnvFunc(env, C3D_Both, GPU_MODULATE);
 }
 
+static void applyCombine(const Banjo3DSCombine *combine)
+{
+    C3D_TexEnv *env = C3D_GetTexEnv(0);
+    C3D_TexEnvInit(env);
+    C3D_TexEnvSrc(
+        env,
+        C3D_Both,
+        GPU_TEXTURE0,
+        GPU_PRIMARY_COLOR,
+        GPU_PRIMARY_COLOR
+    );
+    C3D_TexEnvFunc(env, C3D_Both, GPU_MODULATE);
+    if (
+        combine->a0 == 1 &&
+        combine->b0 == 3 &&
+        combine->c0 == 5 &&
+        combine->d0 == 3 &&
+        combine->Aa0 == 1 &&
+        combine->Ab0 == 7 &&
+        combine->Ac0 == 4 &&
+        combine->Ad0 == 7 &&
+        combine->a1 == 0 &&
+        combine->b1 == 15 &&
+        combine->c1 == 4 &&
+        combine->d1 == 7 &&
+        combine->Aa1 == 0 &&
+        combine->Ab1 == 7 &&
+        combine->Ac1 == 5 &&
+        combine->Ad1 == 7
+    ) {
+        return;
+    }
+    if (
+        combine->a0 == 15 &&
+        combine->b0 == 15 &&
+        combine->c0 == 31 &&
+        combine->d0 == 1 &&
+        combine->Aa0 == 1 &&
+        combine->Ab0 == 7 &&
+        combine->Ac0 == 4 &&
+        combine->Ad0 == 7 &&
+        combine->a1 == 15 &&
+        combine->b1 == 15 &&
+        combine->c1 == 31 &&
+        combine->d1 == 0 &&
+        combine->Aa1 == 0 &&
+        combine->Ab1 == 7 &&
+        combine->Ac1 == 5 &&
+        combine->Ad1 == 7
+    ) {
+        C3D_TexEnvSrc(
+            env,
+            C3D_RGB,
+            GPU_TEXTURE0,
+            GPU_TEXTURE0,
+            GPU_TEXTURE0
+        );
+        C3D_TexEnvFunc(env, C3D_RGB, GPU_REPLACE);
+        return;
+    }
+}
+
 static void sceneRender(void)
 {
     C3D_FVUnifMtx4x4(
@@ -119,18 +181,7 @@ static void sceneRender(void)
             const Banjo3DSMaterial *material =
                 &banjo_materials[draw->material_index];
 
-            C3D_TexEnvSrc(
-                C3D_GetTexEnv(0),
-                C3D_Both,
-                GPU_TEXTURE0,
-                GPU_PRIMARY_COLOR,
-                GPU_PRIMARY_COLOR
-            );
-            C3D_TexEnvFunc(
-                C3D_GetTexEnv(0),
-                C3D_Both,
-                GPU_MODULATE
-            );
+            applyCombine(&draw->combine);
             C3D_TexBind(
                 0,
                 &textures[material->texture_slot]
