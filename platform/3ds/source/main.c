@@ -98,10 +98,20 @@ static void sceneInit(void)
     C3D_TexEnvFunc(env, C3D_Both, GPU_MODULATE);
 }
 
-static void applyCombine(const Banjo3DSCombine *combine)
+typedef struct {
+    u32 primitive_color;
+    u32 environment_color;
+} Banjo3DSRenderState;
+
+static void applyCombine(
+    const Banjo3DSCombine *combine,
+    const Banjo3DSRenderState *state
+)
 {
+    for (int i = 0; i < 6; i++) {
+        C3D_TexEnvInit(C3D_GetTexEnv(i));
+    }
     C3D_TexEnv *env = C3D_GetTexEnv(0);
-    C3D_TexEnvInit(env);
     C3D_TexEnvSrc(
         env,
         C3D_Both,
@@ -148,14 +158,85 @@ static void applyCombine(const Banjo3DSCombine *combine)
         combine->Ac1 == 5 &&
         combine->Ad1 == 7
     ) {
+        C3D_TexEnvColor(env, state->primitive_color);
         C3D_TexEnvSrc(
             env,
             C3D_RGB,
+            GPU_CONSTANT,
+            GPU_CONSTANT,
+            GPU_CONSTANT
+        );
+        C3D_TexEnvSrc(
+            env,
+            C3D_Alpha,
             GPU_PRIMARY_COLOR,
             GPU_PRIMARY_COLOR,
             GPU_PRIMARY_COLOR
         );
+        C3D_TexEnvFunc(env, C3D_Alpha, GPU_REPLACE);
+        C3D_TexEnvOpRgb(
+            env,
+            GPU_TEVOP_RGB_ONE_MINUS_SRC_COLOR,
+            GPU_TEVOP_RGB_SRC_COLOR,
+            GPU_TEVOP_RGB_SRC_COLOR
+        );
         C3D_TexEnvFunc(env, C3D_RGB, GPU_REPLACE);
+        env = C3D_GetTexEnv(1);
+        C3D_TexEnvInit(env);
+        C3D_TexEnvColor(env, state->environment_color);
+        C3D_TexEnvSrc(
+            env,
+            C3D_RGB,
+            GPU_PREVIOUS,
+            GPU_CONSTANT,
+            GPU_CONSTANT
+        );
+        C3D_TexEnvSrc(
+            env,
+            C3D_Alpha,
+            GPU_PREVIOUS,
+            GPU_CONSTANT,
+            GPU_CONSTANT
+        );
+        C3D_TexEnvFunc(env, C3D_Alpha, GPU_MODULATE);
+        C3D_TexEnvFunc(env, C3D_RGB, GPU_MODULATE);
+        env = C3D_GetTexEnv(2);
+        C3D_TexEnvInit(env);
+        C3D_TexEnvColor(env, state->primitive_color);
+        C3D_TexEnvSrc(
+            env,
+            C3D_RGB,
+            GPU_PREVIOUS,
+            GPU_CONSTANT,
+            GPU_CONSTANT
+        );
+        C3D_TexEnvSrc(
+            env,
+            C3D_Alpha,
+            GPU_PREVIOUS,
+            GPU_PREVIOUS,
+            GPU_PREVIOUS
+        );
+        C3D_TexEnvFunc(env, C3D_Alpha, GPU_REPLACE);
+        C3D_TexEnvFunc(env, C3D_RGB, GPU_ADD);
+        env = C3D_GetTexEnv(3);
+        C3D_TexEnvInit(env);
+        C3D_TexEnvSrc(
+            env,
+            C3D_RGB,
+            GPU_PREVIOUS,
+            GPU_PRIMARY_COLOR,
+            GPU_PRIMARY_COLOR
+        );
+        C3D_TexEnvSrc(
+            env,
+            C3D_Alpha,
+            GPU_PREVIOUS,
+            GPU_PREVIOUS,
+            GPU_PREVIOUS
+        );
+        C3D_TexEnvFunc(env, C3D_Alpha, GPU_REPLACE);
+        C3D_TexEnvFunc(env, C3D_RGB, GPU_MODULATE);
         return;
     }
     if (
@@ -190,6 +271,11 @@ static void applyCombine(const Banjo3DSCombine *combine)
 
 static void sceneRender(void)
 {
+    const Banjo3DSRenderState render_state = {
+        .primitive_color = 0xFF000000u,
+        .environment_color = 0xFFFFFFFFu,
+    };
+
     C3D_FVUnifMtx4x4(
         GPU_VERTEX_SHADER,
         uLoc_projection,
@@ -209,7 +295,7 @@ static void sceneRender(void)
             const Banjo3DSMaterial *material =
                 &banjo_materials[draw->material_index];
 
-            applyCombine(&draw->combine);
+            applyCombine(&draw->combine, &render_state);
             C3D_TexBind(
                 0,
                 &textures[material->texture_slot]
