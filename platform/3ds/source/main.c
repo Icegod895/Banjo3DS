@@ -60,7 +60,7 @@ static void sceneInit(void)
 
     Mtx_OrthoTilt(&projection, -60.0f, 100.0f, -130.0f, 210.0f, -250.0f, 250.0f, true);
     Mtx_Identity(&modelView);
-    Mtx_RotateX(&modelView, C3D_Angle(M_TAU / 4.0f), true);
+    Mtx_RotateX(&modelView, C3D_Angle(M_TAU / 2.0f), true);
 
     vbo_data = linearAlloc(sizeof(banjo_vertices));
     memcpy(vbo_data, banjo_vertices, sizeof(banjo_vertices));
@@ -138,6 +138,79 @@ static void applyCombine(
         combine->Ac1 == 5 &&
         combine->Ad1 == 7
     ) {
+        C3D_TexEnvColor(env, state->environment_color);
+        C3D_TexEnvSrc(
+            env,
+            C3D_RGB,
+            GPU_CONSTANT,
+            GPU_CONSTANT,
+            GPU_CONSTANT
+        );
+        C3D_TexEnvSrc(
+            env,
+            C3D_Alpha,
+            GPU_CONSTANT,
+            GPU_CONSTANT,
+            GPU_CONSTANT
+        );
+        C3D_TexEnvFunc(env, C3D_Both, GPU_REPLACE);
+
+        env = C3D_GetTexEnv(1);
+        C3D_TexEnvInit(env);
+        C3D_TexEnvColor(env, state->primitive_color);
+        C3D_TexEnvSrc(
+            env,
+            C3D_RGB,
+            GPU_TEXTURE0,
+            GPU_CONSTANT,
+            GPU_PREVIOUS
+        );
+        C3D_TexEnvSrc(
+            env,
+            C3D_Alpha,
+            GPU_PREVIOUS,
+            GPU_PREVIOUS,
+            GPU_PREVIOUS
+        );
+        C3D_TexEnvFunc(env, C3D_RGB, GPU_INTERPOLATE);
+        C3D_TexEnvFunc(env, C3D_Alpha, GPU_REPLACE);
+
+        env = C3D_GetTexEnv(2);
+        C3D_TexEnvInit(env);
+        C3D_TexEnvSrc(
+            env,
+            C3D_RGB,
+            GPU_PREVIOUS,
+            GPU_PRIMARY_COLOR,
+            GPU_PRIMARY_COLOR
+        );
+        C3D_TexEnvSrc(
+            env,
+            C3D_Alpha,
+            GPU_PREVIOUS,
+            GPU_TEXTURE0,
+            GPU_TEXTURE0
+        );
+        C3D_TexEnvFunc(env, C3D_Both, GPU_MODULATE);
+
+        env = C3D_GetTexEnv(3);
+        C3D_TexEnvInit(env);
+        C3D_TexEnvSrc(
+            env,
+            C3D_RGB,
+            GPU_PREVIOUS,
+            GPU_PREVIOUS,
+            GPU_PREVIOUS
+        );
+        C3D_TexEnvSrc(
+            env,
+            C3D_Alpha,
+            GPU_PREVIOUS,
+            GPU_PRIMARY_COLOR,
+            GPU_PRIMARY_COLOR
+        );
+        C3D_TexEnvFunc(env, C3D_RGB, GPU_REPLACE);
+        C3D_TexEnvFunc(env, C3D_Alpha, GPU_MODULATE);
         return;
     }
     if (
