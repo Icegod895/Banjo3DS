@@ -131,6 +131,34 @@ static void applyCombine(const Banjo3DSCombine *combine)
         return;
     }
     if (
+        combine->a0 == 6 &&
+        combine->b0 == 3 &&
+        combine->c0 == 5 &&
+        combine->d0 == 3 &&
+        combine->Aa0 == 7 &&
+        combine->Ab0 == 7 &&
+        combine->Ac0 == 7 &&
+        combine->Ad0 == 4 &&
+        combine->a1 == 0 &&
+        combine->b1 == 15 &&
+        combine->c1 == 4 &&
+        combine->d1 == 7 &&
+        combine->Aa1 == 0 &&
+        combine->Ab1 == 7 &&
+        combine->Ac1 == 5 &&
+        combine->Ad1 == 7
+    ) {
+        C3D_TexEnvSrc(
+            env,
+            C3D_RGB,
+            GPU_PRIMARY_COLOR,
+            GPU_PRIMARY_COLOR,
+            GPU_PRIMARY_COLOR
+        );
+        C3D_TexEnvFunc(env, C3D_RGB, GPU_REPLACE);
+        return;
+    }
+    if (
         combine->a0 == 15 &&
         combine->b0 == 15 &&
         combine->c0 == 31 &&
