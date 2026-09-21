@@ -231,9 +231,24 @@ def export_header(render_data):
         "    float v;\n"
     )
 
+    def combine_values(combine):
+        if combine is None:
+            return "0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0"
+
+        return ", ".join(
+            str(value)
+            for value in (
+                combine.a0, combine.b0, combine.c0, combine.d0,
+                combine.Aa0, combine.Ab0, combine.Ac0, combine.Ad0,
+                combine.a1, combine.b1, combine.c1, combine.d1,
+                combine.Aa1, combine.Ab1, combine.Ac1, combine.Ad1,
+            )
+        )
+
     draws = "".join(
         f"    {{ {triangle_index * 3}, 3, "
-        f"{triangle.material_index if triangle.material_index is not None else -1} }},\n"
+        f"{triangle.material_index if triangle.material_index is not None else -1}, "
+        f"{{ {combine_values(triangle.combine)} }} }},\n"
         for triangle_index, triangle in enumerate(render_data.triangles)
     )
 
@@ -242,9 +257,17 @@ def export_header(render_data):
     if draws:
         draw_data = (
             "typedef struct {\n"
+            "    unsigned char a0, b0, c0, d0;\n"
+            "    unsigned char Aa0, Ab0, Ac0, Ad0;\n"
+            "    unsigned char a1, b1, c1, d1;\n"
+            "    unsigned char Aa1, Ab1, Ac1, Ad1;\n"
+            "} Banjo3DSCombine;\n"
+            "\n"
+            "typedef struct {\n"
             "    unsigned int first_vertex;\n"
             "    unsigned int vertex_count;\n"
             "    int material_index;\n"
+            "    Banjo3DSCombine combine;\n"
             "} Banjo3DSDraw;\n"
             "\n"
             "static const Banjo3DSDraw banjo_draws[] = {\n"

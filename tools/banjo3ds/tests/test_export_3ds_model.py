@@ -1,7 +1,7 @@
 import unittest
 
 from tools.banjo3ds.export_3ds_model import export_header, export_vertex_data
-from tools.banjo3ds.n64_displaylist_decoder import BanjoMaterial, BanjoPixel, BanjoRenderData, BanjoTexture, BanjoTextureLoad, BanjoVertex
+from tools.banjo3ds.n64_displaylist_decoder import BanjoCombine, BanjoMaterial, BanjoPixel, BanjoRenderData, BanjoTexture, BanjoTextureLoad, BanjoVertex
 
 
 class TestExport3DSModel(unittest.TestCase):
@@ -166,7 +166,7 @@ class TestExport3DSTriangles(unittest.TestCase):
         result = export_header(render_data)
 
         self.assertIn(
-            "    { 0, 3, -1 },",
+            "    { 0, 3, -1, { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 } },",
             result,
         )
 
@@ -262,7 +262,20 @@ class TestExport3DSTriangles(unittest.TestCase):
                 BanjoVertex(1, 0, 0, 0, 0, 255, 255, 255, 255),
                 BanjoVertex(0, 1, 0, 0, 0, 255, 255, 255, 255),
             ],
-            triangles=[BanjoTriangle(0, 1, 2, material_index=0)],
+            triangles=[
+                BanjoTriangle(
+                    0,
+                    1,
+                    2,
+                    material_index=0,
+                    combine=BanjoCombine(
+                        1, 3, 5, 3,
+                        1, 7, 4, 7,
+                        0, 15, 4, 7,
+                        0, 7, 5, 7,
+                    ),
+                ),
+            ],
             textures=[
                 BanjoTexture(
                     texture_index=0,
@@ -280,7 +293,7 @@ class TestExport3DSTriangles(unittest.TestCase):
         result = export_header(render_data)
 
         self.assertIn(
-            "    { 0, 3, 0 },\n",
+            "    { 0, 3, 0, { 1, 3, 5, 3, 1, 7, 4, 7, 0, 15, 4, 7, 0, 7, 5, 7 } },\n",
             result,
         )
 
