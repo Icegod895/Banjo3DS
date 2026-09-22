@@ -65,33 +65,37 @@ def rgba_pixel_to_3ds_bytes(pixel):
         pixel.r,
     ])
 
-def encode_3ds_rgba8_texture(texture):
-    if texture.width % 8 != 0 or texture.height % 8 != 0:
+def encode_3ds_rgba8_pixels(width, height, pixels):
+    if width % 8 != 0 or height % 8 != 0:
         raise ValueError("RGBA8 texture dimensions must be multiples of 8")
 
-    result = bytearray(texture.width * texture.height * 4)
-    tiles_per_row = texture.width // 8
+    result = bytearray(width * height * 4)
+    tiles_per_row = width // 8
 
-    for y in range(texture.height):
-        for x in range(texture.width):
-            source_index = y * texture.width + x
-
+    for y in range(height):
+        for x in range(width):
+            source_index = y * width + x
             tile_x = x // 8
             tile_y = y // 8
             tile_index = tile_y * tiles_per_row + tile_x
-
-            local_x = x % 8
-            local_y = y % 8
-            swizzle_index = texture_3ds_swizzle_index(local_x, local_y)
-            destination_index = tile_index * 64 + swizzle_index
-
-            pixel = texture.pixels[source_index]
-            pixel_bytes = rgba_pixel_to_3ds_bytes(pixel)
-
-            offset = destination_index * 4
-            result[offset:offset + 4] = pixel_bytes
+            pixel_index = (
+                tile_index * 64
+                + texture_3ds_swizzle_index(x % 8, y % 8)
+            )
+            destination_index = pixel_index * 4
+            result[destination_index:destination_index + 4] = (
+                rgba_pixel_to_3ds_bytes(pixels[source_index])
+            )
 
     return bytes(result)
+
+
+def encode_3ds_rgba8_texture(texture):
+    return encode_3ds_rgba8_pixels(
+        texture.width,
+        texture.height,
+        texture.pixels,
+    )
 
 
 def export_3ds_texture_data(texture):
@@ -180,9 +184,53 @@ def export_header(render_data):
             "\n"
         )
 
+        for level, pixels in enumerate(texture.mipmaps or [], start=1):
+            width = texture.width >> level
+            height = texture.height >> level
+            mipmap_data = encode_3ds_rgba8_pixels(
+                width,
+                height,
+                pixels,
+            )
+            mipmap_lines = []
+
+            for offset in range(0, len(mipmap_data), 16):
+                chunk = mipmap_data[offset:offset + 16]
+                values = ", ".join(
+                    f"0x{value:02X}" for value in chunk
+                )
+                mipmap_lines.append(f"    {values},\n")
+
+            mipmap_bytes = "".join(mipmap_lines)
+
+            texture_data += (
+                f"static const unsigned char "
+                f"banjo_texture_{texture_slot}_mip_{level}[] = {{\n"
+                f"{mipmap_bytes}"
+                "};\n"
+                "\n"
+            )
+
+        if texture.mipmaps:
+            mipmap_pointers = "".join(
+                f"    banjo_texture_{texture_slot}_mip_{level},\n"
+                for level in range(1, len(texture.mipmaps) + 1)
+            )
+
+            texture_data += (
+                f"static const unsigned char *const "
+                f"banjo_texture_{texture_slot}_mipmaps[] = {{\n"
+                f"{mipmap_pointers}"
+                "};\n"
+                "\n"
+            )
+
     if render_data.textures:
         texture_descriptors = "".join(
-            f"    {{ {texture.width}, {texture.height}, banjo_texture_{texture_slot} }},\n"
+            f"    {{ {texture.width}, {texture.height}, "
+            f"{len(texture.mipmaps or [])}, "
+            f"banjo_texture_{texture_slot}, "
+            f"{f'banjo_texture_{texture_slot}_mipmaps' if texture.mipmaps else '0'} }},\n"
             for texture_slot, texture in enumerate(render_data.textures)
         )
 
@@ -190,7 +238,9 @@ def export_header(render_data):
             "typedef struct {\n"
             "    unsigned int width;\n"
             "    unsigned int height;\n"
+            "    unsigned int mipmap_count;\n"
             "    const unsigned char *data;\n"
+            "    const unsigned char *const *mipmaps;\n"
             "} Banjo3DSTexture;\n"
             "\n"
             "static const Banjo3DSTexture banjo_textures[] = {\n"

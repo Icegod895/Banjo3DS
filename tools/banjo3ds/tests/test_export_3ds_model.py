@@ -342,13 +342,78 @@ class TestExport3DSTriangles(unittest.TestCase):
             "typedef struct {\n"
             "    unsigned int width;\n"
             "    unsigned int height;\n"
+            "    unsigned int mipmap_count;\n"
             "    const unsigned char *data;\n"
+            "    const unsigned char *const *mipmaps;\n"
             "} Banjo3DSTexture;\n",
             result,
         )
         self.assertIn(
-            "    { 8, 8, banjo_texture_0 },\n"
-            "    { 8, 8, banjo_texture_1 },\n",
+            "    { 8, 8, 0, banjo_texture_0, 0 },\n"
+            "    { 8, 8, 0, banjo_texture_1, 0 },\n",
+            result,
+        )
+
+    def test_exports_texture_mipmap_arrays(self):
+        from tools.banjo3ds.export_3ds_model import export_header
+        from tools.banjo3ds.n64_displaylist_decoder import (
+            BanjoPixel,
+            BanjoRenderData,
+            BanjoTexture,
+        )
+
+        texture = BanjoTexture(
+            texture_index=0,
+            width=32,
+            height=32,
+            pixels=[BanjoPixel(255, 0, 0, 255)] * (32 * 32),
+            mipmaps=[
+                [BanjoPixel(0, 255, 0, 255)] * (16 * 16),
+                [BanjoPixel(0, 0, 255, 255)] * (8 * 8),
+            ],
+        )
+        render_data = BanjoRenderData(
+            vertices=[],
+            triangles=[],
+            textures=[texture],
+            texture_loads=[],
+        )
+
+        result = export_header(render_data)
+
+        self.assertIn(
+            "static const unsigned char banjo_texture_0[] = {",
+            result,
+        )
+        self.assertIn(
+            "static const unsigned char banjo_texture_0_mip_1[] = {",
+            result,
+        )
+        self.assertIn(
+            "static const unsigned char banjo_texture_0_mip_2[] = {",
+            result,
+        )
+        self.assertIn(
+            "static const unsigned char *const "
+            "banjo_texture_0_mipmaps[] = {\n"
+            "    banjo_texture_0_mip_1,\n"
+            "    banjo_texture_0_mip_2,\n"
+            "};\n",
+            result,
+        )
+        self.assertIn(
+            "typedef struct {\n"
+            "    unsigned int width;\n"
+            "    unsigned int height;\n"
+            "    unsigned int mipmap_count;\n"
+            "    const unsigned char *data;\n"
+            "    const unsigned char *const *mipmaps;\n"
+            "} Banjo3DSTexture;\n",
+            result,
+        )
+        self.assertIn(
+            "    { 32, 32, 2, banjo_texture_0, "
+            "banjo_texture_0_mipmaps },\n",
             result,
         )
 
@@ -476,7 +541,7 @@ class TestExport3DSModelPipeline(unittest.TestCase):
             result,
         )
         self.assertIn(
-            "    { 8, 8, banjo_texture_0 },",
+            "    { 8, 8, 0, banjo_texture_0, 0 },",
             result,
         )
         self.assertIn("#define BANJO_TEXTURE_COUNT 1", result)

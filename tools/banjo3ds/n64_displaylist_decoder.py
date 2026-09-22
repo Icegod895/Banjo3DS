@@ -66,6 +66,7 @@ class BanjoTexture:
     width: int
     height: int
     pixels: list[BanjoPixel]
+    mipmaps: list[list[BanjoPixel]] | None = None
 
 
 @dataclass
@@ -90,6 +91,9 @@ class BanjoTextureLoad:
     load_tile: int
     scale_s: int = 0xFFFF
     scale_t: int = 0xFFFF
+    texture_level: int = 0
+    texture_tile: int = 0
+    texture_on: int = 0
 
 @dataclass
 class BanjoCombine:
@@ -188,6 +192,47 @@ class BKModel:
             "palette_size": palette_size,
             "size": texture_size,
         }
+
+    def read_texture_mipmap_pixels(self, index, level):
+        texture = self.read_texture(index)
+
+        if texture["type"] != 0x04:
+            raise NotImplementedError(
+                f'Mipmap decoding not implemented for {texture["type_name"]}'
+            )
+
+        if level < 0:
+            raise ValueError("Mipmap level must be non-negative")
+
+        width = max(1, texture["width"] >> level)
+        height = max(1, texture["height"] >> level)
+
+        start = self.texture_data_offset + texture["offset"]
+
+        if level > 0:
+            start += texture["width"] * texture["height"] * 2
+
+            for previous_level in range(1, level):
+                start += (texture["width"] >> previous_level) * 2
+
+        row_stride = texture["width"] * 2
+        pixels = []
+
+        for y in range(height):
+            row_start = start + y * row_stride
+
+            for x in range(width):
+                offset = row_start + x * 2
+                pixels.append(
+                    decode_rgba5551(
+                        int.from_bytes(
+                            self.data[offset:offset + 2],
+                            "big",
+                        )
+                    )
+                )
+
+        return pixels
 
     def read_texture_pixels(self, index):
         texture = self.read_texture(index)
@@ -362,6 +407,9 @@ def interpret_display_list(model):
     current_combine = None
     texture_scale_s = 0xFFFF
     texture_scale_t = 0xFFFF
+    texture_level = 0
+    texture_tile = 0
+    texture_on = 0
     tile_state = [None] * 8
 
     offset = gfx_start
@@ -434,6 +482,9 @@ def interpret_display_list(model):
                         )
 
         elif opcode == 0xBB:
+            texture_level = (w0 >> 11) & 0x7
+            texture_tile = (w0 >> 8) & 0x7
+            texture_on = w0 & 0xFF
             texture_scale_s = (w1 >> 16) & 0xFFFF
             texture_scale_t = w1 & 0xFFFF
 
@@ -530,6 +581,9 @@ def interpret_display_list(model):
                             load_tile=tile,
                             scale_s=texture_scale_s,
                             scale_t=texture_scale_t,
+                            texture_level=texture_level,
+                            texture_tile=texture_tile,
+                            texture_on=texture_on,
                         )
                     )
                     materials.append(
@@ -581,6 +635,16 @@ def interpret_display_list(model):
                 pixels = model.read_texture_pixels(load.texture_index)
         except NotImplementedError:
             continue
+        mipmaps = None
+
+        if load.texture_on and load.texture_level > 0:
+            mipmaps = [
+                model.read_texture_mipmap_pixels(
+                    load.texture_index,
+                    level,
+                )
+                for level in range(1, load.texture_level + 1)
+            ]
 
         textures.append(
             BanjoTexture(
@@ -588,6 +652,7 @@ def interpret_display_list(model):
                 width=load.width,
                 height=load.height,
                 pixels=pixels,
+                mipmaps=mipmaps,
             )
         )
         seen_texture_indices.add(load.texture_index)

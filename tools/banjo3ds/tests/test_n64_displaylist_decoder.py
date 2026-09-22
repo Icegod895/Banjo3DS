@@ -51,6 +51,31 @@ class TestTextureDecoding(unittest.TestCase):
             ],
         )
 
+    def test_reads_rgba16_mipmap_pixels(self):
+        model = BKModel.__new__(BKModel)
+        model.data = bytearray(16 + 0xC00)
+        model.texture_data_offset = 0
+        model.texture_count = 1
+        model.texture_infos_offset = 0
+        model.data[0:4] = (16).to_bytes(4, "big")
+        model.data[4:6] = (0x04).to_bytes(2, "big")
+        model.data[8] = 32
+        model.data[9] = 32
+
+        # Rare stores the mip levels in a 32-texel-wide RGBA16 layout:
+        # 32x32 base, then 16x16, 8x8, 4x4, and 2x2 regions.
+        model.data[16 + 0x800:16 + 0x802] = bytes.fromhex("F801")
+        model.data[16 + 0x820:16 + 0x822] = bytes.fromhex("07C1")
+
+        self.assertEqual(
+            model.read_texture_mipmap_pixels(0, 1)[0],
+            BanjoPixel(255, 0, 0, 255),
+        )
+        self.assertEqual(
+            model.read_texture_mipmap_pixels(0, 2)[0],
+            BanjoPixel(0, 255, 0, 255),
+        )
+
     def test_reads_ia8_texture_pixels(self):
         model = BKModel.__new__(BKModel)
         model.data = bytearray(16 + 3)
@@ -152,6 +177,36 @@ class TestTextureDecoding(unittest.TestCase):
             ),
         )
 
+    def test_decodes_lod_fraction_combine(self):
+        from tools.banjo3ds.n64_displaylist_decoder import decode_combine
+
+        result = decode_combine(
+            0xFC269804,
+            0x1F14FFFF,
+        )
+
+        self.assertEqual(
+            result,
+            BanjoCombine(
+                a0=2,
+                b0=1,
+                c0=13,
+                d0=1,
+                Aa0=1,
+                Ab0=7,
+                Ac0=4,
+                Ad0=7,
+                a1=0,
+                b1=15,
+                c1=4,
+                d1=7,
+                Aa1=0,
+                Ab1=7,
+                Ac1=5,
+                Ad1=7,
+            ),
+        )
+
 
 class FakeModel:
     def __init__(self, commands, texture=None):
@@ -185,11 +240,18 @@ class FakeModel:
         return self.vertices[index]
 
     def read_texture_pixels(self, index):
-        if self.texture["type"] != 0x08:
+        if self.texture["type"] not in (0x04, 0x08):
             raise NotImplementedError
 
         pixel_count = self.texture["width"] * self.texture["height"]
         return [BanjoPixel(72, 79, 254, 255)] * pixel_count
+
+    def read_texture_mipmap_pixels(self, index, level):
+        pixel_count = (
+            (self.texture["width"] >> level)
+            * (self.texture["height"] >> level)
+        )
+        return [BanjoPixel(level, level, level, 255)] * pixel_count
 
     def read_texture_load_pixels(self, load):
         if load.texture_type != "CI4":
@@ -358,7 +420,38 @@ class TestN64DisplayListDecoder(unittest.TestCase):
                     load_tile=7,
                     scale_s=0x8000,
                     scale_t=0x8000,
+                    texture_on=1,
                 )
+            ],
+        )
+
+    def test_attaches_mipmaps_from_texture_level(self):
+        texture = {
+            "index": 0,
+            "offset": 0x000,
+            "type": 0x04,
+            "type_name": "RGBA16",
+            "width": 32,
+            "height": 32,
+            "bit_depth": 16,
+            "palette_size": 0,
+            "size": 0x800,
+        }
+        commands = [
+            (0xBB001201, 0x80008000),
+            (0xFD100000, 0x02000000),
+            (0xF5100000, 0x07014050),
+            (0xF3000000, 0x075FF100),
+        ]
+
+        result = interpret_display_list(FakeModel(commands, texture=texture))
+
+        self.assertEqual(len(result.textures), 1)
+        self.assertEqual(
+            result.textures[0].mipmaps,
+            [
+                [BanjoPixel(1, 1, 1, 255)] * (16 * 16),
+                [BanjoPixel(2, 2, 2, 255)] * (8 * 8),
             ],
         )
 

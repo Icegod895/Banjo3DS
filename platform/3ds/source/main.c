@@ -70,14 +70,43 @@ static void sceneInit(void)
     BufInfo_Add(bufInfo, vbo_data, sizeof(Banjo3DSVertex), 3, 0x210);
 #if BANJO_TEXTURE_COUNT > 0
     for (unsigned int i = 0; i < BANJO_TEXTURE_COUNT; i++) {
-        C3D_TexInit(
+        C3D_TexInitWithParams(
             &textures[i],
-            banjo_textures[i].width,
-            banjo_textures[i].height,
-            GPU_RGBA8
+            NULL,
+            (C3D_TexInitParams){
+                banjo_textures[i].width,
+                banjo_textures[i].height,
+                banjo_textures[i].mipmap_count,
+                GPU_RGBA8,
+                GPU_TEX_2D,
+                false
+            }
         );
-        C3D_TexUpload(&textures[i], banjo_textures[i].data);
-        C3D_TexSetFilter(&textures[i], GPU_NEAREST, GPU_NEAREST);
+        C3D_TexLoadImage(
+            &textures[i],
+            banjo_textures[i].data,
+            GPU_TEXFACE_2D,
+            0
+        );
+
+        for (
+            unsigned int level = 1;
+            level <= banjo_textures[i].mipmap_count;
+            level++
+        ) {
+            C3D_TexLoadImage(
+                &textures[i],
+                banjo_textures[i].mipmaps[level - 1],
+                GPU_TEXFACE_2D,
+                level
+            );
+        }
+        if (banjo_textures[i].mipmap_count > 0) {
+            C3D_TexSetFilter(&textures[i], GPU_LINEAR, GPU_LINEAR);
+        } else {
+            C3D_TexSetFilter(&textures[i], GPU_NEAREST, GPU_NEAREST);
+        }
+        C3D_TexSetFilterMipmap(&textures[i], GPU_LINEAR);
         C3D_TexSetWrap(
             &textures[i],
             textureWrapTo3DS(BANJO_TEXTURE_WRAP_S),
@@ -315,6 +344,60 @@ static void applyCombine(
         );
         C3D_TexEnvFunc(env, C3D_Alpha, GPU_REPLACE);
         C3D_TexEnvFunc(env, C3D_RGB, GPU_MODULATE);
+        return;
+    }
+    if (
+        combine->a0 == 2 &&
+        combine->b0 == 1 &&
+        combine->c0 == 13 &&
+        combine->d0 == 1 &&
+        combine->Aa0 == 1 &&
+        combine->Ab0 == 7 &&
+        combine->Ac0 == 4 &&
+        combine->Ad0 == 7 &&
+        combine->a1 == 0 &&
+        combine->b1 == 15 &&
+        combine->c1 == 4 &&
+        combine->d1 == 7 &&
+        combine->Aa1 == 0 &&
+        combine->Ab1 == 7 &&
+        combine->Ac1 == 5 &&
+        combine->Ad1 == 7
+    ) {
+        /*
+         * PICA mip filtering approximates the N64's explicit
+         * TEXEL0/TEXEL1 LOD_FRACTION blend. Unlike the N64, it also
+         * blends alpha between mip levels and uses conventional linear
+         * filtering instead of the N64's three-point filter.
+         */
+        C3D_TexEnvSrc(
+            env,
+            C3D_Both,
+            GPU_TEXTURE0,
+            GPU_PRIMARY_COLOR,
+            GPU_PRIMARY_COLOR
+        );
+        C3D_TexEnvFunc(env, C3D_Both, GPU_MODULATE);
+
+        env = C3D_GetTexEnv(1);
+        C3D_TexEnvInit(env);
+        C3D_TexEnvColor(env, state->environment_color);
+        C3D_TexEnvSrc(
+            env,
+            C3D_RGB,
+            GPU_PREVIOUS,
+            GPU_PREVIOUS,
+            GPU_PREVIOUS
+        );
+        C3D_TexEnvSrc(
+            env,
+            C3D_Alpha,
+            GPU_PREVIOUS,
+            GPU_CONSTANT,
+            GPU_CONSTANT
+        );
+        C3D_TexEnvFunc(env, C3D_RGB, GPU_REPLACE);
+        C3D_TexEnvFunc(env, C3D_Alpha, GPU_MODULATE);
         return;
     }
     if (
