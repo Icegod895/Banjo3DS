@@ -103,14 +103,19 @@ typedef struct {
     u32 environment_color;
 } Banjo3DSRenderState;
 
+static void resetTexEnvs(void)
+{
+    for (int i = 0; i < 6; i++) {
+        C3D_TexEnvInit(C3D_GetTexEnv(i));
+    }
+}
+
 static void applyCombine(
     const Banjo3DSCombine *combine,
     const Banjo3DSRenderState *state
 )
 {
-    for (int i = 0; i < 6; i++) {
-        C3D_TexEnvInit(C3D_GetTexEnv(i));
-    }
+    resetTexEnvs();
     C3D_TexEnv *env = C3D_GetTexEnv(0);
     C3D_TexEnvSrc(
         env,
@@ -398,6 +403,7 @@ static void sceneRender(void)
         else
 #endif
         {
+            resetTexEnvs();
             C3D_TexEnvSrc(
                 C3D_GetTexEnv(0),
                 C3D_Both,
