@@ -1,6 +1,7 @@
 #include <3ds.h>
 #include <citro3d.h>
 #include <string.h>
+#include <math.h>
 
 #include "vshader_shbin.h"
 #include "generated_model.h"
@@ -40,6 +41,86 @@ static GPU_TEXTURE_WRAP_PARAM textureWrapTo3DS(int wrap)
 }
 #endif
 
+static struct {
+    float yawDegrees, pitchDegrees, zoom;
+    float focusX, focusY, focusZ;
+    u64 lastUpdateMs;
+} camera;
+
+static float cameraClamp(float value, float minimum, float maximum)
+{
+    return value < minimum ? minimum : value > maximum ? maximum : value;
+}
+
+static float cameraPadAxis(s16 value)
+{
+    const float deadzone = 15.0f;
+    float axis = value;
+    if (axis > deadzone)
+        return cameraClamp((axis - deadzone) / (156.0f - deadzone), 0.0f, 1.0f);
+    if (axis < -deadzone)
+        return cameraClamp((axis + deadzone) / (156.0f - deadzone), -1.0f, 0.0f);
+    return 0.0f;
+}
+
+static void cameraReset(void)
+{
+    camera.yawDegrees = 145.0f;
+    camera.pitchDegrees = -20.0f;
+    camera.zoom = 1.0f;
+    camera.focusX = 102.5f;
+    camera.focusY = 189.5f;
+    camera.focusZ = 511.5f;
+    camera.lastUpdateMs = osGetTime();
+}
+
+static void cameraUpdateMatrices(void)
+{
+    Mtx_OrthoTilt(&projection,
+        -1500.0f / camera.zoom, 1500.0f / camera.zoom,
+        -900.0f / camera.zoom, 900.0f / camera.zoom,
+        -11000.0f, 11000.0f, true);
+    Mtx_Identity(&modelView);
+    Mtx_RotateX(&modelView, C3D_AngleFromDegrees(camera.pitchDegrees), true);
+    Mtx_RotateY(&modelView, C3D_AngleFromDegrees(camera.yawDegrees), true);
+    Mtx_Translate(&modelView, -camera.focusX, -camera.focusY, -camera.focusZ, true);
+}
+
+static void cameraUpdate(u32 down, u32 held, const circlePosition *pad)
+{
+    if (down & KEY_X) {
+        cameraReset();
+        cameraUpdateMatrices();
+        return;
+    }
+
+    u64 now = osGetTime();
+    float dt = now >= camera.lastUpdateMs ? (now - camera.lastUpdateMs) * 0.001f : 0.0f;
+    camera.lastUpdateMs = now;
+    dt = cameraClamp(dt, 0.0f, 0.05f);
+    camera.yawDegrees += cameraPadAxis(pad->dx) * 90.0f * dt;
+    if (camera.yawDegrees > 180.0f) camera.yawDegrees -= 360.0f;
+    if (camera.yawDegrees < -180.0f) camera.yawDegrees += 360.0f;
+    camera.pitchDegrees = cameraClamp(
+        camera.pitchDegrees + cameraPadAxis(pad->dy) * 90.0f * dt, -85.0f, 85.0f);
+    int zoomDirection = ((held & KEY_R) != 0) - ((held & KEY_L) != 0);
+    camera.zoom = cameraClamp(camera.zoom * expf(zoomDirection * dt), 0.1f, 20.0f);
+
+    float panX = (((held & KEY_DRIGHT) != 0) - ((held & KEY_DLEFT) != 0))
+        * 600.0f * dt / camera.zoom;
+    float panY = (((held & KEY_DUP) != 0) - ((held & KEY_DDOWN) != 0))
+        * 600.0f * dt / camera.zoom;
+    C3D_Mtx rotation;
+    Mtx_Identity(&rotation);
+    Mtx_RotateX(&rotation, C3D_AngleFromDegrees(camera.pitchDegrees), true);
+    Mtx_RotateY(&rotation, C3D_AngleFromDegrees(camera.yawDegrees), true);
+    // Transform view-plane movement back to model space using transpose(R).
+    camera.focusX += rotation.r[0].x * panX + rotation.r[1].x * panY;
+    camera.focusY += rotation.r[0].y * panX + rotation.r[1].y * panY;
+    camera.focusZ += rotation.r[0].z * panX + rotation.r[1].z * panY;
+    cameraUpdateMatrices();
+}
+
 static void sceneInit(void)
 {
     vshader_dvlb = DVLB_ParseFile((u32 *)vshader_shbin, vshader_shbin_size);
@@ -58,30 +139,8 @@ static void sceneInit(void)
     AttrInfo_AddLoader(attrInfo, 1, GPU_FLOAT, 2);
     AttrInfo_AddLoader(attrInfo, 2, GPU_UNSIGNED_BYTE, 4);
 
-    Mtx_OrthoTilt(
-        &projection,
-        -1500.0f, 1500.0f,
-        -900.0f, 900.0f,
-        -2000.0f, 2000.0f,
-        true
-    );
-
-    Mtx_Identity(&modelView);
-    Mtx_RotateX(
-        &modelView,
-        C3D_AngleFromDegrees(-20.0f),
-        true
-    );
-    Mtx_RotateY(
-        &modelView,
-        C3D_AngleFromDegrees(145.0f),
-        true
-    );
-    Mtx_Translate(
-        &modelView,
-        -102.5f, -189.5f, -511.5f,
-        true
-    );
+    cameraReset();
+    cameraUpdateMatrices();
 
     vbo_data = linearAlloc(sizeof(banjo_vertices));
     memcpy(vbo_data, banjo_vertices, sizeof(banjo_vertices));
@@ -567,8 +626,13 @@ int main(void)
     while (aptMainLoop()) {
         hidScanInput();
 
-        if (hidKeysDown() & KEY_START)
+        u32 down = hidKeysDown();
+        if (down & KEY_START)
             break;
+
+        circlePosition pad;
+        hidCircleRead(&pad);
+        cameraUpdate(down, hidKeysHeld(), &pad);
 
         C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
         C3D_RenderTargetClear(target, C3D_CLEAR_ALL, CLEAR_COLOR, 0);
