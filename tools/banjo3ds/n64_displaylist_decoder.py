@@ -451,7 +451,8 @@ def interpret_display_list(model):
 
         elif opcode == 0x04:
             n = (w0 & 0xFFFF) >> 10
-            v0 = (w0 >> 16) & 0xFF
+            # F3DEX gsSPVertex/gDma1p stores v0 * 2 in bits 23:16.
+            v0 = ((w0 >> 16) & 0xFF) // 2
             address = w1
 
             if (
@@ -1015,7 +1016,8 @@ def main():
 
         elif opcode == 0x04:
             n = (w0 & 0xFFFF) >> 10
-            v0 = (w0 >> 16) & 0xFF
+            # Match the interpreter's F3DEX vertex-cache start slot.
+            v0 = ((w0 >> 16) & 0xFF) // 2
             address = w1
 
             if address >= 0x01000000 and address < 0x01000000 + model.vertex_count * VTX_SIZE:

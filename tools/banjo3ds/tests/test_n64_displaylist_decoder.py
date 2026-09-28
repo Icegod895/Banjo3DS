@@ -366,6 +366,76 @@ class FakeModel:
 
 
 class TestN64DisplayListDecoder(unittest.TestCase):
+    def test_f3dex_nonzero_vertex_start_slots_emit_bf_and_b1(self):
+        # gbi.h: gsSPVertex encodes v0*2 in w0[23:16]; n and byte
+        # length are separate. Include every nonzero start used by 034D.
+        for start in (1, 2, 7, 15, 24, 26, 28, 29, 30):
+            with self.subTest(start=start, encoded=start * 2):
+                forward = ((start * 2) << 8) | ((start + 1) * 2)
+                reverse = (((start + 1) * 2) << 16) | ((start * 2) << 8)
+                commands = [
+                    (0x04000C2F, 0x01000000),  # Three vertices at slot 0.
+                    (0xBF000000, 0x00000204),
+                    # Partial load: source vertices 1,2 into start,start+1.
+                    (0x0400081F | ((start * 2) << 16), 0x01000010),
+                    (0xBF000000, forward),
+                    (0xB1000000 | forward, reverse),
+                ]
+                data = interpret_display_list(FakeModel(commands))
+                self.assertEqual([(t.v0, t.v1, t.v2) for t in data.triangles],
+                                 [(0, 1, 2), (0, 1, 2), (0, 1, 2), (2, 1, 0)])
+                # Slot 0 survives the partial load, including the slot-30
+                # case whose second new vertex occupies cache slot 31.
+                self.assertEqual(data.vertices[data.triangles[-1].v2].x, 10)
+
+    def test_f3dex_zero_start_slot_still_emits_bf_and_b1(self):
+        data = interpret_display_list(FakeModel([
+            (0x04000C2F, 0x01000000),
+            (0xBF000000, 0x00000204),
+            (0xB1000204, 0x00040200),
+        ]))
+        self.assertEqual([(t.v0, t.v1, t.v2) for t in data.triangles],
+                         [(0, 1, 2), (0, 1, 2), (2, 1, 0)])
+
+    def test_034d_all_raw_triangles_have_valid_vertex_cache_references(self):
+        from collections import Counter
+        from pathlib import Path
+
+        path = Path(__file__).resolve().parents[3] / 'assets/model/034D.model.bin'
+        model = BKModel(path)
+        count = struct.unpack_from('>I', model.data, model.gfx_offset)[0]
+        words = [struct.unpack_from('>II', model.data, model.gfx_offset + 8 + i * 8)
+                 for i in range(count)]
+        encoded_starts = Counter((w0 >> 16) & 255 for w0, _ in words if w0 >> 24 == 4)
+        self.assertEqual(encoded_starts, {0: 300, 48: 4, 52: 4, 56: 30, 58: 23, 60: 13})
+
+        # Independent replay checks every raw reference, including triangles
+        # that the production interpreter would otherwise silently omit.
+        # Geometry/matrix/pose semantics intentionally remain outside this test.
+        cache = [None] * 32
+        expected = []
+        for w0, w1 in words:
+            opcode = w0 >> 24
+            if opcode == 4:
+                start = ((w0 >> 16) & 255) // 2
+                length = (w0 >> 10) & 63
+                self.assertEqual((w0 >> 16) & 1, 0)
+                self.assertLessEqual(start + length, len(cache))
+                self.assertEqual(w1 >> 24, 1)
+                self.assertEqual(w1 & 15, 0)
+                vertex = (w1 & 0xFFFFFF) // 16
+                self.assertLessEqual(vertex + length, model.vertex_count)
+                cache[start:start + length] = range(vertex, vertex + length)
+            elif opcode in (0xBF, 0xB1):
+                for word in ((w0, w1) if opcode == 0xB1 else (w1,)):
+                    slots = [((word >> shift) & 255) // 2 for shift in (16, 8, 0)]
+                    self.assertTrue(all(slot < len(cache) and cache[slot] is not None
+                                        for slot in slots), (hex(w0), hex(w1), slots))
+                    expected.append(tuple(cache[slot] for slot in slots))
+        self.assertEqual(len(expected), 2509)
+        actual = interpret_display_list(model)
+        self.assertEqual([(t.v0, t.v1, t.v2) for t in actual.triangles], expected)
+
     def test_banjo_texture(self):
         texture = BanjoTexture(
             texture_index=7,
