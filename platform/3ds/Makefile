@@ -9,7 +9,7 @@ endif
 TOPDIR ?= $(CURDIR)
 REPO_ROOT := $(abspath $(TOPDIR)/../..)
 BANJO3DS_PYTHON := $(REPO_ROOT)/.venv/bin/python
-BANJO3DS_MODEL := $(REPO_ROOT)/assets/model/08A1.model.bin
+BANJO3DS_MODEL := $(REPO_ROOT)/assets/model/14A2.model.bin
 BANJO3DS_GENERATED_MODEL := $(TOPDIR)/source/generated_model.h
 
 include $(DEVKITARM)/3ds_rules

@@ -99,10 +99,24 @@ class TestTextureDecoding(unittest.TestCase):
 
     def test_reads_ci4_texture_load_pixels(self):
         model = BKModel.__new__(BKModel)
-        model.data = bytes.fromhex(
-            "FFFF 0001" + " 0000" * 14 + " 01"
+        model.data = bytearray(
+            16 + 32 + 1
         )
-        model.texture_data_offset = 0
+        model.texture_infos_offset = 0
+        model.texture_count = 1
+        model.texture_data_offset = 16
+
+# Texture 0: CI4, 2x1, offset 0 within texture data.
+        model.data[0:4] = (0).to_bytes(4, "big")
+        model.data[4:6] = (0x01).to_bytes(2, "big")
+        model.data[8] = 2
+        model.data[9] = 1
+
+# Palette entries 0 = white, 1 = black.
+        model.data[16:20] = bytes.fromhex("FFFF 0001")
+
+# Texels 0,1.
+        model.data[16 + 32] = 0x01
 
         load = BanjoTextureLoad(
             texture_index=0,
@@ -122,12 +136,90 @@ class TestTextureDecoding(unittest.TestCase):
             ],
         )
 
+    def test_reads_ci4_texture_load_pixels_from_nonzero_texture_offset(self):
+        model = BKModel.__new__(BKModel)
+
+        model.texture_data_offset = 0x40
+        model.texture_infos_offset = 0
+        model.texture_count = 2
+        model.data = bytearray(0xC0)
+
+        # Texture descriptors.
+        #
+        # Texture 0 starts at offset 0x00 in texture data.
+        # Texture 1 starts at offset 0x40 in texture data.
+        #
+        # Both are CI4, 2x1.
+        model.data[0:4] = (0x00).to_bytes(4, "big")
+        model.data[4:6] = (0x01).to_bytes(2, "big")
+        model.data[8] = 2
+        model.data[9] = 1
+
+        model.data[16:20] = (0x40).to_bytes(4, "big")
+        model.data[20:22] = (0x01).to_bytes(2, "big")
+        model.data[24] = 2
+        model.data[25] = 1
+
+        # Texture 0 palette at absolute file offset 0x40.
+        # Make it deliberately different from texture 1:
+        # palette index 0 = red
+        # palette index 1 = green
+        model.data[0x40:0x44] = bytes.fromhex("F801 07C1")
+
+        # Texture 0 texels at R=0x20:
+        # indices 0, 1.
+        model.data[0x60] = 0x01
+
+        # Texture 1 begins at absolute file offset:
+        # texture_data_offset + texture["offset"] = 0x40 + 0x40 = 0x80.
+        #
+        # palette index 0 = white
+        # palette index 1 = black
+        model.data[0x80:0x84] = bytes.fromhex("FFFF 0001")
+
+        # Texture 1 texels at R=0x20:
+        # indices 0, 1.
+        model.data[0xA0] = 0x01
+
+        load = BanjoTextureLoad(
+            texture_index=1,
+            texture_type="CI4",
+            width=2,
+            height=1,
+            palette_offset=0x00,
+            texel_offset=0x20,
+            load_tile=7,
+        )
+
+        self.assertEqual(
+            model.read_texture_load_pixels(load),
+            [
+                BanjoPixel(255, 255, 255, 255),
+                BanjoPixel(0, 0, 0, 255),
+            ],
+        )
+
     def test_reads_ci8_texture_load_pixels(self):
         model = BKModel.__new__(BKModel)
-        model.data = bytes.fromhex(
-            "FFFF 0001" + " 0000" * 254 + " 00 01"
-        )
-        model.texture_data_offset = 0
+
+        model.texture_infos_offset = 0
+        model.texture_count = 1
+        model.texture_data_offset = 16
+        model.data = bytearray(16 + 512 + 2)
+
+# Texture 0: CI8, 2x1, offset 0 within texture data.
+        model.data[0:4] = (0).to_bytes(4, "big")
+        model.data[4:6] = (0x02).to_bytes(2, "big")
+        model.data[8] = 2
+        model.data[9] = 1
+
+# Palette index 0 = white, index 1 = black.
+        model.data[16:20] = bytes.fromhex("FFFF 0001")
+
+# CI8 texels follow the 512-byte palette:
+# pixel 0 -> palette 0
+# pixel 1 -> palette 1
+        model.data[16 + 512:16 + 514] = bytes.fromhex("00 01")
 
         load = BanjoTextureLoad(
             texture_index=0,
@@ -546,6 +638,17 @@ class TestN64DisplayListDecoder(unittest.TestCase):
                 Ad1=7,
             ),
         )
+
+    def test_applies_render_mode_index_to_triangle(self):
+        commands = [
+            (0x06000000, 0x03000020),
+            (0x04000C2F, 0x01000000),
+            (0xBF000000, 0x00000204),
+        ]
+
+        result = interpret_display_list(FakeModel(commands))
+
+        self.assertEqual(result.triangles[0].render_mode_index, 2)
 
     def test_interprets_triangle(self):
         commands = [

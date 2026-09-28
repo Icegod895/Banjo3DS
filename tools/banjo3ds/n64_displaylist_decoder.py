@@ -37,6 +37,7 @@ class BanjoTriangle:
     v2: int
     material_index: int | None = None
     combine: "BanjoCombine | None" = None
+    render_mode_index: int | None = None
 
 @dataclass
 class BanjoPixel:
@@ -289,8 +290,11 @@ class BKModel:
                 f"Load pixel decoding not implemented for {load.texture_type}"
             )
 
-        palette_start = self.texture_data_offset + load.palette_offset
-        texel_start = self.texture_data_offset + load.texel_offset
+        texture = self.read_texture(load.texture_index)
+        texture_start = self.texture_data_offset + texture["offset"]
+
+        palette_start = texture_start + load.palette_offset
+        texel_start = texture_start + load.texel_offset
         palette_size = 32 if load.texture_type == "CI4" else 512
 
         palette = [
@@ -405,6 +409,7 @@ def interpret_display_list(model):
     current_texture_image = None
     current_palette = None
     current_combine = None
+    current_render_mode_index = None
     texture_scale_s = 0xFFFF
     texture_scale_t = 0xFFFF
     texture_level = 0
@@ -451,6 +456,7 @@ def interpret_display_list(model):
                             *indices,
                             material_index=current_material_index,
                             combine=current_combine,
+                            render_mode_index=current_render_mode_index,
                         )
                     )
 
@@ -478,8 +484,16 @@ def interpret_display_list(model):
                                 *indices,
                                 material_index=current_material_index,
                                 combine=current_combine,
+                                render_mode_index=current_render_mode_index,
                             )
                         )
+
+        elif opcode == 0x06:
+            if (
+                0x03000000 <= w1 <= 0x03000080
+                and (w1 & 0xF) == 0
+            ):
+                current_render_mode_index = (w1 - 0x03000000) // 0x10
 
         elif opcode == 0xBB:
             texture_level = (w0 >> 11) & 0x7

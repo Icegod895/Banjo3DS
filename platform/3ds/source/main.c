@@ -58,9 +58,30 @@ static void sceneInit(void)
     AttrInfo_AddLoader(attrInfo, 1, GPU_FLOAT, 2);
     AttrInfo_AddLoader(attrInfo, 2, GPU_UNSIGNED_BYTE, 4);
 
-    Mtx_OrthoTilt(&projection, -60.0f, 100.0f, -130.0f, 210.0f, -250.0f, 250.0f, true);
+    Mtx_OrthoTilt(
+        &projection,
+        -1500.0f, 1500.0f,
+        -900.0f, 900.0f,
+        -2000.0f, 2000.0f,
+        true
+    );
+
     Mtx_Identity(&modelView);
-    Mtx_RotateX(&modelView, C3D_Angle(M_TAU / 2.0f), true);
+    Mtx_RotateX(
+        &modelView,
+        C3D_AngleFromDegrees(-20.0f),
+        true
+    );
+    Mtx_RotateY(
+        &modelView,
+        C3D_AngleFromDegrees(145.0f),
+        true
+    );
+    Mtx_Translate(
+        &modelView,
+        -102.5f, -189.5f, -511.5f,
+        true
+    );
 
     vbo_data = linearAlloc(sizeof(banjo_vertices));
     memcpy(vbo_data, banjo_vertices, sizeof(banjo_vertices));

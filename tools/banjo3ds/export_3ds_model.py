@@ -137,6 +137,35 @@ def export_vertex_data(vertices):
     )
 
 
+def exported_combine_fields(combine):
+    if combine is None:
+        return (0,) * 16
+    return (
+        combine.a0, combine.b0, combine.c0, combine.d0,
+        combine.Aa0, combine.Ab0, combine.Ac0, combine.Ad0,
+        combine.a1, combine.b1, combine.c1, combine.d1,
+        combine.Aa1, combine.Ab1, combine.Ac1, combine.Ad1,
+    )
+
+
+def build_draw_batches(triangles):
+    """Return contiguous draws without losing any exported triangle state."""
+    batches = []
+    for index, triangle in enumerate(triangles):
+        material = triangle.material_index if triangle.material_index is not None else -1
+        mode = triangle.render_mode_index if triangle.render_mode_index is not None else -1
+        combine = exported_combine_fields(triangle.combine)
+        state = (material, mode, combine)
+        first_vertex = index * 3
+        if batches and batches[-1][2:] == state:
+            first, count, *previous_state = batches[-1]
+            if first + count == first_vertex:
+                batches[-1] = (first, count + 3, *previous_state)
+                continue
+        batches.append((first_vertex, 3, *state))
+    return batches
+
+
 def export_header(render_data):
     vertex_data = export_triangle_vertices(render_data)
     vertex_count = len(render_data.triangles) * 3
@@ -281,28 +310,14 @@ def export_header(render_data):
         "    float v;\n"
     )
 
-    def combine_values(combine):
-        if combine is None:
-            return "0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0"
-
-        return ", ".join(
-            str(value)
-            for value in (
-                combine.a0, combine.b0, combine.c0, combine.d0,
-                combine.Aa0, combine.Ab0, combine.Ac0, combine.Ad0,
-                combine.a1, combine.b1, combine.c1, combine.d1,
-                combine.Aa1, combine.Ab1, combine.Ac1, combine.Ad1,
-            )
-        )
-
+    batches = build_draw_batches(render_data.triangles)
     draws = "".join(
-        f"    {{ {triangle_index * 3}, 3, "
-        f"{triangle.material_index if triangle.material_index is not None else -1}, "
-        f"{{ {combine_values(triangle.combine)} }} }},\n"
-        for triangle_index, triangle in enumerate(render_data.triangles)
+        f"    {{ {first}, {count}, {material}, {mode}, "
+        f"{{ {', '.join(str(value) for value in combine)} }} }},\n"
+        for first, count, material, mode, combine in batches
     )
 
-    draw_count = len(render_data.triangles)
+    draw_count = len(batches)
 
     if draws:
         draw_data = (
@@ -317,6 +332,7 @@ def export_header(render_data):
             "    unsigned int first_vertex;\n"
             "    unsigned int vertex_count;\n"
             "    int material_index;\n"
+            "    int render_mode_index;\n"
             "    Banjo3DSCombine combine;\n"
             "} Banjo3DSDraw;\n"
             "\n"

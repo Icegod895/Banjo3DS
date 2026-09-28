@@ -5,6 +5,91 @@ from tools.banjo3ds.n64_displaylist_decoder import BanjoCombine, BanjoMaterial, 
 
 
 class TestExport3DSModel(unittest.TestCase):
+    def test_batches_adjacent_compatible_triangles(self):
+        from tools.banjo3ds.export_3ds_model import build_draw_batches
+        from tools.banjo3ds.n64_displaylist_decoder import BanjoTriangle
+
+        triangles = [BanjoTriangle(0, 1, 2, 0, None, 1)] * 2
+        self.assertEqual(build_draw_batches(triangles), [(0, 6, 0, 1, (0,) * 16)])
+
+    def test_batch_state_boundaries(self):
+        from dataclasses import replace
+        from tools.banjo3ds.export_3ds_model import build_draw_batches
+        from tools.banjo3ds.n64_displaylist_decoder import BanjoTriangle
+
+        combine = BanjoCombine(*range(16))
+        first = BanjoTriangle(0, 1, 2, 0, combine, 1)
+        variants = [replace(first, material_index=1), replace(first, render_mode_index=2)]
+        # Every exported selector must participate, not just the RGB selectors.
+        for field in combine.__dataclass_fields__:
+            variants.append(replace(first, combine=replace(combine, **{field: 99})))
+        for second in variants:
+            with self.subTest(second=second):
+                batches = build_draw_batches([first, second, first])
+                self.assertEqual([(b[0], b[1]) for b in batches], [(0, 3), (3, 3), (6, 3)])
+                self.assertEqual(batches[0][2:], batches[2][2:])
+                self.assertNotEqual(batches[0][2:], batches[1][2:])
+
+    def test_batch_ranges_and_state_round_trip(self):
+        from tools.banjo3ds.export_3ds_model import build_draw_batches
+        from tools.banjo3ds.n64_displaylist_decoder import BanjoTriangle
+
+        a = BanjoTriangle(2, 0, 1, 0, BanjoCombine(*range(16)), 1)
+        b = BanjoTriangle(1, 2, 0, 1, None, 2)
+        triangles = [a, a, b, b, b, a]
+        batches = build_draw_batches(triangles)
+        self.assertEqual([(b[0], b[1]) for b in batches], [(0, 6), (6, 9), (15, 3)])
+        expanded = []
+        end = 0
+        for first, count, material, mode, combine in batches:
+            self.assertEqual(first, end)
+            self.assertEqual(count % 3, 0)
+            expanded.extend((i, material, mode, combine) for i in range(first, first + count, 3))
+            end = first + count
+        expected = [(i * 3, t.material_index, t.render_mode_index,
+                     tuple(range(16)) if t is a else (0,) * 16)
+                    for i, t in enumerate(triangles)]
+        self.assertEqual(expanded, expected)
+        self.assertEqual(end, 3 * len(triangles))
+
+    def test_empty_and_normalized_combine_batches(self):
+        from tools.banjo3ds.export_3ds_model import build_draw_batches
+        from tools.banjo3ds.n64_displaylist_decoder import BanjoTriangle
+
+        self.assertEqual(build_draw_batches([]), [])
+        triangles = [BanjoTriangle(0, 1, 2), BanjoTriangle(0, 1, 2, combine=BanjoCombine(*([0] * 16)))]
+        self.assertEqual(build_draw_batches(triangles), [(0, 6, -1, -1, (0,) * 16)])
+        data = BanjoRenderData(
+            vertices=[BanjoVertex(0, 0, 0, 0, 0, 255, 255, 255, 255)] * 3,
+            triangles=triangles, textures=[], texture_loads=[],
+        )
+        header = export_header(data)
+        self.assertIn("#define BANJO_DRAW_COUNT 1", header)
+        self.assertIn("    { 0, 6, -1, -1, {", header)
+        self.assertIn("#define BANJO_VERTEX_COUNT 6", header)
+
+    def test_real_14cf_batches_preserve_triangle_state(self):
+        from dataclasses import astuple
+        from tools.banjo3ds.export_3ds_model import build_draw_batches
+        from tools.banjo3ds.n64_displaylist_decoder import BKModel, interpret_display_list
+
+        data = interpret_display_list(BKModel("assets/model/14CF.model.bin"))
+        batches = build_draw_batches(data.triangles)
+        self.assertEqual(len(data.triangles), 3136)
+        self.assertEqual(len(data.materials), 417)
+        self.assertEqual(len(data.textures), 77)
+        self.assertEqual(len(batches), 436)
+        self.assertEqual(max(b[1] for b in batches), 576)
+        self.assertEqual(sum(b[1] for b in batches), 9408)
+        expanded = [(vertex // 3, material, mode, combine)
+                    for first, count, material, mode, combine in batches
+                    for vertex in range(first, first + count, 3)]
+        expected = [(i, t.material_index if t.material_index is not None else -1,
+                     t.render_mode_index if t.render_mode_index is not None else -1,
+                     astuple(t.combine) if t.combine is not None else (0,) * 16)
+                    for i, t in enumerate(data.triangles)]
+        self.assertEqual(expanded, expected)
+
     def test_exports_vertex_data(self):
         vertices = [
             BanjoVertex(
@@ -166,7 +251,7 @@ class TestExport3DSTriangles(unittest.TestCase):
         result = export_header(render_data)
 
         self.assertIn(
-            "    { 0, 3, -1, { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 } },",
+            "    { 0, 3, -1, -1, { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 } },",
             result,
         )
 
@@ -268,6 +353,7 @@ class TestExport3DSTriangles(unittest.TestCase):
                     1,
                     2,
                     material_index=0,
+                    render_mode_index=2,
                     combine=BanjoCombine(
                         1, 3, 5, 3,
                         1, 7, 4, 7,
@@ -293,7 +379,7 @@ class TestExport3DSTriangles(unittest.TestCase):
         result = export_header(render_data)
 
         self.assertIn(
-            "    { 0, 3, 0, { 1, 3, 5, 3, 1, 7, 4, 7, 0, 15, 4, 7, 0, 7, 5, 7 } },\n",
+            "    { 0, 3, 0, 2, { 1, 3, 5, 3, 1, 7, 4, 7, 0, 15, 4, 7, 0, 7, 5, 7 } },\n",
             result,
         )
 
