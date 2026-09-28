@@ -11,6 +11,7 @@ REPO_ROOT := $(abspath $(TOPDIR)/../..)
 BANJO3DS_PYTHON := $(REPO_ROOT)/.venv/bin/python
 BANJO3DS_MODEL := $(REPO_ROOT)/assets/model/14CF.model.bin
 BANJO3DS_XLU_MODEL := $(REPO_ROOT)/assets/model/14D0.model.bin
+BANJO3DS_ACTOR_MODEL := $(REPO_ROOT)/assets/model/034D.model.bin
 BANJO3DS_GENERATED_MODEL := $(TOPDIR)/source/generated_model.h
 
 include $(DEVKITARM)/3ds_rules
@@ -170,9 +171,9 @@ endif
 all: $(BANJO3DS_GENERATED_MODEL) $(BUILD) $(GFXBUILD) $(DEPSDIR) $(ROMFS_T3XFILES) $(T3XHFILES)
 	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile
 
-$(BANJO3DS_GENERATED_MODEL): $(BANJO3DS_MODEL) $(BANJO3DS_XLU_MODEL) $(REPO_ROOT)/tools/banjo3ds/export_3ds_model.py $(REPO_ROOT)/tools/banjo3ds/n64_displaylist_decoder.py $(REPO_ROOT)/tools/banjo3ds/geo_sort.py
+$(BANJO3DS_GENERATED_MODEL): $(BANJO3DS_MODEL) $(BANJO3DS_XLU_MODEL) $(BANJO3DS_ACTOR_MODEL) $(REPO_ROOT)/tools/banjo3ds/export_3ds_model.py $(REPO_ROOT)/tools/banjo3ds/n64_displaylist_decoder.py $(REPO_ROOT)/tools/banjo3ds/geo_sort.py $(REPO_ROOT)/tools/banjo3ds/canonical_banjo.py
 	@echo generating $(notdir $@)
-	@cd $(REPO_ROOT) && $(BANJO3DS_PYTHON) -m tools.banjo3ds.export_3ds_model $(BANJO3DS_MODEL) $(BANJO3DS_GENERATED_MODEL) $(BANJO3DS_XLU_MODEL)
+	@cd $(REPO_ROOT) && $(BANJO3DS_PYTHON) -B -m tools.banjo3ds.export_3ds_model $(BANJO3DS_MODEL) $(BANJO3DS_GENERATED_MODEL) $(BANJO3DS_XLU_MODEL) $(BANJO3DS_ACTOR_MODEL)
 
 $(BUILD):
 	@mkdir -p $@

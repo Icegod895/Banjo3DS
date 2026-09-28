@@ -166,7 +166,7 @@ def build_draw_batches(triangles, boundaries=()):
     return batches
 
 
-def build_draw_plan(render_data, xlu_triangle_start=None, geo_sources=()):
+def build_draw_plan(render_data, xlu_triangle_start=None, geo_sources=(), actor_triangle_start=None):
     """geo_sources: (BKModel, asset-local render data, triangle offset) tuples.
 
     Geometry without SORT keeps the existing flat pass. SORT-only models
@@ -180,6 +180,10 @@ def build_draw_plan(render_data, xlu_triangle_start=None, geo_sources=()):
         raise ValueError("Invalid XLU pass boundary")
     trees = []
     boundaries = {0, boundary, total}
+    if actor_triangle_start is not None:
+        if not 0 <= actor_triangle_start <= boundary:
+            raise ValueError("Invalid actor pass boundary")
+        boundaries.add(actor_triangle_start)
     for model, source, offset in geo_sources:
         tree = read_sort_tree(model.data)
         if not tree:
@@ -229,7 +233,7 @@ def combine_render_passes(opa, xlu):
     return combined, len(opa.triangles)
 
 
-def export_header(render_data, xlu_triangle_start=None, geo_sources=()):
+def export_header(render_data, xlu_triangle_start=None, geo_sources=(), actor_triangle_start=None):
     vertex_data = export_triangle_vertices(render_data)
     vertex_count = len(render_data.triangles) * 3
     texture_fields = ""
@@ -375,7 +379,14 @@ def export_header(render_data, xlu_triangle_start=None, geo_sources=()):
 
     from tools.banjo3ds.geo_sort import export_geo_header
     batches, opa_draw_count, geo_nodes, geo_roots = build_draw_plan(
-        render_data, xlu_triangle_start, geo_sources)
+        render_data, xlu_triangle_start, geo_sources, actor_triangle_start)
+    xlu_draw_count = len(batches) - opa_draw_count
+    actor_data = ""
+    if actor_triangle_start is not None:
+        map_draw_count = sum(first < actor_triangle_start * 3 for first, *_ in batches)
+        actor_data = (f"#define BANJO_ACTOR_FIRST_DRAW {map_draw_count}\n"
+                      f"#define BANJO_ACTOR_DRAW_COUNT {opa_draw_count - map_draw_count}\n")
+        opa_draw_count = map_draw_count
     draws = "".join(
         f"    {{ {first}, {count}, {material}, {mode}, {int(cull)}, "
         f"{{ {', '.join(str(value) for value in combine)} }} }},\n"
@@ -437,7 +448,8 @@ def export_header(render_data, xlu_triangle_start=None, geo_sources=()):
         f"{material_data}"
         f"{draw_data}"
         f"#define BANJO_OPA_DRAW_COUNT {opa_draw_count}\n"
-        f"#define BANJO_XLU_DRAW_COUNT {len(batches) - opa_draw_count}\n"
+        f"#define BANJO_XLU_DRAW_COUNT {xlu_draw_count}\n"
+        f"{actor_data}"
         f"{export_geo_header(geo_nodes, geo_roots)}"
     )
 
@@ -509,17 +521,55 @@ def export_models(opa_path, xlu_path):
     return export_header(data, boundary, [(opa_model, opa, 0), (xlu_model, xlu, boundary)])
 
 
+# Diagnostic placement, separate from model-local skeletal pose baking.
+# 14CF's central summit is flat at Y=1800; fallback feet start at Y=34.
+# Identity rotation/scale, feet two units above that surface. Not a spawn point.
+STATIC_BANJO_TRANSLATION = (0, 1768, 0)
+
+
+def place_static_banjo(data):
+    from dataclasses import replace
+    x, y, z = STATIC_BANJO_TRANSLATION
+    return replace(data, vertices=[replace(v, x=v.x+x, y=v.y+y, z=v.z+z)
+                                   for v in data.vertices])
+
+
+def export_canonical_banjo(model_path):
+    """Standalone model-local fixture, without the viewer's world placement."""
+    from tools.banjo3ds.canonical_banjo import decode_canonical_banjo
+    from tools.banjo3ds.n64_displaylist_decoder import BKModel
+    return export_header(decode_canonical_banjo(BKModel(model_path)))
+
+
+def export_scene(opa_path, xlu_path, banjo_path):
+    from tools.banjo3ds.canonical_banjo import decode_canonical_banjo
+    from tools.banjo3ds.n64_displaylist_decoder import BKModel, interpret_display_list
+
+    opa_model, xlu_model = BKModel(opa_path), BKModel(xlu_path)
+    opa, xlu = interpret_display_list(opa_model), interpret_display_list(xlu_model)
+    banjo = place_static_banjo(decode_canonical_banjo(BKModel(banjo_path)))
+    opaque, actor_start = combine_render_passes(opa, banjo)
+    data, xlu_start = combine_render_passes(opaque, xlu)
+    return export_header(data, xlu_start,
+                         [(opa_model, opa, 0), (xlu_model, xlu, xlu_start)], actor_start)
+
+
 def main(argv):
     from pathlib import Path
 
-    if len(argv) not in (2, 3):
-        raise SystemExit("usage: export_3ds_model.py OPA_MODEL OUTPUT [XLU_MODEL]")
+    if len(argv) not in (2, 3, 4):
+        raise SystemExit("usage: export_3ds_model.py OPA_MODEL OUTPUT [XLU_MODEL [CANONICAL_BANJO_MODEL]]")
 
     model_path = Path(argv[0])
     output_path = Path(argv[1])
 
-    output_path.write_text(export_models(model_path, Path(argv[2]))
-                           if len(argv) == 3 else export_model(model_path))
+    if len(argv) == 4:
+        output = export_scene(model_path, Path(argv[2]), Path(argv[3]))
+    elif len(argv) == 3:
+        output = export_models(model_path, Path(argv[2]))
+    else:
+        output = export_model(model_path)
+    output_path.write_text(output)
 
     return 0
 

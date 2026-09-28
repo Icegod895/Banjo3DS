@@ -652,6 +652,14 @@ static void sceneRender(void)
 #endif
         sceneDrawRange(0, BANJO_OPA_DRAW_COUNT, &render_state);
 
+    unsigned int xlu_first_draw = BANJO_OPA_DRAW_COUNT;
+#ifdef BANJO_ACTOR_DRAW_COUNT
+    // Original world order: map OPA, character, map XLU. Canonical 034D's
+    // FullDepthOpa modes 1 and 3 both use Z_CMP | Z_UPD; retain depth writes.
+    sceneDrawRange(BANJO_ACTOR_FIRST_DRAW, BANJO_ACTOR_DRAW_COUNT, &render_state);
+    xlu_first_draw += BANJO_ACTOR_DRAW_COUNT;
+#endif
+
     if (BANJO_XLU_DRAW_COUNT > 0) {
         C3D_DepthTest(true, GPU_GREATER, GPU_WRITE_COLOR);
         C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD,
@@ -662,7 +670,7 @@ static void sceneRender(void)
             sceneDrawGeo(BANJO_XLU_GEO_ROOT, eye, &render_state);
         else
 #endif
-            sceneDrawRange(BANJO_OPA_DRAW_COUNT, BANJO_XLU_DRAW_COUNT, &render_state);
+            sceneDrawRange(xlu_first_draw, BANJO_XLU_DRAW_COUNT, &render_state);
         C3D_DepthTest(true, GPU_GREATER, GPU_WRITE_ALL);
     }
     // Alpha blend factors above match the existing Citro3D defaults.

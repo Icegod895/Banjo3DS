@@ -134,6 +134,8 @@ class BanjoRenderData:
     sampler: BanjoSampler | None = None
     # gfx-list entry -> (first emitted triangle, triangle count), asset-local.
     display_list_ranges: dict = field(default_factory=dict)
+    # Optional host-side canonical pose audit; never exported to the GPU.
+    pose: object | None = None
 
 
 class BKModel:
@@ -405,7 +407,7 @@ def decode_texture_wrap(value):
     return ("wrap", "mirror", "clamp", "mirror_clamp")[value & 0x3]
 
 
-def interpret_display_list(model):
+def interpret_display_list(model, *, pose=None):
     """Interpret a Banjo-Kazooie N64 display list into platform-independent data."""
     gfx_count = struct.unpack_from(">I", model.data, model.gfx_offset)[0]
     gfx_size = gfx_count * 8
@@ -428,17 +430,20 @@ def interpret_display_list(model):
     texture_tile = 0
     texture_on = 0
     tile_state = [None] * 8
+    loaded_vertices = []
 
     offset = gfx_start
     display_list_ranges = {}
     list_index = 0
     list_triangle_start = 0
-    while offset < gfx_end:
-        w0, w1 = struct.unpack_from(">II", model.data, offset)
+    commands = (pose.commands() if pose is not None else
+                ((offset, *struct.unpack_from(">II", model.data, offset))
+                 for offset in range(gfx_start, gfx_end, 8)))
+    for offset, w0, w1 in commands:
         opcode = w0 >> 24
 
         if opcode == 0xB8:
-            display_list_ranges[list_index] = (
+            display_list_ranges[pose.current_list if pose is not None else list_index] = (
                 list_triangle_start, len(triangles) - list_triangle_start)
             list_index = (offset - gfx_start) // 8 + 1
             list_triangle_start = len(triangles)
@@ -463,7 +468,21 @@ def interpret_display_list(model):
 
                 for i in range(n):
                     if v0 + i < len(vertex_cache):
-                        vertex_cache[v0 + i] = vertex_index + i
+                        if pose is None:
+                            vertex_cache[v0 + i] = vertex_index + i
+                        else:
+                            if vertex_index + i >= model.vertex_count:
+                                raise ValueError('Canonical vertex load exceeds model')
+                            raw = model.read_vertex(vertex_index + i)
+                            vertex = BanjoVertex(**{k: raw[k] for k in BanjoVertex.__dataclass_fields__})
+                            vertex.x, vertex.y, vertex.z = pose.transform_load(
+                                vertex, (offset-gfx_start)//8, v0+i, vertex_index+i)
+                            vertex_cache[v0+i] = len(loaded_vertices)
+                            loaded_vertices.append(vertex)
+                if pose is not None and v0+n > len(vertex_cache):
+                    raise ValueError('Canonical vertex load exceeds cache')
+            elif pose is not None:
+                raise ValueError('Invalid canonical vertex address')
 
         elif opcode == 0xBF:
             slots = (
@@ -471,6 +490,10 @@ def interpret_display_list(model):
                 ((w1 >> 8) & 0xFF) // 2,
                 (w1 & 0xFF) // 2,
             )
+
+            if pose is not None and any(s >= 32 or vertex_cache[s] is None for s in slots):
+                pose.invalid_references += 1
+                raise ValueError('Invalid canonical triangle cache reference')
 
             if all(0 <= slot < len(vertex_cache) for slot in slots):
                 indices = tuple(vertex_cache[slot] for slot in slots)
@@ -497,6 +520,9 @@ def interpret_display_list(model):
             )
 
             for a, b, c in (slots[:3], slots[3:]):
+                if pose is not None and any(s >= 32 or vertex_cache[s] is None for s in (a,b,c)):
+                    pose.invalid_references += 1
+                    raise ValueError('Invalid canonical triangle cache reference')
                 if all(0 <= slot < len(vertex_cache) for slot in (a, b, c)):
                     indices = (
                         vertex_cache[a],
@@ -633,7 +659,6 @@ def interpret_display_list(model):
                         )
                     )
                     current_material_index = len(materials) - 1
-        offset += 8
 
     sampler = None
     render_tile = tile_state[0]
@@ -645,8 +670,8 @@ def interpret_display_list(model):
         )
 
 
-    vertices = []
-    for index in range(model.vertex_count):
+    vertices = loaded_vertices
+    for index in range(model.vertex_count if pose is None else 0):
         vertex = model.read_vertex(index)
         vertices.append(
             BanjoVertex(
@@ -706,6 +731,7 @@ def interpret_display_list(model):
         materials=materials,
         sampler=sampler,
         display_list_ranges=display_list_ranges,
+        pose=pose,
     )
 
 
