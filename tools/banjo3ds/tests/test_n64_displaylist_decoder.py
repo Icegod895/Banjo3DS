@@ -639,6 +639,41 @@ class TestN64DisplayListDecoder(unittest.TestCase):
             ),
         )
 
+    def test_culling_set_clear_and_triangle_inheritance(self):
+        from tools.banjo3ds.n64_displaylist_decoder import BanjoCullMode as C
+        commands = [(0x04000C2F, 0x01000000)]
+        expected = []
+        # Change state after vertex loading, and exercise both triangle opcodes.
+        for command, state in [
+            ((0xB7000000, 0x1000), C.FRONT),
+            ((0xB7000000, 0x2000), C.BOTH),
+            ((0xB7000000, 0x80204), C.BOTH),
+            ((0xB6000000, 0x80204), C.BOTH),
+            ((0xB6000000, 0x1000), C.BACK),
+            ((0xB6000000, 0x1000), C.BACK),
+            ((0xB6000000, 0x3000), C.NONE),
+        ]:
+            commands.extend([command, (0xBF000000, 0x00000204),
+                             (0xB1000204, 0x00040200)])
+            expected.extend([state] * 3)
+        result = interpret_display_list(FakeModel(commands))
+        self.assertEqual([t.cull_mode for t in result.triangles], expected)
+
+    def test_real_asset_culling_counts(self):
+        from collections import Counter
+        from tools.banjo3ds.n64_displaylist_decoder import BanjoCullMode as C
+        from tools.banjo3ds.export_3ds_model import build_draw_batches
+        for asset, counts, draws in [
+            ('14CF', {C.BACK: 3136}, 436),
+            ('14D0', {C.BACK: 170, C.NONE: 199}, 46),
+            ('08A1', {C.BACK: 1}, 1),
+        ]:
+            with self.subTest(asset=asset):
+                data = interpret_display_list(BKModel(f'assets/model/{asset}.model.bin'))
+                self.assertEqual(Counter(t.cull_mode for t in data.triangles), counts)
+                self.assertEqual(len(data.triangles), sum(counts.values()))
+                self.assertEqual(len(build_draw_batches(data.triangles)), draws)
+
     def test_applies_render_mode_index_to_triangle(self):
         commands = [
             (0x06000000, 0x03000020),

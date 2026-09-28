@@ -548,7 +548,28 @@ static void sceneRender(void)
     );
 
     for (unsigned int i = 0; i < BANJO_DRAW_COUNT; i++) {
+        if (i == BANJO_OPA_DRAW_COUNT) {
+            // Static XLU pass: preserve depth comparison, but do not write depth.
+            C3D_DepthTest(true, GPU_GREATER, GPU_WRITE_COLOR);
+            C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD,
+                GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA,
+                GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA);
+        }
         const Banjo3DSDraw *draw = &banjo_draws[i];
+        // This left-handed viewer preserves N64 front faces as clockwise.
+        switch (draw->cull_mode) {
+            case BANJO_CULL_BOTH:
+                continue;
+            case BANJO_CULL_BACK:
+                C3D_CullFace(GPU_CULL_FRONT_CCW);
+                break;
+            case BANJO_CULL_FRONT:
+                C3D_CullFace(GPU_CULL_BACK_CCW);
+                break;
+            case BANJO_CULL_NONE:
+                C3D_CullFace(GPU_CULL_NONE);
+                break;
+        }
 
 #if BANJO_MATERIAL_COUNT > 0
         if (draw->material_index >= 0) {
@@ -587,6 +608,9 @@ static void sceneRender(void)
             draw->vertex_count
         );
     }
+    if (BANJO_XLU_DRAW_COUNT > 0)
+        C3D_DepthTest(true, GPU_GREATER, GPU_WRITE_ALL);
+    // Alpha blend factors above match the existing Citro3D defaults.
 }
 
 static void sceneExit(void)

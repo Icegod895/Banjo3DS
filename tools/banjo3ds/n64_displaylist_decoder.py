@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 from pathlib import Path
+from enum import IntFlag
 import struct
 import sys
 
@@ -30,6 +31,13 @@ class BanjoVertex:
     a: int
 
 
+class BanjoCullMode(IntFlag):
+    NONE = 0
+    FRONT = 1
+    BACK = 2
+    BOTH = FRONT | BACK
+
+
 @dataclass
 class BanjoTriangle:
     v0: int
@@ -38,6 +46,7 @@ class BanjoTriangle:
     material_index: int | None = None
     combine: "BanjoCombine | None" = None
     render_mode_index: int | None = None
+    cull_mode: BanjoCullMode = BanjoCullMode.NONE
 
 @dataclass
 class BanjoPixel:
@@ -410,6 +419,7 @@ def interpret_display_list(model):
     current_palette = None
     current_combine = None
     current_render_mode_index = None
+    current_cull_mode = BanjoCullMode.NONE
     texture_scale_s = 0xFFFF
     texture_scale_t = 0xFFFF
     texture_level = 0
@@ -422,7 +432,11 @@ def interpret_display_list(model):
         w0, w1 = struct.unpack_from(">II", model.data, offset)
         opcode = w0 >> 24
 
-        if opcode == 0xFC:
+        if opcode == 0xB7:
+            current_cull_mode |= BanjoCullMode((w1 >> 12) & 3)
+        elif opcode == 0xB6:
+            current_cull_mode &= ~BanjoCullMode((w1 >> 12) & 3)
+        elif opcode == 0xFC:
             current_combine = decode_combine(w0, w1)
 
         elif opcode == 0x04:
@@ -457,6 +471,7 @@ def interpret_display_list(model):
                             material_index=current_material_index,
                             combine=current_combine,
                             render_mode_index=current_render_mode_index,
+                            cull_mode=current_cull_mode,
                         )
                     )
 
@@ -485,6 +500,7 @@ def interpret_display_list(model):
                                 material_index=current_material_index,
                                 combine=current_combine,
                                 render_mode_index=current_render_mode_index,
+                                cull_mode=current_cull_mode,
                             )
                         )
 

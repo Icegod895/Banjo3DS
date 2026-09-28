@@ -155,7 +155,7 @@ def build_draw_batches(triangles):
         material = triangle.material_index if triangle.material_index is not None else -1
         mode = triangle.render_mode_index if triangle.render_mode_index is not None else -1
         combine = exported_combine_fields(triangle.combine)
-        state = (material, mode, combine)
+        state = (material, mode, combine, triangle.cull_mode)
         first_vertex = index * 3
         if batches and batches[-1][2:] == state:
             first, count, *previous_state = batches[-1]
@@ -166,7 +166,35 @@ def build_draw_batches(triangles):
     return batches
 
 
-def export_header(render_data):
+def combine_render_passes(opa, xlu):
+    """Combine static passes, preserving asset-local texture identities and order."""
+    from dataclasses import replace
+    from tools.banjo3ds.n64_displaylist_decoder import BanjoRenderData
+
+    if opa.sampler != xlu.sampler:
+        raise ValueError("Combined passes require the same model-wide sampler")
+    combined = BanjoRenderData([], [], [], [], [], opa.sampler)
+    for data in (opa, xlu):
+        vertex_offset = len(combined.vertices)
+        material_offset = len(combined.materials)
+        load_offset = len(combined.texture_loads)
+        texture_ids = {texture.texture_index: len(combined.textures) + i
+                       for i, texture in enumerate(data.textures)}
+        combined.vertices.extend(data.vertices)
+        combined.textures.extend(replace(t, texture_index=texture_ids[t.texture_index])
+                                 for t in data.textures)
+        combined.texture_loads.extend(replace(t, texture_index=texture_ids[t.texture_index])
+                                      for t in data.texture_loads)
+        combined.materials.extend(replace(m, texture_load_index=m.texture_load_index + load_offset)
+                                  for m in data.materials)
+        combined.triangles.extend(replace(
+            t, v0=t.v0 + vertex_offset, v1=t.v1 + vertex_offset, v2=t.v2 + vertex_offset,
+            material_index=t.material_index + material_offset if t.material_index is not None else None,
+        ) for t in data.triangles)
+    return combined, len(opa.triangles)
+
+
+def export_header(render_data, xlu_triangle_start=None):
     vertex_data = export_triangle_vertices(render_data)
     vertex_count = len(render_data.triangles) * 3
     texture_fields = ""
@@ -310,11 +338,19 @@ def export_header(render_data):
         "    float v;\n"
     )
 
-    batches = build_draw_batches(render_data.triangles)
+    if xlu_triangle_start is None:
+        xlu_triangle_start = len(render_data.triangles)
+    if not 0 <= xlu_triangle_start <= len(render_data.triangles):
+        raise ValueError("Invalid XLU pass boundary")
+    batches = build_draw_batches(render_data.triangles[:xlu_triangle_start])
+    opa_draw_count = len(batches)
+    batches.extend((first + xlu_triangle_start * 3, count, material, mode, combine, cull)
+                   for first, count, material, mode, combine, cull in
+                   build_draw_batches(render_data.triangles[xlu_triangle_start:]))
     draws = "".join(
-        f"    {{ {first}, {count}, {material}, {mode}, "
+        f"    {{ {first}, {count}, {material}, {mode}, {int(cull)}, "
         f"{{ {', '.join(str(value) for value in combine)} }} }},\n"
-        for first, count, material, mode, combine in batches
+        for first, count, material, mode, combine, cull in batches
     )
 
     draw_count = len(batches)
@@ -328,11 +364,14 @@ def export_header(render_data):
             "    unsigned char Aa1, Ab1, Ac1, Ad1;\n"
             "} Banjo3DSCombine;\n"
             "\n"
+            "enum { BANJO_CULL_NONE = 0, BANJO_CULL_FRONT = 1,\n"
+            "       BANJO_CULL_BACK = 2, BANJO_CULL_BOTH = 3 };\n"
             "typedef struct {\n"
             "    unsigned int first_vertex;\n"
             "    unsigned int vertex_count;\n"
             "    int material_index;\n"
             "    int render_mode_index;\n"
+            "    unsigned int cull_mode;\n"
             "    Banjo3DSCombine combine;\n"
             "} Banjo3DSDraw;\n"
             "\n"
@@ -368,6 +407,8 @@ def export_header(render_data):
         f"{texture_data}"
         f"{material_data}"
         f"{draw_data}"
+        f"#define BANJO_OPA_DRAW_COUNT {opa_draw_count}\n"
+        f"#define BANJO_XLU_DRAW_COUNT {len(batches) - opa_draw_count}\n"
     )
 
 
@@ -429,16 +470,27 @@ def export_model(model_path):
     return export_header(render_data)
 
 
+def export_models(opa_path, xlu_path):
+    from tools.banjo3ds.n64_displaylist_decoder import BKModel, interpret_display_list
+
+    data, boundary = combine_render_passes(
+        interpret_display_list(BKModel(opa_path)),
+        interpret_display_list(BKModel(xlu_path)),
+    )
+    return export_header(data, boundary)
+
+
 def main(argv):
     from pathlib import Path
 
-    if len(argv) != 2:
-        raise SystemExit("usage: export_3ds_model.py MODEL OUTPUT")
+    if len(argv) not in (2, 3):
+        raise SystemExit("usage: export_3ds_model.py OPA_MODEL OUTPUT [XLU_MODEL]")
 
     model_path = Path(argv[0])
     output_path = Path(argv[1])
 
-    output_path.write_text(export_model(model_path))
+    output_path.write_text(export_models(model_path, Path(argv[2]))
+                           if len(argv) == 3 else export_model(model_path))
 
     return 0
 
