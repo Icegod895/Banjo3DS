@@ -132,6 +132,8 @@ class BanjoRenderData:
     texture_loads: list[BanjoTextureLoad]
     materials: list[BanjoMaterial] = field(default_factory=list)
     sampler: BanjoSampler | None = None
+    # gfx-list entry -> (first emitted triangle, triangle count), asset-local.
+    display_list_ranges: dict = field(default_factory=dict)
 
 
 class BKModel:
@@ -428,11 +430,19 @@ def interpret_display_list(model):
     tile_state = [None] * 8
 
     offset = gfx_start
+    display_list_ranges = {}
+    list_index = 0
+    list_triangle_start = 0
     while offset < gfx_end:
         w0, w1 = struct.unpack_from(">II", model.data, offset)
         opcode = w0 >> 24
 
-        if opcode == 0xB7:
+        if opcode == 0xB8:
+            display_list_ranges[list_index] = (
+                list_triangle_start, len(triangles) - list_triangle_start)
+            list_index = (offset - gfx_start) // 8 + 1
+            list_triangle_start = len(triangles)
+        elif opcode == 0xB7:
             current_cull_mode |= BanjoCullMode((w1 >> 12) & 3)
         elif opcode == 0xB6:
             current_cull_mode &= ~BanjoCullMode((w1 >> 12) & 3)
@@ -694,6 +704,7 @@ def interpret_display_list(model):
         texture_loads=texture_loads,
         materials=materials,
         sampler=sampler,
+        display_list_ranges=display_list_ranges,
     )
 
 

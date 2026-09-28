@@ -43,6 +43,7 @@ static GPU_TEXTURE_WRAP_PARAM textureWrapTo3DS(int wrap)
 
 static struct {
     float yawDegrees, pitchDegrees, zoom;
+    float eyeDistance;
     float focusX, focusY, focusZ;
     u64 lastUpdateMs;
 } camera;
@@ -68,6 +69,7 @@ static void cameraReset(void)
     camera.yawDegrees = 145.0f;
     camera.pitchDegrees = -20.0f;
     camera.zoom = 1.0f;
+    camera.eyeDistance = 20000.0f;
     camera.focusX = 102.5f;
     camera.focusY = 189.5f;
     camera.focusZ = 511.5f;
@@ -529,32 +531,10 @@ static void applyCombine(
     }
 }
 
-static void sceneRender(void)
+static void sceneDrawRange(unsigned int first, unsigned int count,
+    const Banjo3DSRenderState* render_state)
 {
-    const Banjo3DSRenderState render_state = {
-        .primitive_color = 0xFF000000u,
-        .environment_color = 0xFFFFFFFFu,
-    };
-
-    C3D_FVUnifMtx4x4(
-        GPU_VERTEX_SHADER,
-        uLoc_projection,
-        &projection
-    );
-    C3D_FVUnifMtx4x4(
-        GPU_VERTEX_SHADER,
-        uLoc_modelView,
-        &modelView
-    );
-
-    for (unsigned int i = 0; i < BANJO_DRAW_COUNT; i++) {
-        if (i == BANJO_OPA_DRAW_COUNT) {
-            // Static XLU pass: preserve depth comparison, but do not write depth.
-            C3D_DepthTest(true, GPU_GREATER, GPU_WRITE_COLOR);
-            C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD,
-                GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA,
-                GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA);
-        }
+    for (unsigned int i = first; i < first + count; i++) {
         const Banjo3DSDraw *draw = &banjo_draws[i];
         // This left-handed viewer preserves N64 front faces as clockwise.
         switch (draw->cull_mode) {
@@ -576,7 +556,7 @@ static void sceneRender(void)
             const Banjo3DSMaterial *material =
                 &banjo_materials[draw->material_index];
 
-            applyCombine(&draw->combine, &render_state);
+            applyCombine(&draw->combine, render_state);
             C3D_TexBind(
                 0,
                 &textures[material->texture_slot]
@@ -608,8 +588,83 @@ static void sceneRender(void)
             draw->vertex_count
         );
     }
-    if (BANJO_XLU_DRAW_COUNT > 0)
+}
+
+#if BANJO_GEO_NODE_COUNT > 0
+static C3D_FVec cameraSortProxyEye(void)
+{
+    return FVec4_New(
+        camera.focusX - camera.eyeDistance * modelView.r[2].x,
+        camera.focusY - camera.eyeDistance * modelView.r[2].y,
+        camera.focusZ - camera.eyeDistance * modelView.r[2].z,
+        1.0f);
+}
+
+// SORT-only tree: conditional visibility was deliberately flattened at export.
+static void sceneDrawGeo(int index, C3D_FVec eye,
+    const Banjo3DSRenderState* render_state)
+{
+    while (index >= 0) {
+        const Banjo3DSGeoNode* node = &banjo_geo_nodes[index];
+        if (node->kind == 0) {
+            sceneDrawRange(node->first_draw, node->draw_count, render_state);
+        } else {
+            // Static map coordinates; equality belongs to child1 -> child2.
+            float q = (node->point2[0] - node->point1[0]) * (eye.x - node->point1[0])
+                    + (node->point2[1] - node->point1[1]) * (eye.y - node->point1[1])
+                    + (node->point2[2] - node->point1[2]) * (eye.z - node->point1[2]);
+            if (node->flags & 1) {
+                // Original RUN_BOTH_BIT actually selects ONE child.
+                sceneDrawGeo(q >= 0.0f ? node->child2 : node->child1, eye, render_state);
+            } else {
+                sceneDrawGeo(q >= 0.0f ? node->child1 : node->child2, eye, render_state);
+                sceneDrawGeo(q >= 0.0f ? node->child2 : node->child1, eye, render_state);
+            }
+        }
+        index = node->next;
+    }
+}
+#endif
+
+static void sceneRender(void)
+{
+    const Banjo3DSRenderState render_state = {
+        .primitive_color = 0xFF000000u,
+        .environment_color = 0xFFFFFFFFu,
+    };
+
+    C3D_FVUnifMtx4x4(
+        GPU_VERTEX_SHADER,
+        uLoc_projection,
+        &projection
+    );
+    C3D_FVUnifMtx4x4(
+        GPU_VERTEX_SHADER,
+        uLoc_modelView,
+        &modelView
+    );
+
+#if BANJO_GEO_NODE_COUNT > 0
+    C3D_FVec eye = cameraSortProxyEye();
+    if (BANJO_OPA_GEO_ROOT >= 0)
+        sceneDrawGeo(BANJO_OPA_GEO_ROOT, eye, &render_state);
+    else
+#endif
+        sceneDrawRange(0, BANJO_OPA_DRAW_COUNT, &render_state);
+
+    if (BANJO_XLU_DRAW_COUNT > 0) {
+        C3D_DepthTest(true, GPU_GREATER, GPU_WRITE_COLOR);
+        C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD,
+            GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA,
+            GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA);
+#if BANJO_GEO_NODE_COUNT > 0
+        if (BANJO_XLU_GEO_ROOT >= 0)
+            sceneDrawGeo(BANJO_XLU_GEO_ROOT, eye, &render_state);
+        else
+#endif
+            sceneDrawRange(BANJO_OPA_DRAW_COUNT, BANJO_XLU_DRAW_COUNT, &render_state);
         C3D_DepthTest(true, GPU_GREATER, GPU_WRITE_ALL);
+    }
     // Alpha blend factors above match the existing Citro3D defaults.
 }
 

@@ -148,7 +148,7 @@ def exported_combine_fields(combine):
     )
 
 
-def build_draw_batches(triangles):
+def build_draw_batches(triangles, boundaries=()):
     """Return contiguous draws without losing any exported triangle state."""
     batches = []
     for index, triangle in enumerate(triangles):
@@ -157,13 +157,48 @@ def build_draw_batches(triangles):
         combine = exported_combine_fields(triangle.combine)
         state = (material, mode, combine, triangle.cull_mode)
         first_vertex = index * 3
-        if batches and batches[-1][2:] == state:
+        if index not in boundaries and batches and batches[-1][2:] == state:
             first, count, *previous_state = batches[-1]
             if first + count == first_vertex:
                 batches[-1] = (first, count + 3, *previous_state)
                 continue
         batches.append((first_vertex, 3, *state))
     return batches
+
+
+def build_draw_plan(render_data, xlu_triangle_start=None, geo_sources=()):
+    """geo_sources: (BKModel, asset-local render data, triangle offset) tuples.
+
+    Geometry without SORT keeps the existing flat pass. SORT-only models
+    retain display-list boundaries so whole subtrees can be reordered.
+    """
+    from tools.banjo3ds.geo_sort import read_sort_tree, sort_boundaries, compile_draw_tree
+
+    total = len(render_data.triangles)
+    boundary = total if xlu_triangle_start is None else xlu_triangle_start
+    if not 0 <= boundary <= total:
+        raise ValueError("Invalid XLU pass boundary")
+    trees = []
+    boundaries = {0, boundary, total}
+    for model, source, offset in geo_sources:
+        tree = read_sort_tree(model.data)
+        if not tree:
+            continue
+        pass_index = 0 if offset == 0 else 1
+        expected_start, expected_end = ((0, boundary), (boundary, total))[pass_index]
+        if offset != expected_start or offset + len(source.triangles) != expected_end:
+            raise ValueError("SORT source must occupy exactly one render pass")
+        if any(entry[0] == pass_index for entry in trees):
+            raise ValueError("Multiple SORT trees in one pass")
+        cuts = sort_boundaries(tree, source.display_list_ranges, len(source.triangles))
+        boundaries.update(offset + cut for cut in cuts)
+        trees.append((pass_index, tree, source.display_list_ranges, offset))
+    batches = build_draw_batches(render_data.triangles, boundaries)
+    opa_count = sum(first < boundary * 3 for first, *_ in batches)
+    nodes, roots = [], [-1, -1]
+    for pass_index, tree, ranges, offset in trees:
+        roots[pass_index] = compile_draw_tree(tree, ranges, batches, offset, nodes)
+    return batches, opa_count, nodes, roots
 
 
 def combine_render_passes(opa, xlu):
@@ -194,7 +229,7 @@ def combine_render_passes(opa, xlu):
     return combined, len(opa.triangles)
 
 
-def export_header(render_data, xlu_triangle_start=None):
+def export_header(render_data, xlu_triangle_start=None, geo_sources=()):
     vertex_data = export_triangle_vertices(render_data)
     vertex_count = len(render_data.triangles) * 3
     texture_fields = ""
@@ -338,15 +373,9 @@ def export_header(render_data, xlu_triangle_start=None):
         "    float v;\n"
     )
 
-    if xlu_triangle_start is None:
-        xlu_triangle_start = len(render_data.triangles)
-    if not 0 <= xlu_triangle_start <= len(render_data.triangles):
-        raise ValueError("Invalid XLU pass boundary")
-    batches = build_draw_batches(render_data.triangles[:xlu_triangle_start])
-    opa_draw_count = len(batches)
-    batches.extend((first + xlu_triangle_start * 3, count, material, mode, combine, cull)
-                   for first, count, material, mode, combine, cull in
-                   build_draw_batches(render_data.triangles[xlu_triangle_start:]))
+    from tools.banjo3ds.geo_sort import export_geo_header
+    batches, opa_draw_count, geo_nodes, geo_roots = build_draw_plan(
+        render_data, xlu_triangle_start, geo_sources)
     draws = "".join(
         f"    {{ {first}, {count}, {material}, {mode}, {int(cull)}, "
         f"{{ {', '.join(str(value) for value in combine)} }} }},\n"
@@ -409,6 +438,7 @@ def export_header(render_data, xlu_triangle_start=None):
         f"{draw_data}"
         f"#define BANJO_OPA_DRAW_COUNT {opa_draw_count}\n"
         f"#define BANJO_XLU_DRAW_COUNT {len(batches) - opa_draw_count}\n"
+        f"{export_geo_header(geo_nodes, geo_roots)}"
     )
 
 
@@ -467,17 +497,16 @@ def export_model(model_path):
     model = BKModel(model_path)
     render_data = interpret_display_list(model)
 
-    return export_header(render_data)
+    return export_header(render_data, geo_sources=[(model, render_data, 0)])
 
 
 def export_models(opa_path, xlu_path):
     from tools.banjo3ds.n64_displaylist_decoder import BKModel, interpret_display_list
 
-    data, boundary = combine_render_passes(
-        interpret_display_list(BKModel(opa_path)),
-        interpret_display_list(BKModel(xlu_path)),
-    )
-    return export_header(data, boundary)
+    opa_model, xlu_model = BKModel(opa_path), BKModel(xlu_path)
+    opa, xlu = interpret_display_list(opa_model), interpret_display_list(xlu_model)
+    data, boundary = combine_render_passes(opa, xlu)
+    return export_header(data, boundary, [(opa_model, opa, 0), (xlu_model, xlu, boundary)])
 
 
 def main(argv):
