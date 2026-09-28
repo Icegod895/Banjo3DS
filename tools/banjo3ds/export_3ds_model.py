@@ -555,7 +555,7 @@ def export_canonical_banjo(model_path):
     return export_header(decode_canonical_banjo(BKModel(model_path)))
 
 
-def export_scene(opa_path, xlu_path, banjo_path, idle_animation_path=None, *, runtime_actor=True):
+def export_scene(opa_path, xlu_path, banjo_path, idle_animation_path=None, *, runtime_actor=True, walk_animation_path=None):
     from tools.banjo3ds.canonical_banjo import decode_canonical_banjo
     from tools.banjo3ds.n64_displaylist_decoder import BKModel, interpret_display_list
 
@@ -577,21 +577,34 @@ def export_scene(opa_path, xlu_path, banjo_path, idle_animation_path=None, *, ru
     if runtime_actor:
         from tools.banjo3ds.floor_collision import export_collision
         header += export_collision((opa_path, xlu_path))
+    if walk_animation_path is not None:
+        if not runtime_actor or idle_animation_path is None:
+            raise ValueError('Walk packet requires the model-local idle actor')
+        from tools.banjo3ds.pose_binding import export_pose_packet
+        packet = export_pose_packet(banjo_path, walk_animation_path)
+        header += ('\n/* Standalone B3P3 v1 walk pose packet. */\n'
+                   f'#define BANJO_ACTOR_FIRST_VERTEX {actor_start * 3}\n'
+                   f'#define BANJO_ACTOR_VERTEX_COUNT {len(banjo.triangles) * 3}\n'
+                   f'#define BANJO_POSE_PACKET_SIZE {len(packet)}\n'
+                   'static const unsigned char banjo_pose_packet[] = {\n')
+        header += ''.join('    ' + ', '.join(f'0x{v:02x}' for v in packet[i:i+16]) + ',\n'
+                          for i in range(0, len(packet), 16)) + '};\n'
     return header
 
 
 def main(argv):
     from pathlib import Path
 
-    if len(argv) not in (2, 3, 4, 5):
-        raise SystemExit("usage: export_3ds_model.py OPA_MODEL OUTPUT [XLU_MODEL [CANONICAL_BANJO_MODEL [IDLE_ANIMATION]]]")
+    if len(argv) not in (2, 3, 4, 5, 6):
+        raise SystemExit("usage: export_3ds_model.py OPA_MODEL OUTPUT [XLU_MODEL [CANONICAL_BANJO_MODEL [IDLE_ANIMATION [WALK_ANIMATION]]]]")
 
     model_path = Path(argv[0])
     output_path = Path(argv[1])
 
     if len(argv) >= 4:
         output = export_scene(model_path, Path(argv[2]), Path(argv[3]),
-                              Path(argv[4]) if len(argv) == 5 else None)
+                              Path(argv[4]) if len(argv) >= 5 else None,
+                              walk_animation_path=Path(argv[5]) if len(argv) == 6 else None)
     elif len(argv) == 3:
         output = export_models(model_path, Path(argv[2]))
     else:

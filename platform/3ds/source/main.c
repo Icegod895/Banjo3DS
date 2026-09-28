@@ -5,6 +5,7 @@
 
 #include "vshader_shbin.h"
 #include "movement.h"
+#include "walk_animation.h"
 #include "generated_model.h"
 
 #define CLEAR_COLOR 0x68B0D8FF
@@ -20,6 +21,11 @@ static shaderProgram_s program;
 static int uLoc_projection, uLoc_modelView;
 static C3D_Mtx projection, modelView;
 static void *vbo_data;
+static WalkAnimation walkAnimation;
+/* Debugger-visible CPU measurements: evaluator + corner XYZ propagation,
+ * excluding GPU wait/cache flush. No console work in the measured interval. */
+volatile float banjoPoseLastUs, banjoPoseMaxUs;
+volatile u32 banjoPoseUpdateCount;
 
 #if BANJO_TEXTURE_COUNT > 0
 static C3D_Tex textures[BANJO_TEXTURE_COUNT];
@@ -732,11 +738,28 @@ int main(void)
         hidCircleRead(&pad);
         u32 held = hidKeysHeld();
         cameraUpdate(down, held, &pad, dt);
-        movementUpdate(&actor, pad.dx, pad.dy, camera.yawDegrees, dt,
+        MovementActor previousActor = actor;
+        bool accepted = movementUpdate(&actor, pad.dx, pad.dy, camera.yawDegrees, dt,
             (held & KEY_Y) != 0, banjo_floor_vertices, banjo_floor_triangles,
             BANJO_FLOOR_TRIANGLE_COUNT);
 
-        C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
+        if (!C3D_FrameBegin(C3D_FRAME_SYNCDRAW)) continue;
+        /* FrameBegin waits for the previous GPU submission before VBO writes. */
+        float dx = actor.x - previousActor.x, dz = actor.z - previousActor.z;
+        float speed = accepted && dt > 0 ? sqrtf(dx*dx + dz*dz) / dt : 0;
+        u64 poseStart = svcGetSystemTick();
+        bool changed = walkAnimationUpdate(&walkAnimation,
+            banjo_pose_packet, BANJO_POSE_PACKET_SIZE, accepted, speed, dt,
+            vbo_data, banjo_vertices, BANJO_VERTEX_COUNT,
+            BANJO_ACTOR_FIRST_VERTEX, BANJO_ACTOR_VERTEX_COUNT, sizeof(Banjo3DSVertex));
+        if (accepted && speed > 0) {
+            banjoPoseLastUs = (svcGetSystemTick() - poseStart) / CPU_TICKS_PER_USEC;
+            if (banjoPoseLastUs > banjoPoseMaxUs) banjoPoseMaxUs = banjoPoseLastUs;
+            ++banjoPoseUpdateCount;
+        }
+        if (changed)
+            GSPGPU_FlushDataCache((Banjo3DSVertex *)vbo_data + BANJO_ACTOR_FIRST_VERTEX,
+                BANJO_ACTOR_VERTEX_COUNT * sizeof(Banjo3DSVertex));
         C3D_RenderTargetClear(target, C3D_CLEAR_ALL, CLEAR_COLOR, 0);
         C3D_FrameDrawOn(target);
         sceneRender();
