@@ -102,7 +102,7 @@ class TestProductionStaticIdle(unittest.TestCase):
         self.assertEqual(ov[:9408],nv[:9408])
         self.assertEqual(ov[11493:],nv[11493:])
         self.assertEqual(STATIC_BANJO_TRANSLATION,(0,1800,0))
-        expected = [struct.pack('>3f',e['xyz'][0],e['xyz'][1]+1800,e['xyz'][2])
+        expected = [struct.pack('>3f',e['xyz'][0],e['xyz'][1],e['xyz'][2])
                     for triangle in self.reference.triangles
                     for e in (self.reference.loads[i] for i in triangle)]
         actual = []

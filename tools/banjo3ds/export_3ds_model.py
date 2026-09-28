@@ -534,7 +534,8 @@ def export_models(opa_path, xlu_path):
     return export_header(data, boundary, [(opa_model, opa, 0), (xlu_model, xlu, boundary)])
 
 
-# Diagnostic placement, separate from model-local skeletal pose baking.
+# Historical M3 placement retained for byte-golden regression only.
+# The current viewer exports local vertices and places Banjo at runtime.
 # Central plateau Y=1800; idle min Y=0.11383056640625 rests just above it.
 # Diagnostic placement only, not the original Spiral Mountain spawn point.
 STATIC_BANJO_TRANSLATION = (0, 1800, 0)
@@ -554,7 +555,7 @@ def export_canonical_banjo(model_path):
     return export_header(decode_canonical_banjo(BKModel(model_path)))
 
 
-def export_scene(opa_path, xlu_path, banjo_path, idle_animation_path=None):
+def export_scene(opa_path, xlu_path, banjo_path, idle_animation_path=None, *, runtime_actor=True):
     from tools.banjo3ds.canonical_banjo import decode_canonical_banjo
     from tools.banjo3ds.n64_displaylist_decoder import BKModel, interpret_display_list
 
@@ -566,11 +567,17 @@ def export_scene(opa_path, xlu_path, banjo_path, idle_animation_path=None):
     else:
         from tools.banjo3ds.static_idle import decode_static_idle
         banjo = decode_static_idle(banjo_model, idle_animation_path)
-    banjo = place_static_banjo(banjo)
+    # Legacy placement remains available only for the historical M3 golden.
+    if not runtime_actor:
+        banjo = place_static_banjo(banjo)
     opaque, actor_start = combine_render_passes(opa, banjo)
     data, xlu_start = combine_render_passes(opaque, xlu)
-    return export_header(data, xlu_start,
-                         [(opa_model, opa, 0), (xlu_model, xlu, xlu_start)], actor_start)
+    header = export_header(data, xlu_start,
+                           [(opa_model, opa, 0), (xlu_model, xlu, xlu_start)], actor_start)
+    if runtime_actor:
+        from tools.banjo3ds.floor_collision import export_collision
+        header += export_collision((opa_path, xlu_path))
+    return header
 
 
 def main(argv):

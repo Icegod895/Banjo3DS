@@ -125,7 +125,7 @@ class TestIdleAnimationReference(unittest.TestCase):
                   '34476fadcd623564674ce815635076058dc8d71dd012775b522e9b80e8859c52'),
                  (export_models(opa,xlu),
                   'fbcf9cf77aba9779db18049990204c921d0012de83c2312d36b288ec5f087057'),
-                 (export_scene(opa,xlu,banjo),
+                 (export_scene(opa,xlu,banjo,runtime_actor=False),
                   'fbcafd19d2f57c6b0ca5abd9132f0173f3a044d12d2e9b14d038eb1267659f43')]
         for output,expected in outputs:
             self.assertEqual(hashlib.sha256(output.encode()).hexdigest(),expected)

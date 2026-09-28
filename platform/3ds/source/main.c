@@ -4,6 +4,7 @@
 #include <math.h>
 
 #include "vshader_shbin.h"
+#include "movement.h"
 #include "generated_model.h"
 
 #define CLEAR_COLOR 0x68B0D8FF
@@ -45,8 +46,9 @@ static struct {
     float yawDegrees, pitchDegrees, zoom;
     float eyeDistance;
     float focusX, focusY, focusZ;
-    u64 lastUpdateMs;
 } camera;
+
+static MovementActor actor = {0.0f, 1800.0f, 0.0f, 0.0f};
 
 static float cameraClamp(float value, float minimum, float maximum)
 {
@@ -73,7 +75,6 @@ static void cameraReset(void)
     camera.focusX = 102.5f;
     camera.focusY = 189.5f;
     camera.focusZ = 511.5f;
-    camera.lastUpdateMs = osGetTime();
 }
 
 static void cameraUpdateMatrices(void)
@@ -88,7 +89,7 @@ static void cameraUpdateMatrices(void)
     Mtx_Translate(&modelView, -camera.focusX, -camera.focusY, -camera.focusZ, true);
 }
 
-static void cameraUpdate(u32 down, u32 held, const circlePosition *pad)
+static void cameraUpdate(u32 down, u32 held, const circlePosition *pad, float dt)
 {
     if (down & KEY_X) {
         cameraReset();
@@ -96,15 +97,11 @@ static void cameraUpdate(u32 down, u32 held, const circlePosition *pad)
         return;
     }
 
-    u64 now = osGetTime();
-    float dt = now >= camera.lastUpdateMs ? (now - camera.lastUpdateMs) * 0.001f : 0.0f;
-    camera.lastUpdateMs = now;
-    dt = cameraClamp(dt, 0.0f, 0.05f);
-    camera.yawDegrees += cameraPadAxis(pad->dx) * 90.0f * dt;
+    camera.yawDegrees += ((held & KEY_Y) ? cameraPadAxis(pad->dx) : 0.0f) * 90.0f * dt;
     if (camera.yawDegrees > 180.0f) camera.yawDegrees -= 360.0f;
     if (camera.yawDegrees < -180.0f) camera.yawDegrees += 360.0f;
     camera.pitchDegrees = cameraClamp(
-        camera.pitchDegrees + cameraPadAxis(pad->dy) * 90.0f * dt, -85.0f, 85.0f);
+        camera.pitchDegrees + ((held & KEY_Y) ? cameraPadAxis(pad->dy) : 0.0f) * 90.0f * dt, -85.0f, 85.0f);
     int zoomDirection = ((held & KEY_R) != 0) - ((held & KEY_L) != 0);
     camera.zoom = cameraClamp(camera.zoom * expf(zoomDirection * dt), 0.1f, 20.0f);
 
@@ -656,7 +653,17 @@ static void sceneRender(void)
 #ifdef BANJO_ACTOR_DRAW_COUNT
     // Original world order: map OPA, character, map XLU. Canonical 034D's
     // FullDepthOpa modes 1 and 3 both use Z_CMP | Z_UPD; retain depth writes.
+    float rows[4][4];
+    C3D_Mtx world, actorModelView;
+    movementActorMatrix(&actor, rows);
+    for (int i = 0; i < 4; ++i)
+        world.r[i] = FVec4_New(rows[i][0], rows[i][1], rows[i][2], rows[i][3]);
+    // Citro3D out = a*b; shader uses matrix rows dotted with column positions.
+    // Keep camera modelView intact, including the SORT proxy-eye calculation.
+    Mtx_Multiply(&actorModelView, &modelView, &world);
+    C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, uLoc_modelView, &actorModelView);
     sceneDrawRange(BANJO_ACTOR_FIRST_DRAW, BANJO_ACTOR_DRAW_COUNT, &render_state);
+    C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, uLoc_modelView, &modelView);
     xlu_first_draw += BANJO_ACTOR_DRAW_COUNT;
 #endif
 
@@ -710,7 +717,11 @@ int main(void)
 
     sceneInit();
 
+    u64 previousFrameMs = osGetTime();
     while (aptMainLoop()) {
+        u64 now = osGetTime();
+        float dt = movementDelta(now, previousFrameMs);
+        previousFrameMs = now;
         hidScanInput();
 
         u32 down = hidKeysDown();
@@ -719,7 +730,11 @@ int main(void)
 
         circlePosition pad;
         hidCircleRead(&pad);
-        cameraUpdate(down, hidKeysHeld(), &pad);
+        u32 held = hidKeysHeld();
+        cameraUpdate(down, held, &pad, dt);
+        movementUpdate(&actor, pad.dx, pad.dy, camera.yawDegrees, dt,
+            (held & KEY_Y) != 0, banjo_floor_vertices, banjo_floor_triangles,
+            BANJO_FLOOR_TRIANGLE_COUNT);
 
         C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
         C3D_RenderTargetClear(target, C3D_CLEAR_ALL, CLEAR_COLOR, 0);

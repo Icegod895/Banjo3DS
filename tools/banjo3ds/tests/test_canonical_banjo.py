@@ -176,7 +176,7 @@ class TestStaticBanjoScene(unittest.TestCase):
         local = positions(standalone)
         self.assertEqual(local,triangle_xyz(self.banjo))
         self.assertEqual(positions(header)[9408:11493],
-                         [(x,y+1800,z) for x,y,z in local])
+                         local)
 
 
 if __name__ == '__main__':
