@@ -1,169 +1,273 @@
-# Banjo-Kazooie (100.0000%)
+# Banjo3DS
 
-<img src="./progress/progress_total.svg">
+**Banjo3DS is an experimental project working toward a native Nintendo 3DS
+port of Banjo-Kazooie, built on the
+[Banjo-Kazooie decompilation project](https://gitlab.com/banjo.decomp/banjo-kazooie).**
 
-### Baserom checksums
+The current build is a Citro3D-based model viewer that renders Spiral
+Mountain's opaque and translucent map geometry with an interactive debug
+camera.
 
-- `baserom.us.v10.z64`: `1fe1632098865f639e22c11b9a81ee8f29c75d7a`
-- `baserom.us.v11.z64`: `ded6ee166e740ad1bc810fd678a84b48e245ab80`
-- `baserom.jp.z64`:     `90726d7e7cd5bf6cdfd38f45c9acbf4d45bd9fd8`
-- `baserom.pal.z64`:    `bb359a75941df74bf7290212c89fbc6e2c5601fe`
+**Banjo3DS is not yet playable.**
 
-# Building
+![Spiral Mountain rendered by Banjo3DS](docs/images/spiral-mountain.png)
 
-The following instructions should work on the following platforms:
-- Ubuntu 18.04 or higher (x86_64)
-- Docker only
-    - Linux (x86_64, ARM)
-    - macOS (x86_64, ARM)
+*Spiral Mountain rendered by the current Banjo3DS build in Azahar.*
 
-Building Instructions Table Of Contents:
-- [Local (Linux)](#local-linux)
-- [Local (Docker - Linux/macOS)](#local-docker---linuxmacos)
-- [Cloud (GitLab CI)](#cloud-gitlab-ci))
+## Current status
 
-## Local (Linux)
+Banjo3DS is currently focused on bringing the original game's data and
+rendering pipeline to the Nintendo 3DS.
 
-Works with Ubuntu 18.04 or higher.
+The host-side Python tools decode and convert a subset of Banjo-Kazooie's
+Nintendo 64 model and display-list data at build time. The native 3DS target
+renders the generated data using Citro3D.
 
-### 1. Install dependencies
+Spiral Mountain is the main test scene. Its opaque (`14CF`) and translucent
+(`14D0`) map geometry is exported and rendered as separate passes.
+
+The original Banjo-Kazooie gameplay code is present in the repository as
+part of the decompilation, but it is not yet connected to the 3DS target.
+Gameplay, actors, collision, physics and game audio should therefore not
+be considered implemented on 3DS yet.
+
+## What works
+
+The current Banjo3DS pipeline includes:
+
+- Native Nintendo 3DS rendering using Citro3D and libctru
+- Conversion of N64 model geometry to a 3DS-friendly vertex format
+- Vertex positions, texture coordinates and vertex RGBA colors
+- Support for the currently implemented subset of N64 display-list commands
+- Texture decoding for CI4, CI8, RGBA16, RGBA32 and IA8
+- Texture wrapping and sampling support used by the current test models
+- Translation of currently supported N64 combiner configurations
+- Batching of adjacent triangles with compatible render state while preserving order
+- Separate opaque (OPA) and translucent (XLU) rendering passes
+- Alpha blending for the current translucent geometry
+- Per-draw culling state
+- An interactive debug/orbit camera
+- Spiral Mountain (`14CF` + `14D0`) as the current test scene
+- Python regression tests for the model decoder and exporter
+
+Several parts of the N64 graphics pipeline are still only partially
+implemented. Rendering the current test scene does not imply complete
+N64 rendering compatibility.
+
+## Debug camera controls
+
+The current build is a model viewer, so the controls manipulate the camera
+rather than Banjo.
+
+| Input | Action |
+| --- | --- |
+| Circle Pad | Orbit camera |
+| L / R | Zoom out / in |
+| D-Pad | Pan camera focus |
+| X | Reset camera |
+| START | Exit |
+
+## Building the 3DS target
+
+### Requirements
+
+The current build expects:
+
+- devkitPro / devkitARM
+- libctru
+- Citro3D
+- make
+- A Python virtual environment at `.venv`
+- Extracted Banjo-Kazooie model assets
+
+Run the commands below from the **repository root**, in an environment
+configured for devkitPro's Nintendo 3DS toolchain, including `DEVKITARM`
+and `CTRULIB`. The Makefile invokes `.venv/bin/python`.
+
+If the virtual environment does not already exist:
 
 ```sh
-sudo apt-get update && sudo apt-get install -y $(cat packages.txt)
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-git submodule update --init --recursive
 python3 -m venv .venv
-.venv/bin/python3 -m pip install -r requirements.txt
 ```
 
-### 2. Add baserom
+Prepare the required model assets first using the
+[Original decompilation building instructions](docs/upstream-building.md).
+That document also preserves the existing upstream dependency setup.
+The 3DS build expects these files to exist:
 
-Add the file for `US v1.0` as `baserom.us.v10.z64` in the project folder.
+```text
+assets/model/14CF.model.bin
+assets/model/14D0.model.bin
+```
 
-(optional): Check the baserom checksum
+These files are not tracked by the repository. The current setup uses
+assets extracted from the US v1.0 version of Banjo-Kazooie. The 3DS Makefile
+does not perform the complete ROM extraction process itself.
+
+### Build
+
+Once the required model assets are present:
 
 ```sh
-sha1sum baserom.us.v10.z64
+make -C platform/3ds
 ```
 
-The output should match the checksum specified above.
+The build automatically generates:
 
-### 3. Build
+```text
+platform/3ds/source/generated_model.h
+```
 
-To extract and build everything simply run:
+from the required model assets, then builds the Nintendo 3DS target.
+The resulting build includes:
+
+```text
+platform/3ds/banjo3ds.elf
+platform/3ds/banjo3ds.3dsx
+```
+
+### Tests
+
+Run the decoder/exporter regression tests with:
 
 ```sh
-make
+.venv/bin/python -m unittest discover -s tools/banjo3ds/tests -v
 ```
 
-If you want to build a specific module, instead do:
+Some regression tests load extracted model assets, so the complete suite
+requires local game assets.
 
-```sh
-make <module_id>
+## Asset preparation
+
+Banjo3DS does not track the extracted model assets used by the renderer.
+The existing decompilation tooling starts from a user-supplied
+Banjo-Kazooie ROM and extracts the game's assets:
+
+```text
+user-supplied Banjo-Kazooie ROM
+        |
+        v
+decompression / ROM splitting
+        |
+        v
+bin/assets.bin
+        |
+        v
+bk_asset_tool
+        |
+        v
+assets/model/*.model.bin
+        |
+        v
+Banjo3DS decoder + exporter
+        |
+        v
+generated_model.h
+        |
+        v
+Citro3D renderer
 ```
 
-...where the following are supported values of `<module_id>`
-- `core1`
-- `core2`
-- `MM`
-- `TTC`
-- `CC`
-- `BGS`
-- `FP`
-- `lair`
-- `GV`
-- `CCW`
-- `RBB`
-- `MMM`
-- `SM`
-- `fight`
-- `cutscenes`
+The current 3DS Makefile expects the required model assets to have already
+been generated. See the
+[Original decompilation building instructions](docs/upstream-building.md)
+for the existing ROM setup and extraction/build workflow.
 
-### Version Selection
+## Technical overview
 
-Drop in `us.v10` `us.v11`, `jp`, or `pal` as `baserom.<version>.z64` e.g. `baserom.us.v11.z64`
+The Banjo3DS-specific tooling lives primarily under `tools/banjo3ds/`.
+The native viewer and vertex shader live under `platform/3ds/`.
 
-```sh
-make VERSION=us.v11
+```text
+N64 model.bin
+     |
+     v
+n64_displaylist_decoder.py
+     |  geometry, textures, render state
+     v
+export_3ds_model.py
+     |  batching, texture conversion, 3DS render data
+     v
+generated_model.h
+     |
+     v
+platform/3ds
+     |
+     v
+Citro3D / PICA200
 ```
 
+The exporter preserves triangle order while combining adjacent triangles
+that use compatible state. The current renderer handles Spiral Mountain
+as separate opaque and translucent passes and applies culling per draw.
 
-## Local (Docker - Linux/macOS)
+This pipeline is still under development. It supports a subset of the
+Nintendo 64 graphics pipeline used by the current test scene; some state and
+ordering behavior remain unimplemented or approximate.
 
-### 1. Get the Docker image
+## Known limitations
 
-(if available) you can pull it from GitLab (but you need to be logged in):
+Banjo3DS is a rendering and porting prototype rather than a playable game port.
+Major limitations include:
 
-```sh
-docker login registry.gitlab.com
-docker pull registry.gitlab.com/banjo.decomp/banjo-kazooie:latest
-```
+- No playable Banjo-Kazooie gameplay on the 3DS target yet
+- Actors and gameplay systems are not connected
+- Collision and game physics are not connected
+- Game audio is not connected
+- Banjo player controls are not connected
+- Incomplete geo-tree / SORT support
+- Water animation is not implemented
+- No general support for all maps
+- Incomplete N64 display-list support
+- Incomplete N64 combiner and render-mode emulation
+- Incomplete N64 rendering accuracy
 
-(otherwise) you can build it yourself:
+## Original Banjo-Kazooie decompilation
 
-```sh
-docker build -t banjo-kazooie .
-```
+Banjo3DS is built on the work of the
+[Banjo-Kazooie decompilation project](https://gitlab.com/banjo.decomp/banjo-kazooie).
 
-**NOTE for ARM users** (Windows ARM, Raspberry Pi and similar, or Apple Silicon): Use this command instead:
+That project reconstructed the original Banjo-Kazooie codebase and provides
+the game code, ROM splitting, asset extraction and other tooling on which
+this project builds.
 
-```sh
-docker build --platform linux/amd64 -t banjo-kazooie .
-```
+Banjo3DS adds its experimental Nintendo 3DS target and tooling to translate
+currently supported Nintendo 64 model/render data for the Citro3D renderer.
 
-### 2. Add baserom
+The original decompilation build information and ROM checksums are preserved
+in [Original decompilation building instructions](docs/upstream-building.md).
 
-Follow the same instructions as Step 3 above in "Local (Linux)".
+## Credits
 
-### 3. Run the Docker container
+Banjo3DS would not be possible without the work of the Banjo-Kazooie
+decompilation contributors and the projects and libraries used throughout
+the repository.
 
-```sh
-docker run -it --rm -v $(pwd):/banjo banjo-kazooie 
-```
+The project builds on or uses dependencies including:
 
-**NOTE for ARM users**: Use this command instead:
+- The Banjo-Kazooie decompilation project
+- devkitPro, libctru and Citro3D
+- splat
+- asm-differ
+- asm-processor
+- bk_asset_tool
+- bk_rom_compressor
+- ultralib
 
-```sh
-docker run --platform linux/amd64 -it --rm -v $(pwd):/banjo banjo-kazooie 
-```
+See the repository, its submodules and their respective license files and
+notices for authorship and licensing information.
 
-### 4. Build
+## License and game assets
 
-Follow the same instructions as Step 4 above in "Local (Linux)".
+The repository's root [LICENSE](LICENSE) contains the CC0 1.0 Universal dedication.
 
-To exit Docker, simply type `exit`.
+Dependencies and third-party components may have their own licenses and
+notices. The root license should not be interpreted as applying to all
+third-party software or to original Banjo-Kazooie game assets.
 
-## Cloud (GitLab CI)
+Extracted game assets and ROM files are not tracked as part of the
+Banjo3DS source repository. Building the current viewer requires model
+assets extracted from a user-supplied Banjo-Kazooie ROM.
 
-These are the instructions for building on GitLab CI.
-This applies to the main repo - **if you have a fork**, you will need to follow these steps too!
-
-### 1. Upload the baserom
-
-Upload the file for `US v1.0` as `baserom.us.v10.enc.z64` to a remote server where it can be downloaded from with `wget` or `curl`. The file has to be encrypted with `AES-256-CBC`, as follows:
-
-```sh
-openssl enc -aes-256-cbc -salt -in baserom.us.v10.z64 -out baserom.us.v10.enc.z64
-```
-
-Then, upload the encrypted file to a server and get a direct download link.
-
-Sharing services like Google Drive, Dropbox, or OneDrive might not work, as they require manual interaction to download the file.
-
-### 2. Set up environment variables
-
-In your GitLab project, go to `Settings > CI/CD > Variables` and add the following variables (for each version):
-
-- `BASEROM_<VER>_URL`: a direct download URL for the baserom.us.v10.z64 file (see above); this file has to be encrypted with `AES-256-CBC`
-- `BASEROM_<VER>_KEY`: the AES key used to encrypt the baserom file above
-- `BASEROM_<VER>_SHA1`: the SHA1 checksum of the baserom file; simply use the one mentioned above
-
-Replace `<VER>` with the version you are using:
-- `US10`
-- `US11`
-- `JP`
-- `PAL`
-
-### 3. Trigger the pipeline
-
-Push a commit to your repository and you should see a new pipeline starting in the `CI/CD > Pipelines` section! 
+Banjo-Kazooie and its original game content are the property of their
+respective rights holders.
