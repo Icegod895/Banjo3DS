@@ -29,6 +29,19 @@ def texture_wrap_to_c_constant(wrap):
     }[wrap]
 
 
+def position_literal(value):
+    # Preserve old integer/map bytes while round-tripping posed float32 XYZ.
+    # Round to the target type first: a world-space sum may be exactly halfway
+    # between float32 values, where shortening the original double changes ties.
+    import struct
+    value = float(value)
+    value = struct.unpack('>f', struct.pack('>f', value))[0]
+    text = f"{value:.1f}" if value.is_integer() else f"{value:.9g}"
+    if "." not in text and "e" not in text:
+        text += ".0"
+    return text + "f"
+
+
 def export_textured_vertex(
     vertex,
     scale_s,
@@ -40,9 +53,9 @@ def export_textured_vertex(
     v = 1.0 - n64_texture_coordinate_to_uv(vertex.t, scale_t, texture_height)
 
     return (
-        f"    {{ {float(vertex.x):.1f}f, "
-        f"{float(vertex.y):.1f}f, "
-        f"{float(vertex.z):.1f}f, "
+        f"    {{ {position_literal(vertex.x)}, "
+        f"{position_literal(vertex.y)}, "
+        f"{position_literal(vertex.z)}, "
         f"{u:.9f}f, "
         f"{v:.9f}f, {vertex.r}, {vertex.g}, {vertex.b}, {vertex.a} }},\n"
     )
@@ -130,9 +143,9 @@ def export_textured_vertex_data(
 
 def export_vertex_data(vertices):
     return "".join(
-        f"    {{ {float(vertex.x):.1f}f, "
-        f"{float(vertex.y):.1f}f, "
-        f"{float(vertex.z):.1f}f, 0.0f, 0.0f, {vertex.r}, {vertex.g}, {vertex.b}, {vertex.a} }},\n"
+        f"    {{ {position_literal(vertex.x)}, "
+        f"{position_literal(vertex.y)}, "
+        f"{position_literal(vertex.z)}, 0.0f, 0.0f, {vertex.r}, {vertex.g}, {vertex.b}, {vertex.a} }},\n"
         for vertex in vertices
     )
 
@@ -522,9 +535,9 @@ def export_models(opa_path, xlu_path):
 
 
 # Diagnostic placement, separate from model-local skeletal pose baking.
-# 14CF's central summit is flat at Y=1800; fallback feet start at Y=34.
-# Identity rotation/scale, feet two units above that surface. Not a spawn point.
-STATIC_BANJO_TRANSLATION = (0, 1768, 0)
+# Central plateau Y=1800; idle min Y=0.11383056640625 rests just above it.
+# Diagnostic placement only, not the original Spiral Mountain spawn point.
+STATIC_BANJO_TRANSLATION = (0, 1800, 0)
 
 
 def place_static_banjo(data):
@@ -541,13 +554,19 @@ def export_canonical_banjo(model_path):
     return export_header(decode_canonical_banjo(BKModel(model_path)))
 
 
-def export_scene(opa_path, xlu_path, banjo_path):
+def export_scene(opa_path, xlu_path, banjo_path, idle_animation_path=None):
     from tools.banjo3ds.canonical_banjo import decode_canonical_banjo
     from tools.banjo3ds.n64_displaylist_decoder import BKModel, interpret_display_list
 
     opa_model, xlu_model = BKModel(opa_path), BKModel(xlu_path)
     opa, xlu = interpret_display_list(opa_model), interpret_display_list(xlu_model)
-    banjo = place_static_banjo(decode_canonical_banjo(BKModel(banjo_path)))
+    banjo_model = BKModel(banjo_path)
+    if idle_animation_path is None:
+        banjo = decode_canonical_banjo(banjo_model)
+    else:
+        from tools.banjo3ds.static_idle import decode_static_idle
+        banjo = decode_static_idle(banjo_model, idle_animation_path)
+    banjo = place_static_banjo(banjo)
     opaque, actor_start = combine_render_passes(opa, banjo)
     data, xlu_start = combine_render_passes(opaque, xlu)
     return export_header(data, xlu_start,
@@ -557,14 +576,15 @@ def export_scene(opa_path, xlu_path, banjo_path):
 def main(argv):
     from pathlib import Path
 
-    if len(argv) not in (2, 3, 4):
-        raise SystemExit("usage: export_3ds_model.py OPA_MODEL OUTPUT [XLU_MODEL [CANONICAL_BANJO_MODEL]]")
+    if len(argv) not in (2, 3, 4, 5):
+        raise SystemExit("usage: export_3ds_model.py OPA_MODEL OUTPUT [XLU_MODEL [CANONICAL_BANJO_MODEL [IDLE_ANIMATION]]]")
 
     model_path = Path(argv[0])
     output_path = Path(argv[1])
 
-    if len(argv) == 4:
-        output = export_scene(model_path, Path(argv[2]), Path(argv[3]))
+    if len(argv) >= 4:
+        output = export_scene(model_path, Path(argv[2]), Path(argv[3]),
+                              Path(argv[4]) if len(argv) == 5 else None)
     elif len(argv) == 3:
         output = export_models(model_path, Path(argv[2]))
     else:

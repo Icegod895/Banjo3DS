@@ -50,6 +50,9 @@ selection, never baked into positions. World placement is a separate step.
             raise ValueError('Canonical RSP matrix stack underflow')
         self.rsp.pop()
 
+    def push(self, matrix):
+        self.rsp.append(matrix)
+
     def display_list(self, index):
         self.current_list = index
         self.calls.append(index)
@@ -97,7 +100,7 @@ selection, never baked into positions. World placement is a separate step.
                 bone = self.read('>b', offset+9)
                 absolute = IDENTITY if bone == -1 else self.bones[bone]
                 self.cpu.append(matrix_product(self.base, absolute))
-                self.rsp.append(self.cpu[-1])  # PUSH | LOAD, not multiply.
+                self.push(self.cpu[-1])  # PUSH | LOAD, not multiply.
                 branch = self.read('>B', offset+8)
                 if branch:
                     yield from self.visit(offset+branch)
@@ -109,7 +112,7 @@ selection, never baked into positions. World placement is a separate step.
                 yield from self.display_list(self.read('>h', offset+8))
                 field = offset+10
                 while self.read('>h', field):
-                    self.rsp.append(self.cpu[-1])
+                    self.push(self.cpu[-1])
                     yield from self.display_list(self.read('>h', field))
                     field += 2
             elif kind != 10:
@@ -119,7 +122,7 @@ selection, never baked into positions. World placement is a separate step.
             offset = offset+following if following else 0
 
     def commands(self):
-        self.rsp.append(self.base)
+        self.push(self.base)
         yield from self.visit(self.read('>I', 4))
         self.pop()
         if self.cpu != [self.base] or self.rsp != [IDENTITY]:

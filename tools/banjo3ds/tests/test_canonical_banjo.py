@@ -108,10 +108,10 @@ class TestStaticBanjoScene(unittest.TestCase):
             [(cls.opa_model,cls.opa,0), (cls.xlu_model,cls.xlu,cls.xlu_start)], cls.actor_start)
 
     def test_placement_is_separate_from_pose(self):
-        self.assertEqual(STATIC_BANJO_TRANSLATION, (0,1768,0))
+        self.assertEqual(STATIC_BANJO_TRANSLATION, (0,1800,0))
         for local, world in zip(self.banjo.vertices, self.placed.vertices):
-            self.assertEqual((world.x,world.y,world.z), (local.x,local.y+1768,local.z))
-            self.assertEqual(replace(world, y=world.y-1768), local)
+            self.assertEqual((world.x,world.y,world.z), (local.x,local.y+1800,local.z))
+            self.assertEqual(replace(world, y=world.y-1800), local)
         self.assertEqual(hashlib.sha256(b''.join(struct.pack('>3f', *p)
                          for p in triangle_xyz(self.banjo))).hexdigest(), GOLDEN)
 
@@ -176,7 +176,7 @@ class TestStaticBanjoScene(unittest.TestCase):
         local = positions(standalone)
         self.assertEqual(local,triangle_xyz(self.banjo))
         self.assertEqual(positions(header)[9408:11493],
-                         [(x,y+1768,z) for x,y,z in local])
+                         [(x,y+1800,z) for x,y,z in local])
 
 
 if __name__ == '__main__':
