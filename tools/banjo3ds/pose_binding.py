@@ -127,6 +127,22 @@ def export_pose_packet(model_path, animation_path):
             + struct.pack('>2085H',*corners) + animation)
 
 
+def export_transition_packet(model_path, walk_path, idle_path):
+    """B3P3 v2: unchanged binding, raw 0003 then raw 006F.
+
+    Header word 6 holds idle length instead of zero; no channel reindexing.
+    v1 remains available for historical M4.3 byte-identity regressions.
+    """
+    from tools.banjo3ds.static_idle import ANIMATION_SHA256
+    idle = Path(idle_path).read_bytes()
+    if hashlib.sha256(idle).hexdigest() != ANIMATION_SHA256:
+        raise ValueError('Only verified 006F supported')
+    packet = bytearray(export_pose_packet(model_path, walk_path))
+    struct.pack_into('>I', packet, 4, 2)
+    struct.pack_into('>I', packet, 24, len(idle))
+    return bytes(packet) + idle
+
+
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(description=__doc__)

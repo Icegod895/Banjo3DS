@@ -175,7 +175,7 @@ all: $(BANJO3DS_GENERATED_MODEL) $(BUILD) $(GFXBUILD) $(DEPSDIR) $(ROMFS_T3XFILE
 
 $(BANJO3DS_GENERATED_MODEL): $(BANJO3DS_MODEL) $(BANJO3DS_XLU_MODEL) $(BANJO3DS_ACTOR_MODEL) $(BANJO3DS_IDLE_ANIMATION) $(REPO_ROOT)/tools/banjo3ds/export_3ds_model.py $(REPO_ROOT)/tools/banjo3ds/n64_displaylist_decoder.py $(REPO_ROOT)/tools/banjo3ds/geo_sort.py $(REPO_ROOT)/tools/banjo3ds/canonical_banjo.py $(REPO_ROOT)/tools/banjo3ds/static_idle.py $(REPO_ROOT)/tools/banjo3ds/floor_collision.py $(REPO_ROOT)/tools/banjo3ds/pose_binding.py $(BANJO3DS_WALK_ANIMATION)
 	@echo generating $(notdir $@)
-	@cd $(REPO_ROOT) && $(BANJO3DS_PYTHON) -B -m tools.banjo3ds.export_3ds_model $(BANJO3DS_MODEL) $(BANJO3DS_GENERATED_MODEL) $(BANJO3DS_XLU_MODEL) $(BANJO3DS_ACTOR_MODEL) $(BANJO3DS_IDLE_ANIMATION) $(BANJO3DS_WALK_ANIMATION)
+	@cd $(REPO_ROOT) && $(BANJO3DS_PYTHON) -B -m tools.banjo3ds.export_3ds_model $(BANJO3DS_MODEL) $(BANJO3DS_GENERATED_MODEL) $(BANJO3DS_XLU_MODEL) $(BANJO3DS_ACTOR_MODEL) $(BANJO3DS_IDLE_ANIMATION) $(BANJO3DS_WALK_ANIMATION) --runtime-transitions
 
 $(BUILD):
 	@mkdir -p $@

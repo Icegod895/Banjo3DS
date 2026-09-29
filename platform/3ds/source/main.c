@@ -750,9 +750,9 @@ int main(void)
         u64 poseStart = svcGetSystemTick();
         bool changed = walkAnimationUpdate(&walkAnimation,
             banjo_pose_packet, BANJO_POSE_PACKET_SIZE, accepted, speed, dt,
-            vbo_data, banjo_vertices, BANJO_VERTEX_COUNT,
+            vbo_data, BANJO_VERTEX_COUNT,
             BANJO_ACTOR_FIRST_VERTEX, BANJO_ACTOR_VERTEX_COUNT, sizeof(Banjo3DSVertex));
-        if (accepted && speed > 0) {
+        if (changed) {
             banjoPoseLastUs = (svcGetSystemTick() - poseStart) / CPU_TICKS_PER_USEC;
             if (banjoPoseLastUs > banjoPoseMaxUs) banjoPoseMaxUs = banjoPoseLastUs;
             ++banjoPoseUpdateCount;

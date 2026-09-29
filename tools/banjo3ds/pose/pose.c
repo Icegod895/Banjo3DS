@@ -86,24 +86,40 @@ static void bone(float m[4][4],const float *q,const float *pivot,float factor) {
     for(int i=0;i<3;i++)for(int j=0;j<3;j++)m[i][j]*=q[4+i];
     translate(m,-pivot[0],-pivot[1],-pivot[2]);
 }
-bool banjo_pose_evaluate(const uint8_t *p,size_t size,float phase,BanjoPose *o) {
-    if(!p || !o || size!=12082 || !isfinite(phase) || phase<0 || phase>1)return false;
-    if(memcmp(p,"B3P3",4) || u32(p+4)!=1 || u32(p+8)!=60 || u32(p+12)!=723 || u32(p+16)!=2085 || u32(p+20)!=1132 || u32(p+24) || u32(p+28))return false;
-    const uint8_t *sk=p+36,*loads=sk+960,*corners=loads+5784,*anim=corners+4170;
-    if(u16(anim)!=0 || u16(anim+2)!=120 || u16(anim+4)!=47 || u16(anim+6))return false;
-    memset(o,0,sizeof(*o));
+/* B3P3 v1 is the unchanged M4.3 walk fixture; v2 appends 006F and
+ * uses header word 6 for its byte length. Binding offsets are identical. */
+static bool packet_valid(const uint8_t *p,size_t size) {
+    if(!p || size<32 || memcmp(p,"B3P3",4) || u32(p+8)!=60 ||
+       u32(p+12)!=723 || u32(p+16)!=2085 || u32(p+20)!=1132 || u32(p+28))return false;
+    return (u32(p+4)==1 && u32(p+24)==0 && size==12082) ||
+           (u32(p+4)==2 && u32(p+24)==12316 && size==24398);
+}
+bool banjo_pose_sample(const uint8_t *p,size_t size,BanjoClip clip,float phase,float out[109][10]) {
+    if(!out || !packet_valid(p,size) || !isfinite(phase) || phase<0 || phase>1 ||
+       (clip!=BANJO_CLIP_WALK && clip!=BANJO_CLIP_IDLE) ||
+       (clip==BANJO_CLIP_IDLE && u32(p+4)!=2))return false;
+    const uint8_t *anim=p+10950+(clip==BANJO_CLIP_IDLE?1132:0);
+    unsigned last=clip==BANJO_CLIP_IDLE?110:120, channels=clip==BANJO_CLIP_IDLE?81:47;
+    const uint8_t *end=anim+(clip==BANJO_CLIP_IDLE?12316:1132);
+    if(u16(anim)!=0 || u16(anim+2)!=last || u16(anim+4)!=channels || u16(anim+6))return false;
+    memset(out,0,109*10*sizeof(float));
     /* Euler channels temporarily occupy q.xyz; no extra channel array. */
-    for(int i=0;i<109;i++)o->bones[i][4]=o->bones[i][5]=o->bones[i][6]=1;
-    const uint8_t *k=anim+8,*end=p+size;
-    for(int c=0;c<47;c++) {
+    for(int i=0;i<109;i++)out[i][4]=out[i][5]=out[i][6]=1;
+    const uint8_t *k=anim+8;
+    for(unsigned c=0;c<channels;c++) {
         if(end-k<4)return false;
         unsigned id=u16(k)>>4,ch=u16(k)&15; int n=s16(k+2); k+=4;
         if(id>=109 || ch>8 || n<=0 || end-k<4*n)return false;
-        for(int i=0;i<n;i++)if(frame(k,i)>120 || (i && frame(k,i)<=frame(k,i-1)))return false;
-        o->bones[id][ch<3?ch:ch+1]=channel(k,n,ch,phase*120.f); k+=4*n;
+        for(int i=0;i<n;i++)if(frame(k,i)>(int)last || (i && frame(k,i)<=frame(k,i-1)))return false;
+        out[id][ch<3?ch:ch+1]=channel(k,n,ch,phase*(float)last); k+=4*n;
     }
     if(k!=end)return false;
-    for(int i=0;i<109;i++){float angles[3];memcpy(angles,o->bones[i],12);quaternion(angles,o->bones[i]);}
+    for(int i=0;i<109;i++){float angles[3];memcpy(angles,out[i],12);quaternion(angles,out[i]);}
+    return true;
+}
+bool banjo_pose_apply(const uint8_t *p,size_t size,BanjoPose *o) {
+    if(!o || !packet_valid(p,size))return false;
+    const uint8_t *sk=p+36,*loads=sk+960,*corners=loads+5784;
     float factor=f32(p+32); if(!isfinite(factor))return false;
     for(int i=0;i<60;i++) {
         const uint8_t *r=sk+16*i; int id=s16(r+12),parent=s16(r+14);
@@ -130,4 +146,81 @@ bool banjo_pose_evaluate(const uint8_t *p,size_t size,float phase,BanjoPose *o) 
         }
     }
     return true;
+}
+
+bool banjo_pose_evaluate(const uint8_t *p,size_t size,float phase,BanjoPose *o) {
+    return o && banjo_pose_sample(p,size,BANJO_CLIP_WALK,phase,o->bones) && banjo_pose_apply(p,size,o);
+}
+
+/* ml.c:13,37. Original NTSC 1.0 ROM bytes after the 90 declared floats
+ * are two zero words (0xf52654..0xf5265b), proven by M4.4B. In particular
+ * dot==0 returns zero degrees; replacing this with acosf changes the pose. */
+static const float acos_degrees[92] = {
+    1.0000000000, 0.9998480080, 0.9993910190, 0.9986299870, 0.9975640180,
+    0.9961950180, 0.9945219760, 0.9925460220, 0.9902679920, 0.9876880050,
+    0.9848080280, 0.9816269870, 0.9781479840, 0.9743700030, 0.9702960250,
+    0.9659259920, 0.9612619880, 0.9563050270, 0.9510570170, 0.9455189700,
+    0.9396929740, 0.9335799810, 0.9271839860, 0.9205049870, 0.9135450120,
+    0.9063079950, 0.8987939950, 0.8910070060, 0.8829479810, 0.8746200200,
+    0.8660249710, 0.8571670060, 0.8480479720, 0.8386710290, 0.8290380240,
+    0.8191519980, 0.8090170030, 0.7986360190, 0.7880110140, 0.7771459820,
+    0.7660440210, 0.7547100190, 0.7431449890, 0.7313539980, 0.7193400260,
+    0.7071070080, 0.6946579810, 0.6819980140, 0.6691309810, 0.6560590270,
+    0.6427879930, 0.6293200250, 0.6156619790, 0.6018149850, 0.5877850060,
+    0.5735759740, 0.5591930150, 0.5446389910, 0.5299190280, 0.5150380130,
+    0.5000000000, 0.4848099950, 0.4694719910, 0.4539909960, 0.4383710030,
+    0.4226180020, 0.4067370000, 0.3907310070, 0.3746069970, 0.3583680090,
+    0.3420200050, 0.3255679910, 0.3090170030, 0.2923719880, 0.2756370010,
+    0.2588190140, 0.2419220060, 0.2249509990, 0.2079119980, 0.1908089970,
+    0.1736480000, 0.1564340000, 0.1391730010, 0.1218689980, 0.1045280020,
+    0.0871559978, 0.0697569996, 0.0523359999, 0.0348990001, 0.0174519997, 0.0f, 0.0f
+};
+static float rare_acos(float x) {
+    int sign=x<0?-1:1,upper=0,lower=91;
+    if(sign<0)x=-x;
+    while(upper+1!=lower) {
+        int index=(upper+lower)/2;
+        if(x>acos_degrees[index])lower=index;else upper=index;
+    }
+    if(upper==90)return 0;
+    float r=(x-acos_degrees[upper])/(acos_degrees[lower]-acos_degrees[upper])+upper;
+    return sign>0?r:180-r;
+}
+/* code_BE2C0.c:88,133. Preserve float/double expression boundaries. */
+static void blend_quaternion(float *out,const float *a,const float *b,float t) {
+    float minus[4],plus[4],end[4];
+    for(int i=0;i<4;i++){minus[i]=a[i]-b[i];plus[i]=a[i]+b[i];}
+    float dm=minus[0]*minus[0]+minus[1]*minus[1]+minus[2]*minus[2]+minus[3]*minus[3];
+    float dp=plus[0]*plus[0]+plus[1]*plus[1]+plus[2]*plus[2]+plus[3]*plus[3];
+    for(int i=0;i<4;i++)end[i]=dm<=dp?b[i]:-b[i];
+    float dot=a[0]*end[0]+a[1]*end[1]+a[2]*end[2]+a[3]*end[3],w0,w1;
+    if(0.00001<(1.0+dot)) {
+        if(0.00001<(1.0-dot)) {
+            float angle=(3.141592654/180.0)*rare_acos(dot),sine=trig(angle,false);
+            if(sine!=0) {
+                w0=trig((1.0-t)*angle,false)/sine;
+                w1=trig(t*angle,false)/sine;
+            } else {w1=t;w0=1.0-t;}
+        } else {w1=t;w0=1.0-t;}
+        for(int i=0;i<4;i++)out[i]=w0*a[i]+w1*end[i];
+    } else {
+        float perpendicular[4]={-a[1],a[0],-a[3],a[2]};
+        w0=trig((1.0-t)*(3.141592654/2.0f),false);
+        w1=trig(t*(3.141592654/2.0f),false);
+        for(int i=0;i<3;i++)out[i]=w0*a[i]+w1*perpendicular[i];
+        out[3]=perpendicular[3];
+    }
+}
+void banjo_pose_blend(float out[109][10],const float source[109][10],
+                      const float destination[109][10],float factor) {
+    /* Endpoints are exact copies, including signed zero. Destination may
+     * alias out. No extra normalization (code_B3580.c:64). */
+    if(factor<=0){memmove(out,source,109*10*sizeof(float));return;}
+    if(factor>=1){memmove(out,destination,109*10*sizeof(float));return;}
+    for(int i=0;i<109;i++) {
+        float a[10],b[10];memcpy(a,source[i],sizeof(a));memcpy(b,destination[i],sizeof(b));
+        if(a[0]==b[0] && a[1]==b[1] && a[2]==b[2] && a[3]==b[3])memcpy(out[i],a,16);
+        else blend_quaternion(out[i],a,b,factor);
+        for(int j=4;j<10;j++)out[i][j]=a[j]+(b[j]-a[j])*factor;
+    }
 }
