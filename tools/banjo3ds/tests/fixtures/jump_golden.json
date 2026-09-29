@@ -1,0 +1,1491 @@
+{
+  "asset": {
+    "sha256": "b4984d8cfe4aed530a7fb1d62221619b1babac4f79c1697aa85d71ea4847f7e8",
+    "bytes": 1788,
+    "frames": [
+      0,
+      45
+    ],
+    "channels": 35,
+    "keys": 410
+  },
+  "packing": {
+    "bones": "109 * >10f XYZW, scale XYZ, translation XYZ",
+    "matrices": "60 * >16f original row-major before RSP quantization",
+    "loads": "723 * >3f G_VTX order",
+    "corners": "2085 * >3f triangle order"
+  },
+  "counts": {
+    "calls": 49,
+    "triangles": 695,
+    "loads": 723,
+    "corners": 2085
+  },
+  "poses": [
+    {
+      "phase": 0.0,
+      "bones": "7f88824e980f403ca6178c0f48b94a4a62298d09343343d65d546ece426f65ad",
+      "matrices": "21413e4c180ad3ccd7335f7e523c902483e3f4ff5a60e1638acd0d14787bd907",
+      "loads": "c5d6844064995ba59d6059ce08107f143c179383a0c601bed201be318437b3c9",
+      "corners": "0601ad1a6142f293619648e80e169a3d3986e464bcbfd230f11980502a0c8453",
+      "bounds": [
+        [
+          -50.64656066894531,
+          50.64656066894531
+        ],
+        [
+          0.0226593017578125,
+          122.0
+        ],
+        [
+          -24.0,
+          56.0
+        ]
+      ]
+    },
+    {
+      "phase": 0.30000001192092896,
+      "bones": "458a7b43c83c0d30b6e115747cfbe02a27b831c39da712c02837a6039e24a26e",
+      "matrices": "5f1e14c26eeac0dca7a69c4fab16463b47d17c53fe45ae6ba60c6e10774eb012",
+      "loads": "30ccc9c15229b699d7b2c86f00dd2ae5c00b529d96550d2c64e2418906248f78",
+      "corners": "4f4c3c8abda4d5377524d0cb5f51e61341261ea8aa9aabd3c6c367a495f1a60f",
+      "bounds": [
+        [
+          -33.70745849609375,
+          33.70745849609375
+        ],
+        [
+          1.0427398681640625,
+          103.13850402832031
+        ],
+        [
+          -23.261947631835938,
+          73.19149780273438
+        ]
+      ]
+    },
+    {
+      "phase": 0.30000096559524536,
+      "bones": "859313237425267ea59b0e18f1331cdf0c867be98f2f559febe886286ef05281",
+      "matrices": "c04ca742b1e3e27e7c09bd62c3a115256183ca32bc188c3b7e2959c63a7a03eb",
+      "loads": "fa6c392297e1c86f7bcf0900d3a3d6da7df3f7941b69001b6cf32e082698c45b",
+      "corners": "659fc21f93ae0ee7baca2aec06e337eb541811f7b519df041f23598767b6af87",
+      "bounds": [
+        [
+          -33.70709228515625,
+          33.70709228515625
+        ],
+        [
+          1.0426483154296875,
+          103.13946533203125
+        ],
+        [
+          -23.261932373046875,
+          73.19154357910156
+        ]
+      ]
+    },
+    {
+      "phase": 0.4000000059604645,
+      "bones": "53ca7f4991f32eb8eca48649d8c369b12872d7ae8947576c34c653bb38607868",
+      "matrices": "1c6d505c8dcb87a81dfc72f4ecd30f0a4865b3b98d63adbbf42d8d6f46e542fb",
+      "loads": "c16b36efcb8185acd398ada44941c0f91cdb04ccd58524a22856020e82870e44",
+      "corners": "01f0b44bc6c7d71b5dd7778f506648c9701f0410e189b956de2bd4c105c900cd",
+      "bounds": [
+        [
+          -49.01255798339844,
+          49.01255798339844
+        ],
+        [
+          -0.4982452392578125,
+          119.05364990234375
+        ],
+        [
+          -35.84956359863281,
+          64.144287109375
+        ]
+      ]
+    },
+    {
+      "phase": 0.5041999816894531,
+      "bones": "837d937260b4d3d7bca490e5d6ba2b340e3e08b3a566edad1f29a762e4be16a8",
+      "matrices": "14e769c4e14f1b98cfe70ed9b23edf45930e71b5a82d33d480e1082320665e3b",
+      "loads": "c5ecad2df2501a56d219ff2b89068b319cc3b1c438c779930a570f1adad44c5a",
+      "corners": "a1c0fe3249c1bbdd2a2ac1a7d6a5e2d06cd94a80a069077a4401b7db72645d04",
+      "bounds": [
+        [
+          -35.019287109375,
+          35.019287109375
+        ],
+        [
+          -2.2627716064453125,
+          112.79718017578125
+        ],
+        [
+          -45.0582275390625,
+          55.87593078613281
+        ]
+      ]
+    },
+    {
+      "phase": 0.6000000238418579,
+      "bones": "a021c2c5cd323ad070d3a4b6c1fa4547ad379f16d6a25b9849d0241e0c3ddf16",
+      "matrices": "cef448649215790de4182123c83649ad93ee7a79821a8257de1ec0fb4b482878",
+      "loads": "a355b4d166bc9e2195bc4ff7035ad939c2258ebdfc3ee64ea2480216a9bf3588",
+      "corners": "f94d4c983c9c83f133b655e1d5e0c6c11cfa5e57c19414a4bf95328452f6d4ed",
+      "bounds": [
+        [
+          -50.9171142578125,
+          50.9171142578125
+        ],
+        [
+          -5.2122039794921875,
+          108.46174621582031
+        ],
+        [
+          -39.555877685546875,
+          71.67512512207031
+        ]
+      ]
+    },
+    {
+      "phase": 0.666700005531311,
+      "bones": "4c758663a7f6fb3b4b64876367cd9cf98e3a6f826c750af27bda28975da1e410",
+      "matrices": "f3c37d460557deffe096018a86b7e9d1eaa2b2a045046209fa306e93ef44a0a1",
+      "loads": "5be5b5b54028aa63d60e0f1e2ee59beb10a0632c54f294e3569bbc05eb57b5c7",
+      "corners": "1a8d12ec4bd3d622e2923806f63afa6dcf642e7a876d5d17b1678201840ec55e",
+      "bounds": [
+        [
+          -60.5517578125,
+          60.5517578125
+        ],
+        [
+          -0.5312957763671875,
+          129.65036010742188
+        ],
+        [
+          -16.327865600585938,
+          72.86068725585938
+        ]
+      ]
+    },
+    {
+      "phase": 0.75,
+      "bones": "de4e5d968c48edb4aad0ed605b43c8e0ab590cc5c72ad7e8855e612cab0d6d9d",
+      "matrices": "1f095b9c6055f36767aecfac2441fc3d46ba5f0e10be44636819d9a47c47c775",
+      "loads": "af494318da6a01889ba938038dcc70e9bfaaca991a9373b8fd4b253d8d23f4d0",
+      "corners": "1bf8f2164db88b172a13b715901317bcade34774b408764b43857df387606902",
+      "bounds": [
+        [
+          -65.897216796875,
+          65.897216796875
+        ],
+        [
+          0.173828125,
+          114.85469055175781
+        ],
+        [
+          -15.68597412109375,
+          72.61399841308594
+        ]
+      ]
+    },
+    {
+      "phase": 0.9999990463256836,
+      "bones": "c305ba15d53b004d6e4326993d0204762c419e7071c3ca0e6f4d9d14af4e5772",
+      "matrices": "9e8d92945aad7918db39a3d596f7a795471fe7459a256e4d869c5d28c4c7a12a",
+      "loads": "def4a9c69bcf26748e7063c03ae2da5d7b7f8d4e32185cabd3810de1c48b9282",
+      "corners": "7e8b7a2c0d65fc5a20bf87810f676784bdcadeab5d69e01ca0d60bae5f1b36b7",
+      "bounds": [
+        [
+          -50.64653015136719,
+          50.64653015136719
+        ],
+        [
+          -0.0092620849609375,
+          121.99996948242188
+        ],
+        [
+          -24.000152587890625,
+          55.999847412109375
+        ]
+      ]
+    },
+    {
+      "phase": 0.9999999403953552,
+      "bones": "a3ad0af97c3a64d4fb943ead7feeb5acd2f7fdf0364e253c5dd07349e1fd81a7",
+      "matrices": "8ef04baeb13c8743e8ab123e742483bb517af2f366f5669ea5f2584493bd79f6",
+      "loads": "606868a58150d7bc4c878f95fd3ddd7e8d4e86760da4288b870907282636112a",
+      "corners": "4a0cc7703f486320002f8317a7b958425b4391e1dba714d811f60194ba79791c",
+      "bounds": [
+        [
+          -50.64656066894531,
+          50.64656066894531
+        ],
+        [
+          -0.0093231201171875,
+          122.0
+        ],
+        [
+          -24.000015258789062,
+          55.99998474121094
+        ]
+      ]
+    },
+    {
+      "phase": 1.0,
+      "bones": "24cb58cd1d17fd7e034278ec43cf010b1500efc477e9fe33f872e94151e83866",
+      "matrices": "ca0879db2a1a4c8b5b07b3ab1dfde0b68b4a010a5439b588e8c432f232a515ed",
+      "loads": "96f0ddaf6b96aaf240d8ce896beb246f0a4c389c031ac9e07b6622cf8f315f34",
+      "corners": "51ae031dcbbd51799bcbeaf565829d127c14f4bea97696fe8511c50107dbfa7b",
+      "bounds": [
+        [
+          -50.64656066894531,
+          50.64656066894531
+        ],
+        [
+          -0.0093231201171875,
+          122.0
+        ],
+        [
+          -24.0,
+          56.0
+        ]
+      ]
+    }
+  ],
+  "transitions": {
+    "006F_0008": {
+      "source": "006F",
+      "destination": "0008",
+      "source_phase": 0.3700000047683716,
+      "duration": 1.899999976158142,
+      "rows": [
+        {
+          "phase": 0.30000001192092896,
+          "factor": 0.0,
+          "segment": 0,
+          "duration": 1.899999976158142,
+          "source_hash": "9d9bed144e505c4a062f2155a7867afa564ff2a393a30fea333a42279116f060",
+          "destination_hash": "458a7b43c83c0d30b6e115747cfbe02a27b831c39da712c02837a6039e24a26e",
+          "bones": "9d9bed144e505c4a062f2155a7867afa564ff2a393a30fea333a42279116f060",
+          "matrices": "05912abf55c7477ed2dc5579000e9758ab4f24004718023507bd2f4d9d3f1b68",
+          "loads": "1c08e05740403daf35bee598bba6d148ad5638436e0d80a72a81903011965cda",
+          "corners": "94184c910c1039108384bb86c1b95c63175f5f752ae3fae058811f72aeebd9af",
+          "bounds": [
+            [
+              -35.59092712402344,
+              41.523712158203125
+            ],
+            [
+              0.0195465087890625,
+              119.76896667480469
+            ],
+            [
+              -29.510665893554688,
+              46.41770935058594
+            ]
+          ]
+        },
+        {
+          "phase": 0.31315791606903076,
+          "factor": 0.18656715750694275,
+          "segment": 0,
+          "duration": 1.899999976158142,
+          "source_hash": "9d9bed144e505c4a062f2155a7867afa564ff2a393a30fea333a42279116f060",
+          "destination_hash": "51054a38499f301f4bcc7b295a8ebf78cac86567ce209c1fb04ad7d65c6b8e33",
+          "bones": "b6a0aefa466efdaf7b2a89dda880198e4493c5b075f75ed8ee762b81d8b8e43b",
+          "matrices": "efa5e85506e5c99c1b76e18e55c605a7f185f9be2f2ad2577a022d54a68a322d",
+          "loads": "aa69552f5619206f32fe1c8e65c5776bbd712a525b7e8ba5bfbd80dd5201ec68",
+          "corners": "7021d1be7f01467200acedd5adace615c9fdd03f09404213e5baac7712dcfea7",
+          "bounds": [
+            [
+              -33.83827209472656,
+              45.67778015136719
+            ],
+            [
+              -1.4020843505859375,
+              118.17442321777344
+            ],
+            [
+              -20.417465209960938,
+              59.03205871582031
+            ]
+          ]
+        },
+        {
+          "phase": 0.32631582021713257,
+          "factor": 0.3731343150138855,
+          "segment": 0,
+          "duration": 1.899999976158142,
+          "source_hash": "9d9bed144e505c4a062f2155a7867afa564ff2a393a30fea333a42279116f060",
+          "destination_hash": "7f9a5e335064319825414624f02a69d0f6bcfee39b403c3acaf84c96e27390c0",
+          "bones": "b837369d9ed14c4a5527bca9007f445d6278e47998da293ecdf108ed2e4278a8",
+          "matrices": "6634eae18886c1f552d19238d3482e0c0672f7a6fed37d53c55bf440c44b7242",
+          "loads": "abb0526eff6ddf72e706960994a88e83ae6fd8c6b8a5337d270c4f69b3ec5fe0",
+          "corners": "ccd27a3efa8ac08333205196a92298ce9f6e5a36a7f08f82834f76873f5587ea",
+          "bounds": [
+            [
+              -34.60101318359375,
+              48.55767822265625
+            ],
+            [
+              -2.94366455078125,
+              116.29681396484375
+            ],
+            [
+              -19.895492553710938,
+              67.01243591308594
+            ]
+          ]
+        },
+        {
+          "phase": 0.3394737243652344,
+          "factor": 0.5597014427185059,
+          "segment": 0,
+          "duration": 1.899999976158142,
+          "source_hash": "9d9bed144e505c4a062f2155a7867afa564ff2a393a30fea333a42279116f060",
+          "destination_hash": "dca3f9c2f974a7d89795df91bd0af1869a0c7ce79cc877d78e42a67587c65dbb",
+          "bones": "c9aae4182102eeb76d0d628a68ca6541672ee52596732b93f93817850b8aa9c0",
+          "matrices": "8ca551f9a8591593c0002d5b41e5296bf01fdec5b4383856ab74b97fe8cef7b2",
+          "loads": "79ffe75658f5396f4d6680572e09e7e3685b7fe04e77a06f964d6064e2662aea",
+          "corners": "0fbb581b5ad9c2290d1317c55888428a473d3db63449403039928ed38e406633",
+          "bounds": [
+            [
+              -36.29644775390625,
+              47.01405334472656
+            ],
+            [
+              -3.8585968017578125,
+              115.24813842773438
+            ],
+            [
+              -23.956069946289062,
+              72.63038635253906
+            ]
+          ]
+        },
+        {
+          "phase": 0.3526316285133362,
+          "factor": 0.746268630027771,
+          "segment": 0,
+          "duration": 1.899999976158142,
+          "source_hash": "9d9bed144e505c4a062f2155a7867afa564ff2a393a30fea333a42279116f060",
+          "destination_hash": "82fa425253c86dd3e6876743b315845d05708930d3e913f74e6121fd21e126b6",
+          "bones": "c7dd7969caea2015906dd98243897e104cf0ee7d8e8d074b55f0c4e282d0bada",
+          "matrices": "55120b25a2ac70758c7ac45f23541be7f3f495c189109f3d247d48a7a9526fa7",
+          "loads": "bad11811fad4b5e11c5469f1405aa5b2ba8ee499ddb8acbc00f6c7b6fcbb5344",
+          "corners": "e65126a67b344bbc0166fead33315e45855733d2cbf88d3bb80c16966e0d1cfe",
+          "bounds": [
+            [
+              -38.03022766113281,
+              44.46064758300781
+            ],
+            [
+              -3.700653076171875,
+              115.12611389160156
+            ],
+            [
+              -28.136581420898438,
+              75.35090637207031
+            ]
+          ]
+        },
+        {
+          "phase": 0.365789532661438,
+          "factor": 0.9328358173370361,
+          "segment": 0,
+          "duration": 1.899999976158142,
+          "source_hash": "9d9bed144e505c4a062f2155a7867afa564ff2a393a30fea333a42279116f060",
+          "destination_hash": "a6aed9dedb5eedc1bf815e0ccbe572b7936640d612e8d7a9072ce93ea78b448d",
+          "bones": "e9f1ae6d14ff91fe7b826b512b1ab2191be5d4aaa6b48c38a160e9b78bbf8162",
+          "matrices": "6d2487620b7f7e978b2e79a4fcc2304c309a13950d920889961a02485b0edc96",
+          "loads": "305d441bfd306ce189b8b7e19624ddab62ac0a0357c6a47fd003857d1d01cdec",
+          "corners": "75d3402d7db64ae9537d37ec53ffb607ce29d5874120fbd177486fe3821f3c8d",
+          "bounds": [
+            [
+              -41.9969482421875,
+              43.740234375
+            ],
+            [
+              -1.980377197265625,
+              115.96893310546875
+            ],
+            [
+              -31.884445190429688,
+              75.57957458496094
+            ]
+          ]
+        },
+        {
+          "phase": 0.3789474368095398,
+          "factor": 1.0,
+          "segment": 0,
+          "duration": 1.899999976158142,
+          "source_hash": "9d9bed144e505c4a062f2155a7867afa564ff2a393a30fea333a42279116f060",
+          "destination_hash": "1911f0f940509acf8c4dce413ca9515645a577d08f81bec92df9b3a373b1663f",
+          "bones": "1911f0f940509acf8c4dce413ca9515645a577d08f81bec92df9b3a373b1663f",
+          "matrices": "375d7c2200f97983e869b1ed4b394376a0eff3a69035e1118c9f04d78d57134a",
+          "loads": "f53eda6db54db20f8c15b94ddd66201210389fee0fb160b6d29329598d0e9eaa",
+          "corners": "9a3c3a8118a7fc2336cc5df93c17be6e3be0339bb4baea741cf82e18814b4288",
+          "bounds": [
+            [
+              -47.05448913574219,
+              47.05448913574219
+            ],
+            [
+              -0.76531982421875,
+              117.64811706542969
+            ],
+            [
+              -33.981597900390625,
+              72.40924072265625
+            ]
+          ]
+        },
+        {
+          "phase": 0.3921053409576416,
+          "factor": 1.0,
+          "segment": 0,
+          "duration": 1.899999976158142,
+          "source_hash": "9d9bed144e505c4a062f2155a7867afa564ff2a393a30fea333a42279116f060",
+          "destination_hash": "e25dcff599ca82ff35af7d402c6d2a9f093dd3db09a474b639c576f8842c6cdd",
+          "bones": "e25dcff599ca82ff35af7d402c6d2a9f093dd3db09a474b639c576f8842c6cdd",
+          "matrices": "536d51507d563db1def69b8b0c696d11e6f21041592759ef06ab118c78ae372b",
+          "loads": "e27f3cbf87ab2f040387d76e2b50845224f3620846a76d1d50b218dff08f791b",
+          "corners": "de096819dd2b093fcf785d32fbdc5e2d51e6c888fa924cb5775c3c08a8adf5e5",
+          "bounds": [
+            [
+              -49.18794250488281,
+              49.18794250488281
+            ],
+            [
+              -0.6307220458984375,
+              118.64231872558594
+            ],
+            [
+              -35.26005554199219,
+              67.40254211425781
+            ]
+          ]
+        },
+        {
+          "phase": 0.4052632451057434,
+          "factor": 1.0,
+          "segment": 0,
+          "duration": 1.899999976158142,
+          "source_hash": "9d9bed144e505c4a062f2155a7867afa564ff2a393a30fea333a42279116f060",
+          "destination_hash": "973d7ae87bd7974ab8864b78be1f6099112f30c6f8d126be2e691a9ea0dcb1f2",
+          "bones": "973d7ae87bd7974ab8864b78be1f6099112f30c6f8d126be2e691a9ea0dcb1f2",
+          "matrices": "b03a88a8a1630e724f824c3157799a6d032fa291451946f93bab1c98a1b45a2d",
+          "loads": "a5609a0fa0fced1463d06c6c320bcd00817f76e6341ad4e0c3c30a2010373ebc",
+          "corners": "26865d899bd0486f407f5d3fc0acf90bc886485aa59a10b411085911bda3723c",
+          "bounds": [
+            [
+              -48.35871887207031,
+              48.35871887207031
+            ],
+            [
+              -0.3968505859375,
+              119.07269287109375
+            ],
+            [
+              -36.163543701171875,
+              61.97044372558594
+            ]
+          ]
+        }
+      ]
+    },
+    "0003_0008": {
+      "source": "0003",
+      "destination": "0008",
+      "source_phase": 0.625,
+      "duration": 1.899999976158142,
+      "rows": [
+        {
+          "phase": 0.30000001192092896,
+          "factor": 0.0,
+          "segment": 0,
+          "duration": 1.899999976158142,
+          "source_hash": "6987455710a3d55af39960d510ec9397ac7f69e57547a703ae9cfe105705b589",
+          "destination_hash": "458a7b43c83c0d30b6e115747cfbe02a27b831c39da712c02837a6039e24a26e",
+          "bones": "6987455710a3d55af39960d510ec9397ac7f69e57547a703ae9cfe105705b589",
+          "matrices": "b200abc74f0fc9fa3ccb406af528b7ae2528e8099d2982b56f824801fab65e72",
+          "loads": "5154f595fc0b6c66756729e41214b52ecd1053f280506feb4744220dbe73b5e1",
+          "corners": "ed9eaf05aa9499835a9d7546cb894de7efdf0a9f32fe9542543efd817927a24d",
+          "bounds": [
+            [
+              -59.64320373535156,
+              34.81459045410156
+            ],
+            [
+              -6.7619476318359375,
+              115.17158508300781
+            ],
+            [
+              -33.57237243652344,
+              66.79792785644531
+            ]
+          ]
+        },
+        {
+          "phase": 0.31315791606903076,
+          "factor": 0.18656715750694275,
+          "segment": 0,
+          "duration": 1.899999976158142,
+          "source_hash": "6987455710a3d55af39960d510ec9397ac7f69e57547a703ae9cfe105705b589",
+          "destination_hash": "51054a38499f301f4bcc7b295a8ebf78cac86567ce209c1fb04ad7d65c6b8e33",
+          "bones": "9ab1a8eb2a983c0eed3fc4d71e6461a3b0d429c6c035382db156961de65b3704",
+          "matrices": "287db6b7c89f5a9c711b9a6129da08e0e0639093a16ba2359e1968d579caa522",
+          "loads": "27bea1bee6d0b6c15c7e0205f4a468c4b949c9d2a3ff47577966c493f84bda13",
+          "corners": "0a9c8be360fd0ea2cf7f994de58bd79f425f4ba86f69c11efd23db8b91bfb717",
+          "bounds": [
+            [
+              -57.48065185546875,
+              35.10044860839844
+            ],
+            [
+              -5.877227783203125,
+              113.02670288085938
+            ],
+            [
+              -32.110382080078125,
+              72.89791870117188
+            ]
+          ]
+        },
+        {
+          "phase": 0.32631582021713257,
+          "factor": 0.3731343150138855,
+          "segment": 0,
+          "duration": 1.899999976158142,
+          "source_hash": "6987455710a3d55af39960d510ec9397ac7f69e57547a703ae9cfe105705b589",
+          "destination_hash": "7f9a5e335064319825414624f02a69d0f6bcfee39b403c3acaf84c96e27390c0",
+          "bones": "895e217a5910f986e14a85e3624d504f774264b3359634cb968cbee51a36eaa7",
+          "matrices": "c9d25122abea6a2b6675a708a3618678a811cf8ff5187686604f05921cc976a1",
+          "loads": "98139bf4ed05397f32f1cf15778243a86efbbf87996329aa4245aac6290ebb7b",
+          "corners": "c6fa2ec770393618df96c3b481a65614f6c9ee8c3f2313550436720c79a3c8b9",
+          "bounds": [
+            [
+              -52.114593505859375,
+              35.65557861328125
+            ],
+            [
+              -4.630706787109375,
+              111.71171569824219
+            ],
+            [
+              -30.381607055664062,
+              76.05587768554688
+            ]
+          ]
+        },
+        {
+          "phase": 0.3394737243652344,
+          "factor": 0.5597014427185059,
+          "segment": 0,
+          "duration": 1.899999976158142,
+          "source_hash": "6987455710a3d55af39960d510ec9397ac7f69e57547a703ae9cfe105705b589",
+          "destination_hash": "dca3f9c2f974a7d89795df91bd0af1869a0c7ce79cc877d78e42a67587c65dbb",
+          "bones": "3cb38236bfac7fb6f29abc51de36dd562f745109433fd9f955eca52719210ddf",
+          "matrices": "de379cb2dabc8d07d661977c5306da1c6fb02b403100726d81b7886f8c322ab3",
+          "loads": "74a9bc1961ac51d55f791a0c47c7934031ccbc1e901e7e5629c04dd5e5e0d06c",
+          "corners": "3a614066a3bd70cf52b128d12ff91a7d8cfc1fdadd17e4ba516377cb9dca446f",
+          "bounds": [
+            [
+              -46.93408203125,
+              36.75396728515625
+            ],
+            [
+              -3.345977783203125,
+              111.59086608886719
+            ],
+            [
+              -28.409591674804688,
+              77.28543090820312
+            ]
+          ]
+        },
+        {
+          "phase": 0.3526316285133362,
+          "factor": 0.746268630027771,
+          "segment": 0,
+          "duration": 1.899999976158142,
+          "source_hash": "6987455710a3d55af39960d510ec9397ac7f69e57547a703ae9cfe105705b589",
+          "destination_hash": "82fa425253c86dd3e6876743b315845d05708930d3e913f74e6121fd21e126b6",
+          "bones": "ab2b9fa19ea963ac67102073a38cf6006de719641e3e25b4678600f02b75a400",
+          "matrices": "08294369b3b1bd2f38226deaae007d246459a0d465f866ad8e5f66a9b10fc028",
+          "loads": "3b57b783fd1f1c6ed568e9629b7f735dfcf985efbe2c385c82f49fded05a3532",
+          "corners": "dcc736607562b2e3cd0db8cad079ae2b7707e1b353ea4ae5de0278a0ca3fbc7c",
+          "bounds": [
+            [
+              -44.057861328125,
+              38.009552001953125
+            ],
+            [
+              -3.3954010009765625,
+              112.980224609375
+            ],
+            [
+              -29.393798828125,
+              77.2498779296875
+            ]
+          ]
+        },
+        {
+          "phase": 0.365789532661438,
+          "factor": 0.9328358173370361,
+          "segment": 0,
+          "duration": 1.899999976158142,
+          "source_hash": "6987455710a3d55af39960d510ec9397ac7f69e57547a703ae9cfe105705b589",
+          "destination_hash": "a6aed9dedb5eedc1bf815e0ccbe572b7936640d612e8d7a9072ce93ea78b448d",
+          "bones": "3bc3a0e822af7116972d15dad3568cc8872f239fbe128e26d623f09bc6de34c7",
+          "matrices": "8c5c57456e430f041c7e50ef8dd83488c2fa852b5f4c2c84a8e7750316078ebb",
+          "loads": "8fbc221cb6d2c2ee239e31313f79e8d5c1fc9c38ebb1537774d7e0760caa139d",
+          "corners": "01ca1957a53d13880d37ae0d960edbf4eae2a640db21a34b318b1cd08f66f5bf",
+          "bounds": [
+            [
+              -43.781005859375,
+              40.832672119140625
+            ],
+            [
+              -1.8652191162109375,
+              115.44548034667969
+            ],
+            [
+              -32.199371337890625,
+              75.93577575683594
+            ]
+          ]
+        },
+        {
+          "phase": 0.3789474368095398,
+          "factor": 1.0,
+          "segment": 0,
+          "duration": 1.899999976158142,
+          "source_hash": "6987455710a3d55af39960d510ec9397ac7f69e57547a703ae9cfe105705b589",
+          "destination_hash": "1911f0f940509acf8c4dce413ca9515645a577d08f81bec92df9b3a373b1663f",
+          "bones": "1911f0f940509acf8c4dce413ca9515645a577d08f81bec92df9b3a373b1663f",
+          "matrices": "375d7c2200f97983e869b1ed4b394376a0eff3a69035e1118c9f04d78d57134a",
+          "loads": "f53eda6db54db20f8c15b94ddd66201210389fee0fb160b6d29329598d0e9eaa",
+          "corners": "9a3c3a8118a7fc2336cc5df93c17be6e3be0339bb4baea741cf82e18814b4288",
+          "bounds": [
+            [
+              -47.05448913574219,
+              47.05448913574219
+            ],
+            [
+              -0.76531982421875,
+              117.64811706542969
+            ],
+            [
+              -33.981597900390625,
+              72.40924072265625
+            ]
+          ]
+        },
+        {
+          "phase": 0.3921053409576416,
+          "factor": 1.0,
+          "segment": 0,
+          "duration": 1.899999976158142,
+          "source_hash": "6987455710a3d55af39960d510ec9397ac7f69e57547a703ae9cfe105705b589",
+          "destination_hash": "e25dcff599ca82ff35af7d402c6d2a9f093dd3db09a474b639c576f8842c6cdd",
+          "bones": "e25dcff599ca82ff35af7d402c6d2a9f093dd3db09a474b639c576f8842c6cdd",
+          "matrices": "536d51507d563db1def69b8b0c696d11e6f21041592759ef06ab118c78ae372b",
+          "loads": "e27f3cbf87ab2f040387d76e2b50845224f3620846a76d1d50b218dff08f791b",
+          "corners": "de096819dd2b093fcf785d32fbdc5e2d51e6c888fa924cb5775c3c08a8adf5e5",
+          "bounds": [
+            [
+              -49.18794250488281,
+              49.18794250488281
+            ],
+            [
+              -0.6307220458984375,
+              118.64231872558594
+            ],
+            [
+              -35.26005554199219,
+              67.40254211425781
+            ]
+          ]
+        },
+        {
+          "phase": 0.4052632451057434,
+          "factor": 1.0,
+          "segment": 0,
+          "duration": 1.899999976158142,
+          "source_hash": "6987455710a3d55af39960d510ec9397ac7f69e57547a703ae9cfe105705b589",
+          "destination_hash": "973d7ae87bd7974ab8864b78be1f6099112f30c6f8d126be2e691a9ea0dcb1f2",
+          "bones": "973d7ae87bd7974ab8864b78be1f6099112f30c6f8d126be2e691a9ea0dcb1f2",
+          "matrices": "b03a88a8a1630e724f824c3157799a6d032fa291451946f93bab1c98a1b45a2d",
+          "loads": "a5609a0fa0fced1463d06c6c320bcd00817f76e6341ad4e0c3c30a2010373ebc",
+          "corners": "26865d899bd0486f407f5d3fc0acf90bc886485aa59a10b411085911bda3723c",
+          "bounds": [
+            [
+              -48.35871887207031,
+              48.35871887207031
+            ],
+            [
+              -0.3968505859375,
+              119.07269287109375
+            ],
+            [
+              -36.163543701171875,
+              61.97044372558594
+            ]
+          ]
+        }
+      ]
+    },
+    "0008_006F": {
+      "source": "0008",
+      "destination": "006F",
+      "source_phase": 0.6100000143051147,
+      "duration": 5.5,
+      "rows": [
+        {
+          "phase": 0.0,
+          "factor": 0.0,
+          "segment": 0,
+          "duration": 5.5,
+          "source_hash": "f693abbe0f819dce411a56decb154a8899b6f766293f9da5f7379abf3c4dab91",
+          "destination_hash": "2cf3dfb9c5ebe3517ed63cda2f7b445a0cc60840870be668d16ca7c90c35b87b",
+          "bones": "f693abbe0f819dce411a56decb154a8899b6f766293f9da5f7379abf3c4dab91",
+          "matrices": "23992dae6d5c52b6cf283f8ac6691f21e098e38aa898517f4ebabe9ca2569f6e",
+          "loads": "3f98df0d852d2eff04b321358d69c860a51c4f614fc0e1d1b25eca59ee90ef49",
+          "corners": "62a12c9f244bf0209c7581167fe28e0cd241b9e37b5f26558737446ec55a36c9",
+          "bounds": [
+            [
+              -53.941925048828125,
+              53.941925048828125
+            ],
+            [
+              -6.7090301513671875,
+              109.43780517578125
+            ],
+            [
+              -35.5697021484375,
+              72.34220886230469
+            ]
+          ]
+        },
+        {
+          "phase": 0.004545454401522875,
+          "factor": 0.125,
+          "segment": 0,
+          "duration": 5.5,
+          "source_hash": "f693abbe0f819dce411a56decb154a8899b6f766293f9da5f7379abf3c4dab91",
+          "destination_hash": "22018f891b3fee856a00b8f9388ba9462ae6d8d3ac76ce9fbff6f48cd6cbd6ff",
+          "bones": "06520b550b7d8cfa611667f5f4cfe218eda7b7acfb5bc9f84f52d08223345153",
+          "matrices": "e8f3c5848440c4679d44497cc8918cd049a4823d75be903d049c50d6c453f4da",
+          "loads": "2a6674eb65f3a96e8194622ddb5e8f280ac55aaab72430761f959094e801b39d",
+          "corners": "38b72a908a4dab1e62bfba90ca7f30e01dfe60c84e948f3ca507e8a6b68df911",
+          "bounds": [
+            [
+              -60.151214599609375,
+              59.8948974609375
+            ],
+            [
+              -8.931884765625,
+              111.27978515625
+            ],
+            [
+              -35.873779296875,
+              71.58238220214844
+            ]
+          ]
+        },
+        {
+          "phase": 0.00909090880304575,
+          "factor": 0.25,
+          "segment": 0,
+          "duration": 5.5,
+          "source_hash": "f693abbe0f819dce411a56decb154a8899b6f766293f9da5f7379abf3c4dab91",
+          "destination_hash": "a8ea0ad53bb21611470361c107d3ce8f87db7edbde3cf24a6eaffc052828fb4f",
+          "bones": "c6c8366227d3372dfdb5cd15cc30c7f1e22281a1696bcb5b863a1a4a33e6333f",
+          "matrices": "d7b487ecc4a73df17e1c9185caf2f070eac53330b39581e64ae44239354cd026",
+          "loads": "7b296b1ac0d5ccff5f241c8098f1e9decb44419948264145a9317b05ff1b07a4",
+          "corners": "4887396b9c492b78776dca5884680bfed98b1017b954559d1bf1f2e0f0c41b93",
+          "bounds": [
+            [
+              -64.72523498535156,
+              63.42430114746094
+            ],
+            [
+              -10.261505126953125,
+              112.95370483398438
+            ],
+            [
+              -35.2431640625,
+              70.34442138671875
+            ]
+          ]
+        },
+        {
+          "phase": 0.013636363670229912,
+          "factor": 0.375,
+          "segment": 0,
+          "duration": 5.5,
+          "source_hash": "f693abbe0f819dce411a56decb154a8899b6f766293f9da5f7379abf3c4dab91",
+          "destination_hash": "7df4bfdccd1d9bf48200098e6b1e4cd9bb2945ef16579b0e19bd7010b4ecc54b",
+          "bones": "a1c623d2804d3c18717ee66a7b16da03052d1d49e667e6a8ce9de3f8b461ffb3",
+          "matrices": "9ea62308f09615e5ca8ab4555ecece49a6f712f59c2987def7c191c56205dc0e",
+          "loads": "75ba026a6c3f4b8d4aba1aff510e18f56ffdbab2bc344825aad7df218850a826",
+          "corners": "b0cf35b0c7db4c54b25b17958d8a86043ea5a660d064be6e9ae440d9a15b5183",
+          "bounds": [
+            [
+              -67.556396484375,
+              65.12026977539062
+            ],
+            [
+              -10.729171752929688,
+              114.44711303710938
+            ],
+            [
+              -34.05467224121094,
+              68.55595397949219
+            ]
+          ]
+        },
+        {
+          "phase": 0.0181818176060915,
+          "factor": 0.5,
+          "segment": 0,
+          "duration": 5.5,
+          "source_hash": "f693abbe0f819dce411a56decb154a8899b6f766293f9da5f7379abf3c4dab91",
+          "destination_hash": "6d4126d2f4a7683b25a0961e0b2f7ca9166861d5ec7a7cd19947aa3ae7998f18",
+          "bones": "fafab5093502bebebdb484a5c9ce9c6701b8d896b3119f8a86c63e48b7689057",
+          "matrices": "22bd3e6b4b442628d719d2d9372f9da9450269c31813e9cd80f0052bdee9a4c7",
+          "loads": "4ff11aa5b3e07ba8fed048f303a8dde53a52d4e58b518c8a0c93116fae54a273",
+          "corners": "946954bf44b5398a6c871f2aed9af44d613be9a71cf93000e4b9f3c171fe4921",
+          "bounds": [
+            [
+              -66.82771301269531,
+              63.81205749511719
+            ],
+            [
+              -10.261627197265625,
+              115.948486328125
+            ],
+            [
+              -32.550079345703125,
+              66.12362670898438
+            ]
+          ]
+        },
+        {
+          "phase": 0.022727271541953087,
+          "factor": 0.625,
+          "segment": 0,
+          "duration": 5.5,
+          "source_hash": "f693abbe0f819dce411a56decb154a8899b6f766293f9da5f7379abf3c4dab91",
+          "destination_hash": "6f8ee7350689d27b3fae3b4b8594627cda8172207a599d471cc1ed71450b20fc",
+          "bones": "a59114b67fb91592072b539fb1550fddb06cccaf403ebbe031282d7082708c65",
+          "matrices": "505058010a0633491cc8814cdaa92bf0c12d26dd1c54be5b5a816e044ea1e159",
+          "loads": "6dd3e17590ea356754e328eae7ac126183c2a66cfcd889bd185e9e41470e9dd7",
+          "corners": "fcb534768287512f1afc43dbfb82a0a929b44d6d5d87a6cb85c5182cb0ffaad3",
+          "bounds": [
+            [
+              -64.57353210449219,
+              62.08299255371094
+            ],
+            [
+              -8.922592163085938,
+              117.76483154296875
+            ],
+            [
+              -30.718780517578125,
+              62.95329284667969
+            ]
+          ]
+        },
+        {
+          "phase": 0.027272725477814674,
+          "factor": 0.75,
+          "segment": 0,
+          "duration": 5.5,
+          "source_hash": "f693abbe0f819dce411a56decb154a8899b6f766293f9da5f7379abf3c4dab91",
+          "destination_hash": "7897b8677d09ca6dc8ec389ddb300d843cde17c85e2aca2efb69e77209c4afca",
+          "bones": "dcf2f05a5c19138aee608e08c4c40d363b5e9ac72304a6b5790af485062c3d18",
+          "matrices": "4f3a87068b25ed9e37bd23ffe3105c2b794632e255224eac7e401d5a342cb158",
+          "loads": "c44a455f1cafa5aa39f5511b14b93982915337175d6ff0642e4642c2549b8a6b",
+          "corners": "61b4204f050fbad4edecc7d6e5fdc44c6455506c677f77ba54c74c1726f7dc3d",
+          "bounds": [
+            [
+              -60.83660888671875,
+              58.49687194824219
+            ],
+            [
+              -6.715240478515625,
+              119.35771179199219
+            ],
+            [
+              -29.604965209960938,
+              58.995941162109375
+            ]
+          ]
+        },
+        {
+          "phase": 0.03181818127632141,
+          "factor": 0.875,
+          "segment": 0,
+          "duration": 5.5,
+          "source_hash": "f693abbe0f819dce411a56decb154a8899b6f766293f9da5f7379abf3c4dab91",
+          "destination_hash": "5bc2e86f7749963cbec5d9f5e378ab6a3036d18b7f5be4756e4cf407290014a2",
+          "bones": "99dc3c3542536b0e6a905198a6eda007f4ca31815c7a6651ed88798ce6ca8a3d",
+          "matrices": "e32df302354d8de5cdbfcbde9ec6f23f26b6e91bdfcce365adb242ea54a51437",
+          "loads": "ebc52dd92bc15ae85d0e0b7a547d0e83e430ec852b11b9a685a23b173e539648",
+          "corners": "2e3a4b3470486880fcb2e973729e8e4f1e5a851ec600db1904afd7246cfd520d",
+          "bounds": [
+            [
+              -52.20390319824219,
+              53.27894592285156
+            ],
+            [
+              -3.6293487548828125,
+              120.71145629882812
+            ],
+            [
+              -27.709442138671875,
+              54.590423583984375
+            ]
+          ]
+        },
+        {
+          "phase": 0.036363635212183,
+          "factor": 1.0,
+          "segment": 0,
+          "duration": 5.5,
+          "source_hash": "f693abbe0f819dce411a56decb154a8899b6f766293f9da5f7379abf3c4dab91",
+          "destination_hash": "c0ff08ceb1cc052aa0745f948ee237541bc50c878f21a22d42ebf34dc0befe49",
+          "bones": "c0ff08ceb1cc052aa0745f948ee237541bc50c878f21a22d42ebf34dc0befe49",
+          "matrices": "2de65887be9146b29b1fc360512de2de6ee93c5223b73c0d33823d2f35854d45",
+          "loads": "6baec67e3993b113f4b8a2f07366c01c36675132dc0ac88715a1849a799e40d4",
+          "corners": "330b93cf3ecbbfebc1f3e92ccdaf76a6bad85357dc4ccf56acc6da587de2ab80",
+          "bounds": [
+            [
+              -39.13142395019531,
+              47.034088134765625
+            ],
+            [
+              0.0767364501953125,
+              121.82307434082031
+            ],
+            [
+              -25.897354125976562,
+              50.02325439453125
+            ]
+          ]
+        }
+      ]
+    },
+    "0008_0003": {
+      "source": "0008",
+      "destination": "0003",
+      "source_phase": 0.666700005531311,
+      "duration": 0.6000000238418579,
+      "rows": [
+        {
+          "phase": 0.0,
+          "factor": 0.0,
+          "segment": 0,
+          "duration": 0.6000000238418579,
+          "source_hash": "4c758663a7f6fb3b4b64876367cd9cf98e3a6f826c750af27bda28975da1e410",
+          "destination_hash": "e0e9a4fdc4face63102c0fa569129b1f377cb8a3df1120d2ea176c46380c57e3",
+          "bones": "4c758663a7f6fb3b4b64876367cd9cf98e3a6f826c750af27bda28975da1e410",
+          "matrices": "f3c37d460557deffe096018a86b7e9d1eaa2b2a045046209fa306e93ef44a0a1",
+          "loads": "5be5b5b54028aa63d60e0f1e2ee59beb10a0632c54f294e3569bbc05eb57b5c7",
+          "corners": "1a8d12ec4bd3d622e2923806f63afa6dcf642e7a876d5d17b1678201840ec55e",
+          "bounds": [
+            [
+              -60.5517578125,
+              60.5517578125
+            ],
+            [
+              -0.5312957763671875,
+              129.65036010742188
+            ],
+            [
+              -16.327865600585938,
+              72.86068725585938
+            ]
+          ]
+        },
+        {
+          "phase": 0.0416666641831398,
+          "factor": 0.125,
+          "segment": 0,
+          "duration": 0.6000000238418579,
+          "source_hash": "4c758663a7f6fb3b4b64876367cd9cf98e3a6f826c750af27bda28975da1e410",
+          "destination_hash": "e43a16922934987d6b9bdba47023411ce467a2c1a6ea6fe44227bbac4ae63074",
+          "bones": "5283617dfcfa8f01124b8d7f85d0f8e497b91b9b862b0f7429e7295ef4908251",
+          "matrices": "b8d3dec886bb4a21cc667b1ec2e987e1e256931a26b680e46831aaf744303dc2",
+          "loads": "324cedd472307afb0ea9d617d51344a80403ccba40020bc56b7adf128a2810b5",
+          "corners": "1a349b7a4c3ce46259d21a4e9eebab0f61a8aa0be745a959f7d97e452729913c",
+          "bounds": [
+            [
+              -66.37605285644531,
+              64.34535217285156
+            ],
+            [
+              -1.4292755126953125,
+              123.20808410644531
+            ],
+            [
+              -16.062698364257812,
+              73.42886352539062
+            ]
+          ]
+        },
+        {
+          "phase": 0.0833333283662796,
+          "factor": 0.25,
+          "segment": 0,
+          "duration": 0.6000000238418579,
+          "source_hash": "4c758663a7f6fb3b4b64876367cd9cf98e3a6f826c750af27bda28975da1e410",
+          "destination_hash": "1e74e91ab844e59bb3eb7697b724ae2245ab123cdbe0a8f11d763eae45dc10c6",
+          "bones": "f5c089b42a0abb82dad2367ac37321a5a1f0b1e242629663ac1f6a42144ed8d5",
+          "matrices": "3891345dd16be768090b37df8105f288e67f8632544dcfbcba087d48fbb236f7",
+          "loads": "b1a2bec409ef62c03b5cbffd04232fbfcd529610723db51344e968076acb18f3",
+          "corners": "6bec70096a52c179ecadf2ec1bd8c94636a194e674bb6e2491fb521361390e6c",
+          "bounds": [
+            [
+              -72.53221130371094,
+              66.77561950683594
+            ],
+            [
+              -2.09149169921875,
+              115.08290100097656
+            ],
+            [
+              -16.564193725585938,
+              73.43016052246094
+            ]
+          ]
+        },
+        {
+          "phase": 0.1249999925494194,
+          "factor": 0.375,
+          "segment": 0,
+          "duration": 0.6000000238418579,
+          "source_hash": "4c758663a7f6fb3b4b64876367cd9cf98e3a6f826c750af27bda28975da1e410",
+          "destination_hash": "f4b9e2486ba342a8aa8630aae2f7c7faeea0513de66c38ed8e5d32149629d96c",
+          "bones": "26a9880f527192eaaf4637a14f736c44c4203d3517c3e39b165e3524daa35a64",
+          "matrices": "e1ed451e68b6e8681ee53042021662ca43a56087910db4dfb7514bba4c5724a6",
+          "loads": "c29ad37396c0b3ce1211c2969d573d629e70af4700203ea4d179718fedd15441",
+          "corners": "9c6168e5bb08b54d726257ba2f284fb55700711319db6e3064470b0bd4c14bcf",
+          "bounds": [
+            [
+              -73.74049377441406,
+              69.03361511230469
+            ],
+            [
+              -2.6130828857421875,
+              115.64753723144531
+            ],
+            [
+              -18.00396728515625,
+              72.87924194335938
+            ]
+          ]
+        },
+        {
+          "phase": 0.1666666567325592,
+          "factor": 0.5,
+          "segment": 0,
+          "duration": 0.6000000238418579,
+          "source_hash": "4c758663a7f6fb3b4b64876367cd9cf98e3a6f826c750af27bda28975da1e410",
+          "destination_hash": "7f48e5de748d620cf167c5fb30b6936e1473768467e31d6c69b2d20590deb3fe",
+          "bones": "2a5890b01bd9ebc909a35d56184a1c74d469815f82335ab7488fb0a0ac9d41bc",
+          "matrices": "4b3e18a28fb5c2be1f3e305f7c660dd073c86b54275f03797d9f83bbfeddae7d",
+          "loads": "1030d1a3ab56819e59df2e33af44c51eb21899018334e90b6ebcffefb96685a4",
+          "corners": "1f7a4d2fabdf47c66425784692573a99e5a1cc7ce148bea379add70a1110bcc6",
+          "bounds": [
+            [
+              -69.76568603515625,
+              70.93315124511719
+            ],
+            [
+              -1.866302490234375,
+              116.78839111328125
+            ],
+            [
+              -20.591262817382812,
+              71.91021728515625
+            ]
+          ]
+        },
+        {
+          "phase": 0.2083333134651184,
+          "factor": 0.625,
+          "segment": 0,
+          "duration": 0.6000000238418579,
+          "source_hash": "4c758663a7f6fb3b4b64876367cd9cf98e3a6f826c750af27bda28975da1e410",
+          "destination_hash": "8d4089353dbb4783980a3423660a511ce0c14b0be3a7c881953aae29c9daf14b",
+          "bones": "2db274cc5f2f8cbdec5cbdf067da523767af5b71d724e0f932237b65af343aaf",
+          "matrices": "e328bafa453f189c9270df1a557b2fff0a718f3e5545f6eae44a9245a8de57f5",
+          "loads": "abe71a141a413f21bb257d506d83b8f2ea06e5ca73aba8879526affbf5db460a",
+          "corners": "b03ac59f9fe9803bc59025d27d38cc1dbbfc4c20394f6b157a02234865552f93",
+          "bounds": [
+            [
+              -64.02529907226562,
+              70.19993591308594
+            ],
+            [
+              -2.402008056640625,
+              118.14419555664062
+            ],
+            [
+              -24.488555908203125,
+              70.7010498046875
+            ]
+          ]
+        },
+        {
+          "phase": 0.2499999701976776,
+          "factor": 0.75,
+          "segment": 0,
+          "duration": 0.6000000238418579,
+          "source_hash": "4c758663a7f6fb3b4b64876367cd9cf98e3a6f826c750af27bda28975da1e410",
+          "destination_hash": "10c544dcc4c113966e159b0bf4476510b9d8b51436f8c81128ebe9e5066dc54c",
+          "bones": "9964fb8319e64d8d592ea0d2d9440a0645dc2a74be7af5efebd28849fbdfe316",
+          "matrices": "358f8037d0c528896ea2c43621334ab2f93ce2612fc197207eac289102afd4ee",
+          "loads": "ac9a77164ae52fa0b8b1242125dc45bdc1590e40bf9a3826a4405d2fd537788e",
+          "corners": "cba199e7062a11504d661bddae8d6a28b691c9a9ebb0bc7a772cb64566045842",
+          "bounds": [
+            [
+              -55.412200927734375,
+              67.64796447753906
+            ],
+            [
+              -3.59307861328125,
+              118.675048828125
+            ],
+            [
+              -29.361663818359375,
+              69.47216796875
+            ]
+          ]
+        },
+        {
+          "phase": 0.2916666269302368,
+          "factor": 0.875,
+          "segment": 0,
+          "duration": 0.6000000238418579,
+          "source_hash": "4c758663a7f6fb3b4b64876367cd9cf98e3a6f826c750af27bda28975da1e410",
+          "destination_hash": "aa27058b3e8e3d17ef282f8a7c22cae8a8dd3ab03a5c98cff071469776905426",
+          "bones": "df8c7f7810e35bd8df14a316f3e4366fb6c64c96fa2c5622c8c4f1dd84123785",
+          "matrices": "387f422f70f17bb4ae0db0911b3be9849f5c3b054d56bbab000bc7029539e499",
+          "loads": "6ec36805a55c8e5b8be9d7eb82748803ecde54d8169bc41cde205df4718c200b",
+          "corners": "a104f52e17a89c9f84bbe43a91df7cacf807a142c37ed5012abb1b0a779b4089",
+          "bounds": [
+            [
+              -45.47615051269531,
+              61.95668029785156
+            ],
+            [
+              -4.8972930908203125,
+              118.00746154785156
+            ],
+            [
+              -34.97514343261719,
+              68.49810791015625
+            ]
+          ]
+        },
+        {
+          "phase": 0.333333283662796,
+          "factor": 1.0,
+          "segment": 0,
+          "duration": 0.6000000238418579,
+          "source_hash": "4c758663a7f6fb3b4b64876367cd9cf98e3a6f826c750af27bda28975da1e410",
+          "destination_hash": "bc8fa3c0d9fe15ac81450ef6a251acd153175f33d6a50b1b56a303d72dede0bf",
+          "bones": "bc8fa3c0d9fe15ac81450ef6a251acd153175f33d6a50b1b56a303d72dede0bf",
+          "matrices": "2969ee3746308db1828d463bef1e42a9a88031f807817306e5e0fe15532590b7",
+          "loads": "0288c75eacdfe73682acede693f22308cd68b0b68e4b5c478b7b837460a39843",
+          "corners": "e534a6b5e77e5615b1a39d0b15eeb4c07e8673e09048cc38feb2fe41b4c98858",
+          "bounds": [
+            [
+              -39.48780822753906,
+              49.4876708984375
+            ],
+            [
+              -5.3048553466796875,
+              116.68492126464844
+            ],
+            [
+              -40.34562683105469,
+              67.77461242675781
+            ]
+          ]
+        }
+      ]
+    }
+  },
+  "interruption": {
+    "at": {
+      "phase": 0.3394737243652344,
+      "factor": 0.5597014427185059,
+      "segment": 0,
+      "duration": 1.899999976158142,
+      "source_hash": "9d9bed144e505c4a062f2155a7867afa564ff2a393a30fea333a42279116f060",
+      "destination_hash": "dca3f9c2f974a7d89795df91bd0af1869a0c7ce79cc877d78e42a67587c65dbb",
+      "bones": "c9aae4182102eeb76d0d628a68ca6541672ee52596732b93f93817850b8aa9c0",
+      "matrices": "8ca551f9a8591593c0002d5b41e5296bf01fdec5b4383856ab74b97fe8cef7b2",
+      "loads": "79ffe75658f5396f4d6680572e09e7e3685b7fe04e77a06f964d6064e2662aea",
+      "corners": "0fbb581b5ad9c2290d1317c55888428a473d3db63449403039928ed38e406633",
+      "bounds": [
+        [
+          -36.29644775390625,
+          47.01405334472656
+        ],
+        [
+          -3.8585968017578125,
+          115.24813842773438
+        ],
+        [
+          -23.956069946289062,
+          72.63038635253906
+        ]
+      ]
+    },
+    "rows": [
+      {
+        "phase": 0.0,
+        "factor": 0.0,
+        "segment": 0,
+        "duration": 0.6000000238418579,
+        "source_hash": "c9aae4182102eeb76d0d628a68ca6541672ee52596732b93f93817850b8aa9c0",
+        "destination_hash": "e0e9a4fdc4face63102c0fa569129b1f377cb8a3df1120d2ea176c46380c57e3",
+        "bones": "c9aae4182102eeb76d0d628a68ca6541672ee52596732b93f93817850b8aa9c0",
+        "matrices": "8ca551f9a8591593c0002d5b41e5296bf01fdec5b4383856ab74b97fe8cef7b2",
+        "loads": "79ffe75658f5396f4d6680572e09e7e3685b7fe04e77a06f964d6064e2662aea",
+        "corners": "0fbb581b5ad9c2290d1317c55888428a473d3db63449403039928ed38e406633",
+        "bounds": [
+          [
+            -36.29644775390625,
+            47.01405334472656
+          ],
+          [
+            -3.8585968017578125,
+            115.24813842773438
+          ],
+          [
+            -23.956069946289062,
+            72.63038635253906
+          ]
+        ]
+      },
+      {
+        "phase": 0.0416666641831398,
+        "factor": 0.125,
+        "segment": 0,
+        "duration": 0.6000000238418579,
+        "source_hash": "c9aae4182102eeb76d0d628a68ca6541672ee52596732b93f93817850b8aa9c0",
+        "destination_hash": "e43a16922934987d6b9bdba47023411ce467a2c1a6ea6fe44227bbac4ae63074",
+        "bones": "610146079d8c35096f6f1a8dc54f7ed7b6186b26a5b6753c83f80da5608deecc",
+        "matrices": "76222cbe4d5037d005ae0fac6e6b9a9f0bc4c46388a0ceed810a6d22b3468c10",
+        "loads": "faf90d22f9ccc8d041061973821bcd42bf513c936d32a5bbfde2a4304d1b375e",
+        "corners": "2eb12770ba43e29673648b1fad3d9ac4b6b5456e2895566f32516a62211b9eb2",
+        "bounds": [
+          [
+            -36.32893371582031,
+            48.71672058105469
+          ],
+          [
+            -5.7161407470703125,
+            114.74736022949219
+          ],
+          [
+            -26.958404541015625,
+            72.76470947265625
+          ]
+        ]
+      },
+      {
+        "phase": 0.0833333283662796,
+        "factor": 0.25,
+        "segment": 0,
+        "duration": 0.6000000238418579,
+        "source_hash": "c9aae4182102eeb76d0d628a68ca6541672ee52596732b93f93817850b8aa9c0",
+        "destination_hash": "1e74e91ab844e59bb3eb7697b724ae2245ab123cdbe0a8f11d763eae45dc10c6",
+        "bones": "c037397ccfc5680a01811dc6586b1c53e6ff21a9377b87e87c8a9bd098b9946d",
+        "matrices": "74e29c425dbbd6dca3941ca0a9ff9d46ff64909f24d579f2f66a63a724c4825e",
+        "loads": "e3e7089c3236ffaa5fd1f726f1bdc360d4215811bb0c58955ce2a1b673858324",
+        "corners": "35ce10b13be9f7253171114f6e0d48e97abe93a6b9d14fd1044a1877d0bbecfd",
+        "bounds": [
+          [
+            -36.2637939453125,
+            50.94813537597656
+          ],
+          [
+            -6.6038818359375,
+            114.80036926269531
+          ],
+          [
+            -28.719635009765625,
+            72.49404907226562
+          ]
+        ]
+      },
+      {
+        "phase": 0.1249999925494194,
+        "factor": 0.375,
+        "segment": 0,
+        "duration": 0.6000000238418579,
+        "source_hash": "c9aae4182102eeb76d0d628a68ca6541672ee52596732b93f93817850b8aa9c0",
+        "destination_hash": "f4b9e2486ba342a8aa8630aae2f7c7faeea0513de66c38ed8e5d32149629d96c",
+        "bones": "fb3032ce03776279c5251994a36ce1c6e4b5f9821aa983de5a6554125b7440b1",
+        "matrices": "e7ca04e573ff49a2deb188a6d122b4421691085ac4ee046bf7427732a3b9ac9e",
+        "loads": "cdb4c82a1e82e7de82ac7c0c36108c64e0861a98b02641cd8a6357f850965ca3",
+        "corners": "dfc57d1767097d3923beed5b97c5336bc5cb51bda113b524752c0d644d4e22b6",
+        "bounds": [
+          [
+            -36.02699279785156,
+            53.36463928222656
+          ],
+          [
+            -6.2858123779296875,
+            115.34811401367188
+          ],
+          [
+            -28.50689697265625,
+            71.85762023925781
+          ]
+        ]
+      },
+      {
+        "phase": 0.1666666567325592,
+        "factor": 0.5,
+        "segment": 0,
+        "duration": 0.6000000238418579,
+        "source_hash": "c9aae4182102eeb76d0d628a68ca6541672ee52596732b93f93817850b8aa9c0",
+        "destination_hash": "7f48e5de748d620cf167c5fb30b6936e1473768467e31d6c69b2d20590deb3fe",
+        "bones": "f85da9a2dd8bd0dad5d338e3c4bdc5353cc85d2579f806a99a1f8564bed2218a",
+        "matrices": "b9478e0be33ab2a2e5e9fc039045a7b8608df663385fcb0fea2de1009260192e",
+        "loads": "780d0cbe86c47790a679774978112e84181da874a7818fb715baabbaacbc6823",
+        "corners": "69d7f3d903f5c536136989b41fca45e2dc227c0963b3c8d3e9eea3fee21288b4",
+        "bounds": [
+          [
+            -35.7303466796875,
+            55.32356262207031
+          ],
+          [
+            -4.6715850830078125,
+            116.36590576171875
+          ],
+          [
+            -25.542007446289062,
+            70.95132446289062
+          ]
+        ]
+      },
+      {
+        "phase": 0.2083333134651184,
+        "factor": 0.625,
+        "segment": 0,
+        "duration": 0.6000000238418579,
+        "source_hash": "c9aae4182102eeb76d0d628a68ca6541672ee52596732b93f93817850b8aa9c0",
+        "destination_hash": "8d4089353dbb4783980a3423660a511ce0c14b0be3a7c881953aae29c9daf14b",
+        "bones": "19657e932fd215f260b8af9d639532b67ef1356d60cfea90e37a213a4f04e303",
+        "matrices": "d5ed6cbe3f0427853cc771006aced2341ef8736683807125f1e08739b5bd872d",
+        "loads": "34979b2b02b6fa8429ca48eb96653ca2ae19fbeaa4853bd708c7889e30474097",
+        "corners": "e32c2fc0e83f7af27202b055323b300e53dbbfe91de70c69b5e18a4bbcb2633e",
+        "bounds": [
+          [
+            -35.391510009765625,
+            56.296722412109375
+          ],
+          [
+            -3.5472564697265625,
+            117.68441772460938
+          ],
+          [
+            -26.50775146484375,
+            69.89016723632812
+          ]
+        ]
+      },
+      {
+        "phase": 0.2499999701976776,
+        "factor": 0.75,
+        "segment": 0,
+        "duration": 0.6000000238418579,
+        "source_hash": "c9aae4182102eeb76d0d628a68ca6541672ee52596732b93f93817850b8aa9c0",
+        "destination_hash": "10c544dcc4c113966e159b0bf4476510b9d8b51436f8c81128ebe9e5066dc54c",
+        "bones": "ef48603d5fe34cb4beb8bef977c88573cc6cb088b576ab9de5d93dd7a9b6709e",
+        "matrices": "f18ed1c4f26d966b6beb64708aed92aebace11a3d99f7d429b09fdfbf7ee22fb",
+        "loads": "c27d10950e5e598694ab1d59631777e204b7826d8f442033e9e3679e3ed5bb42",
+        "corners": "f328380e530ba190643d4ecba659901e36a7a4598b73c705266ca75e9ff8f2ff",
+        "bounds": [
+          [
+            -35.85565185546875,
+            56.10809326171875
+          ],
+          [
+            -4.3794708251953125,
+            118.31916809082031
+          ],
+          [
+            -30.713302612304688,
+            68.849609375
+          ]
+        ]
+      },
+      {
+        "phase": 0.2916666269302368,
+        "factor": 0.875,
+        "segment": 0,
+        "duration": 0.6000000238418579,
+        "source_hash": "c9aae4182102eeb76d0d628a68ca6541672ee52596732b93f93817850b8aa9c0",
+        "destination_hash": "aa27058b3e8e3d17ef282f8a7c22cae8a8dd3ab03a5c98cff071469776905426",
+        "bones": "9d676e376dfd0bcae83e5d4b0d6aea0a88d48ecef130deec94535b3f564b8a76",
+        "matrices": "62d14d032d82f8a4e2f0beb87572e6e29189e7b349dcde4c8d67bac2c4203c8a",
+        "loads": "8b041fbcfce223ebe1f3bdab1033df94a25cdd0fffcf5e0cd93b8d5cb5b1b009",
+        "corners": "d1fd229157764c8acbf86a9f3fc5b6eb15bb11f9b0f79929391f5ed6f9144865",
+        "bounds": [
+          [
+            -37.02381896972656,
+            54.31666564941406
+          ],
+          [
+            -5.290130615234375,
+            118.06271362304688
+          ],
+          [
+            -35.64259338378906,
+            68.12835693359375
+          ]
+        ]
+      },
+      {
+        "phase": 0.333333283662796,
+        "factor": 1.0,
+        "segment": 0,
+        "duration": 0.6000000238418579,
+        "source_hash": "c9aae4182102eeb76d0d628a68ca6541672ee52596732b93f93817850b8aa9c0",
+        "destination_hash": "bc8fa3c0d9fe15ac81450ef6a251acd153175f33d6a50b1b56a303d72dede0bf",
+        "bones": "bc8fa3c0d9fe15ac81450ef6a251acd153175f33d6a50b1b56a303d72dede0bf",
+        "matrices": "2969ee3746308db1828d463bef1e42a9a88031f807817306e5e0fe15532590b7",
+        "loads": "0288c75eacdfe73682acede693f22308cd68b0b68e4b5c478b7b837460a39843",
+        "corners": "e534a6b5e77e5615b1a39d0b15eeb4c07e8673e09048cc38feb2fe41b4c98858",
+        "bounds": [
+          [
+            -39.48780822753906,
+            49.4876708984375
+          ],
+          [
+            -5.3048553466796875,
+            116.68492126464844
+          ],
+          [
+            -40.34562683105469,
+            67.77461242675781
+          ]
+        ]
+      }
+    ]
+  }
+}

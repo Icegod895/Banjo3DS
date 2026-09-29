@@ -43,7 +43,7 @@ float banjo_gait_start_phase(BanjoGait old, BanjoGait next, float phase) {
 }
 bool banjo_gait_update(BanjoGaitState *s,const uint8_t *packet,size_t size,
                        bool accepted,float speed,float dt) {
-    if(!s || !isfinite(dt) || dt<0 || size!=26234 || !packet)return false;
+    if(!s || !isfinite(dt) || dt<0 || (size!=26234 && size!=28022) || !packet)return false;
     if(!s->initialized) {
         if(!banjo_pose_sample(packet,size,BANJO_CLIP_IDLE,0,s->pose.bones))return false;
         s->gait=BANJO_GAIT_IDLE;s->phase=0;s->factor=1;s->initialized=true;

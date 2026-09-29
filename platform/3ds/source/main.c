@@ -5,7 +5,7 @@
 
 #include "vshader_shbin.h"
 #include "movement.h"
-#include "walk_animation.h"
+#include "player_runtime.h"
 #include "generated_model.h"
 
 #define CLEAR_COLOR 0x68B0D8FF
@@ -21,7 +21,7 @@ static shaderProgram_s program;
 static int uLoc_projection, uLoc_modelView;
 static C3D_Mtx projection, modelView;
 static void *vbo_data;
-static WalkAnimation walkAnimation;
+static PlayerRuntime player = {.motion = {.actor = {0.0f, 1800.0f, 0.0f, 0.0f}, .grounded = true}};
 /* Debugger-visible CPU measurements: evaluator + corner XYZ propagation,
  * excluding GPU wait/cache flush. No console work in the measured interval. */
 volatile float banjoPoseLastUs, banjoPoseMaxUs;
@@ -54,7 +54,6 @@ static struct {
     float focusX, focusY, focusZ;
 } camera;
 
-static MovementActor actor = {0.0f, 1800.0f, 0.0f, 0.0f};
 
 static float cameraClamp(float value, float minimum, float maximum)
 {
@@ -661,7 +660,7 @@ static void sceneRender(void)
     // FullDepthOpa modes 1 and 3 both use Z_CMP | Z_UPD; retain depth writes.
     float rows[4][4];
     C3D_Mtx world, actorModelView;
-    movementActorMatrix(&actor, rows);
+    movementActorMatrix(&player.motion.actor, rows);
     for (int i = 0; i < 4; ++i)
         world.r[i] = FVec4_New(rows[i][0], rows[i][1], rows[i][2], rows[i][3]);
     // Citro3D out = a*b; shader uses matrix rows dotted with column positions.
@@ -738,22 +737,23 @@ int main(void)
         hidCircleRead(&pad);
         u32 held = hidKeysHeld();
         cameraUpdate(down, held, &pad, dt);
-        MovementActor previousActor = actor;
-        bool accepted = movementUpdate(&actor, pad.dx, pad.dy, camera.yawDegrees, dt,
-            (held & KEY_Y) != 0, banjo_floor_vertices, banjo_floor_triangles,
-            BANJO_FLOOR_TRIANGLE_COUNT);
+        playerRuntimeMove(&player, pad.dx, pad.dy, camera.yawDegrees, dt,
+            (down & KEY_A) != 0, (held & KEY_Y) != 0,
+            banjo_floor_vertices, banjo_floor_triangles, BANJO_FLOOR_TRIANGLE_COUNT);
 
-        if (!C3D_FrameBegin(C3D_FRAME_SYNCDRAW)) continue;
-        /* FrameBegin waits for the previous GPU submission before VBO writes. */
-        float dx = actor.x - previousActor.x, dz = actor.z - previousActor.z;
-        float speed = accepted && dt > 0 ? sqrtf(dx*dx + dz*dz) / dt : 0;
         u64 poseStart = svcGetSystemTick();
-        bool changed = walkAnimationUpdate(&walkAnimation,
-            banjo_pose_packet, BANJO_POSE_PACKET_SIZE, accepted, speed, dt,
+        bool evaluated = playerRuntimeAnimate(&player,
+            banjo_pose_packet, BANJO_POSE_PACKET_SIZE, dt);
+        u64 poseTicks = svcGetSystemTick() - poseStart;
+        if (!C3D_FrameBegin(C3D_FRAME_SYNCDRAW)) continue;
+        /* CPU pose evaluation is independent of the GPU. VBO writes wait for
+         * the previous submission; failed render frames cannot lose events. */
+        u64 scatterStart = svcGetSystemTick();
+        bool changed = evaluated && playerRuntimeWriteVertices(&player, banjo_pose_packet,
             vbo_data, BANJO_VERTEX_COUNT,
             BANJO_ACTOR_FIRST_VERTEX, BANJO_ACTOR_VERTEX_COUNT, sizeof(Banjo3DSVertex));
         if (changed) {
-            banjoPoseLastUs = (svcGetSystemTick() - poseStart) / CPU_TICKS_PER_USEC;
+            banjoPoseLastUs = (poseTicks + svcGetSystemTick() - scatterStart) / CPU_TICKS_PER_USEC;
             if (banjoPoseLastUs > banjoPoseMaxUs) banjoPoseMaxUs = banjoPoseLastUs;
             ++banjoPoseUpdateCount;
         }

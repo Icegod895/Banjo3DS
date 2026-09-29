@@ -88,13 +88,15 @@ static void bone(float m[4][4],const float *q,const float *pivot,float factor) {
 }
 /* B3P3 v1 is the unchanged M4.3 walk fixture; v2 appends 006F and
  * uses header word 6 for its byte length. v3 uses the reserved word for
- * two u16 lengths and appends 0002/000C. Binding offsets are identical. */
+ * two u16 lengths and appends 0002/000C. v4 appends 0008.
+ * Binding offsets and all legacy packet payloads are identical. */
 static bool packet_valid(const uint8_t *p,size_t size) {
     if(!p || size<32 || memcmp(p,"B3P3",4) || u32(p+8)!=60 ||
        u32(p+12)!=723 || u32(p+16)!=2085 || u32(p+20)!=1132)return false;
     return (u32(p+4)==1 && u32(p+24)==0 && u32(p+28)==0 && size==12082) ||
            (u32(p+4)==2 && u32(p+24)==12316 && u32(p+28)==0 && size==24398) ||
-           (u32(p+4)==3 && u32(p+24)==12316 && u16(p+28)==888 && u16(p+30)==948 && size==26234);
+           (u32(p+4)==3 && u32(p+24)==12316 && u16(p+28)==888 && u16(p+30)==948 && size==26234) ||
+           (u32(p+4)==4 && u32(p+24)==12316 && u16(p+28)==888 && u16(p+30)==948 && size==28022);
 }
 bool banjo_pose_sample(const uint8_t *p,size_t size,BanjoClip clip,float phase,float out[109][10]) {
     /* Canonical asset descriptors only; interpolation math is unchanged. */
@@ -103,6 +105,7 @@ bool banjo_pose_sample(const uint8_t *p,size_t size,BanjoClip clip,float phase,f
         {12082,12316,110,81,2}, /* 006F */
         {24398,888,80,44,3},    /* 0002 */
         {25286,948,120,44,3},   /* 000C */
+        {26234,1788,45,35,4},   /* 0008: sample inclusive endpoint; never implicitly loop */
     };
     if(!out || !packet_valid(p,size) || !isfinite(phase) || phase<0 || phase>1 ||
        (unsigned)clip>=sizeof(clips)/sizeof(clips[0]) || u32(p+4)<clips[clip].version)return false;

@@ -1,0 +1,24 @@
+#ifndef BANJO_PLAYER_RUNTIME_H
+#define BANJO_PLAYER_RUNTIME_H
+#include "jump.h"
+#include "jump_animation.h"
+#include "gait.h"
+/* Thin integration of the proven movement/gait/jump modules, no new physics.
+ * Separate controller storage makes both handoffs explicit, without aliasing. */
+typedef struct {
+    BanjoJumpMotion motion;
+    BanjoGaitState gait;
+    BanjoJumpAnimation jump;
+    unsigned events;
+    float speed;
+    bool accepted, jumpActive;
+} PlayerRuntime;
+/* Initialize motion.actor and motion.grounded; zero all remaining fields. */
+void playerRuntimeMove(PlayerRuntime *s, float x, float y, float cameraYaw, float dt,
+                       bool jumpPressed, bool cameraMode, const FloorVertex *vertices,
+                       const FloorTriangle *triangles, size_t count);
+bool playerRuntimeAnimate(PlayerRuntime *s, const uint8_t *packet, size_t size, float dt);
+/* Caller waits for GPU completion, then flushes the actor range afterwards. */
+bool playerRuntimeWriteVertices(const PlayerRuntime *s, const uint8_t *packet, void *vertices,
+                                size_t total, size_t first, size_t count, size_t stride);
+#endif

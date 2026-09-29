@@ -164,6 +164,19 @@ def export_gait_packet(model_path, walk_path, idle_path, creep_path, run_path):
     return bytes(packet) + b''.join(clips)
 
 
+def export_jump_packet(model_path, walk_path, idle_path, creep_path, run_path, jump_path):
+    """B3P3 v4: unchanged v3 payload plus canonical raw 0008.
+
+    Explicit opt-in for the jump viewer. 28022 bytes; no new binding.
+    """
+    animation = Path(jump_path).read_bytes()
+    if hashlib.sha256(animation).hexdigest() != 'b4984d8cfe4aed530a7fb1d62221619b1babac4f79c1697aa85d71ea4847f7e8':
+        raise ValueError('Expected canonical 0008 animation')
+    packet = bytearray(export_gait_packet(model_path, walk_path, idle_path, creep_path, run_path))
+    struct.pack_into('>I', packet, 4, 4)
+    return bytes(packet) + animation
+
+
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(description=__doc__)
