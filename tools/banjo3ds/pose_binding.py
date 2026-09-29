@@ -143,6 +143,27 @@ def export_transition_packet(model_path, walk_path, idle_path):
     return bytes(packet) + idle
 
 
+def export_gait_packet(model_path, walk_path, idle_path, creep_path, run_path):
+    """B3P3 v3: v2 binding + 0003/006F/0002/000C, exactly 26234 bytes.
+
+    The reserved word at 28 becomes two big-endian u16 clip lengths:
+    0002 at 28, 000C at 30. Old v1/v2 exports remain byte-identical.
+    """
+    packet = bytearray(export_transition_packet(model_path, walk_path, idle_path))
+    clips = []
+    for path, sha in (
+        (creep_path, '45695bf12a3f82d0a2a9aaeac7808d4635f4347fedb11d580ae1e332f49c2082'),
+        (run_path, 'cf37a93b986be2efe08b86aadf7bf7709331d14237bf8aaad724f7d870d21f23'),
+    ):
+        data = Path(path).read_bytes()
+        if hashlib.sha256(data).hexdigest() != sha:
+            raise ValueError('Expected canonical 0002/000C animation')
+        clips.append(data)
+    struct.pack_into('>I', packet, 4, 3)
+    struct.pack_into('>HH', packet, 28, *(len(clip) for clip in clips))
+    return bytes(packet) + b''.join(clips)
+
+
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(description=__doc__)

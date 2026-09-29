@@ -14,6 +14,8 @@ BANJO3DS_XLU_MODEL := $(REPO_ROOT)/assets/model/14D0.model.bin
 BANJO3DS_ACTOR_MODEL := $(REPO_ROOT)/assets/model/034D.model.bin
 BANJO3DS_IDLE_ANIMATION := $(REPO_ROOT)/assets/anim/006F.anim.bin
 BANJO3DS_WALK_ANIMATION := $(REPO_ROOT)/assets/anim/0003.anim.bin
+BANJO3DS_CREEP_ANIMATION := $(REPO_ROOT)/assets/anim/0002.anim.bin
+BANJO3DS_RUN_ANIMATION := $(REPO_ROOT)/assets/anim/000C.anim.bin
 BANJO3DS_GENERATED_MODEL := $(TOPDIR)/source/generated_model.h
 
 include $(DEVKITARM)/3ds_rules
@@ -42,9 +44,9 @@ include $(DEVKITARM)/3ds_rules
 #---------------------------------------------------------------------------------
 TARGET		:=	banjo3ds
 BUILD		:=	build
-SOURCES		:=	source ../../tools/banjo3ds/pose
+SOURCES		:=	source ../../tools/banjo3ds/pose ../../tools/banjo3ds/gait
 DATA		:=	data
-INCLUDES	:=	include ../../tools/banjo3ds/pose
+INCLUDES	:=	include ../../tools/banjo3ds/pose ../../tools/banjo3ds/gait
 GRAPHICS	:=	gfx
 GFXBUILD	:=	$(BUILD)
 #ROMFS		:=	romfs
@@ -173,9 +175,9 @@ endif
 all: $(BANJO3DS_GENERATED_MODEL) $(BUILD) $(GFXBUILD) $(DEPSDIR) $(ROMFS_T3XFILES) $(T3XHFILES)
 	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile
 
-$(BANJO3DS_GENERATED_MODEL): $(BANJO3DS_MODEL) $(BANJO3DS_XLU_MODEL) $(BANJO3DS_ACTOR_MODEL) $(BANJO3DS_IDLE_ANIMATION) $(REPO_ROOT)/tools/banjo3ds/export_3ds_model.py $(REPO_ROOT)/tools/banjo3ds/n64_displaylist_decoder.py $(REPO_ROOT)/tools/banjo3ds/geo_sort.py $(REPO_ROOT)/tools/banjo3ds/canonical_banjo.py $(REPO_ROOT)/tools/banjo3ds/static_idle.py $(REPO_ROOT)/tools/banjo3ds/floor_collision.py $(REPO_ROOT)/tools/banjo3ds/pose_binding.py $(BANJO3DS_WALK_ANIMATION)
+$(BANJO3DS_GENERATED_MODEL): $(BANJO3DS_MODEL) $(BANJO3DS_XLU_MODEL) $(BANJO3DS_ACTOR_MODEL) $(BANJO3DS_IDLE_ANIMATION) $(REPO_ROOT)/tools/banjo3ds/export_3ds_model.py $(REPO_ROOT)/tools/banjo3ds/n64_displaylist_decoder.py $(REPO_ROOT)/tools/banjo3ds/geo_sort.py $(REPO_ROOT)/tools/banjo3ds/canonical_banjo.py $(REPO_ROOT)/tools/banjo3ds/static_idle.py $(REPO_ROOT)/tools/banjo3ds/floor_collision.py $(REPO_ROOT)/tools/banjo3ds/pose_binding.py $(BANJO3DS_WALK_ANIMATION) $(BANJO3DS_CREEP_ANIMATION) $(BANJO3DS_RUN_ANIMATION)
 	@echo generating $(notdir $@)
-	@cd $(REPO_ROOT) && $(BANJO3DS_PYTHON) -B -m tools.banjo3ds.export_3ds_model $(BANJO3DS_MODEL) $(BANJO3DS_GENERATED_MODEL) $(BANJO3DS_XLU_MODEL) $(BANJO3DS_ACTOR_MODEL) $(BANJO3DS_IDLE_ANIMATION) $(BANJO3DS_WALK_ANIMATION) --runtime-transitions
+	@cd $(REPO_ROOT) && $(BANJO3DS_PYTHON) -B -m tools.banjo3ds.export_3ds_model $(BANJO3DS_MODEL) $(BANJO3DS_GENERATED_MODEL) $(BANJO3DS_XLU_MODEL) $(BANJO3DS_ACTOR_MODEL) $(BANJO3DS_IDLE_ANIMATION) $(BANJO3DS_WALK_ANIMATION) $(BANJO3DS_CREEP_ANIMATION) $(BANJO3DS_RUN_ANIMATION) --runtime-transitions
 
 $(BUILD):
 	@mkdir -p $@

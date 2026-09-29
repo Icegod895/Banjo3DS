@@ -87,20 +87,27 @@ static void bone(float m[4][4],const float *q,const float *pivot,float factor) {
     translate(m,-pivot[0],-pivot[1],-pivot[2]);
 }
 /* B3P3 v1 is the unchanged M4.3 walk fixture; v2 appends 006F and
- * uses header word 6 for its byte length. Binding offsets are identical. */
+ * uses header word 6 for its byte length. v3 uses the reserved word for
+ * two u16 lengths and appends 0002/000C. Binding offsets are identical. */
 static bool packet_valid(const uint8_t *p,size_t size) {
     if(!p || size<32 || memcmp(p,"B3P3",4) || u32(p+8)!=60 ||
-       u32(p+12)!=723 || u32(p+16)!=2085 || u32(p+20)!=1132 || u32(p+28))return false;
-    return (u32(p+4)==1 && u32(p+24)==0 && size==12082) ||
-           (u32(p+4)==2 && u32(p+24)==12316 && size==24398);
+       u32(p+12)!=723 || u32(p+16)!=2085 || u32(p+20)!=1132)return false;
+    return (u32(p+4)==1 && u32(p+24)==0 && u32(p+28)==0 && size==12082) ||
+           (u32(p+4)==2 && u32(p+24)==12316 && u32(p+28)==0 && size==24398) ||
+           (u32(p+4)==3 && u32(p+24)==12316 && u16(p+28)==888 && u16(p+30)==948 && size==26234);
 }
 bool banjo_pose_sample(const uint8_t *p,size_t size,BanjoClip clip,float phase,float out[109][10]) {
+    /* Canonical asset descriptors only; interpolation math is unchanged. */
+    static const struct { unsigned offset, bytes, last, channels, version; } clips[] = {
+        {10950,1132,120,47,1},  /* 0003 */
+        {12082,12316,110,81,2}, /* 006F */
+        {24398,888,80,44,3},    /* 0002 */
+        {25286,948,120,44,3},   /* 000C */
+    };
     if(!out || !packet_valid(p,size) || !isfinite(phase) || phase<0 || phase>1 ||
-       (clip!=BANJO_CLIP_WALK && clip!=BANJO_CLIP_IDLE) ||
-       (clip==BANJO_CLIP_IDLE && u32(p+4)!=2))return false;
-    const uint8_t *anim=p+10950+(clip==BANJO_CLIP_IDLE?1132:0);
-    unsigned last=clip==BANJO_CLIP_IDLE?110:120, channels=clip==BANJO_CLIP_IDLE?81:47;
-    const uint8_t *end=anim+(clip==BANJO_CLIP_IDLE?12316:1132);
+       (unsigned)clip>=sizeof(clips)/sizeof(clips[0]) || u32(p+4)<clips[clip].version)return false;
+    const uint8_t *anim=p+clips[clip].offset,*end=anim+clips[clip].bytes;
+    unsigned last=clips[clip].last,channels=clips[clip].channels;
     if(u16(anim)!=0 || u16(anim+2)!=last || u16(anim+4)!=channels || u16(anim+6))return false;
     memset(out,0,109*10*sizeof(float));
     /* Euler channels temporarily occupy q.xyz; no extra channel array. */
