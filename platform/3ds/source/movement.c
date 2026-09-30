@@ -1,4 +1,5 @@
 #include "movement.h"
+#include <limits.h>
 #include <math.h>
 
 static const float radians = 0.017453292519943295f;
@@ -55,6 +56,36 @@ bool movementFloor(const FloorVertex *vertices, const FloorTriangle *triangles,
     return found;
 }
 
+bool movementFollowFloor(const FloorVertex *vertices, const FloorTriangle *triangles,
+                         size_t count, float startX, float startY, float startZ,
+                         float endX, float endZ, float *height)
+{
+    if (!height || !isfinite(startX) || !isfinite(startY) || !isfinite(startZ) ||
+        !isfinite(endX) || !isfinite(endZ)) return false;
+    /* |grad Y| <= sqrt(1-n^2)/n for every accepted continuous floor, n=.432.
+     * A +/-30 window permits at most 14.37008 horizontal units. Round DOWN
+     * to 14, leaving >.77 vertical units of margin for float32 evaluation.
+     * Derive this from the existing constants, not measured asset slopes. */
+    const float n = MOVEMENT_MIN_NORMAL_Y;
+    const float limit = floorf(MOVEMENT_STEP*n/sqrtf(1.0f-n*n));
+    float dx = endX-startX, dz = endZ-startZ;
+    float distance = sqrtf(dx*dx+dz*dz);
+    float steps = ceilf(distance/limit);
+    if (!isfinite(steps) || steps >= (float)INT_MAX) return false;
+    int countSteps = steps > 1 ? (int)steps : 1;
+    float y = startY;
+    for (int i = 1; i <= countSteps; ++i) {
+        /* Last query uses the caller's exact endpoint, including for the
+         * unchanged <=7.5-unit current viewer steps. No accumulated XZ drift. */
+        float fraction = (float)i/countSteps;
+        float x = i == countSteps ? endX : startX+dx*fraction;
+        float z = i == countSteps ? endZ : startZ+dz*fraction;
+        if (!movementFloor(vertices, triangles, count, x, z, y, &y)) return false;
+    }
+    *height = y;
+    return true;
+}
+
 bool movementUpdate(MovementActor *actor, float padX, float padY, float cameraYaw,
                     float dt, bool cameraMode, const FloorVertex *vertices,
                     const FloorTriangle *triangles, size_t count)
@@ -67,7 +98,8 @@ bool movementUpdate(MovementActor *actor, float padX, float padY, float cameraYa
     dt = fminf(dt, 0.05f);
     float x = actor->x + direction[0]*MOVEMENT_SPEED*dt;
     float z = actor->z + direction[1]*MOVEMENT_SPEED*dt;
-    if (!movementFloor(vertices, triangles, count, x, z, actor->y, &floor)) return false;
+    if (!movementFollowFloor(vertices, triangles, count, actor->x, actor->y,
+                             actor->z, x, z, &floor)) return false;
     /* Commit all position/heading state together, only after a valid floor. */
     actor->x = x; actor->y = floor; actor->z = z;
     actor->yaw = atan2f(direction[0], direction[1]) / radians;

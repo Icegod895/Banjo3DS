@@ -4,15 +4,46 @@
 
 void playerRuntimeMove(PlayerRuntime *s,float x,float y,float yaw,float dt,
                        bool jumpPressed,bool cameraMode,const FloorVertex *v,const FloorTriangle *t,size_t n) {
+    if(!s || !isfinite(dt) || dt<0 || !isfinite(x) || !isfinite(y) || !isfinite(yaw))return;
+    dt=fminf(dt,.05f);
+    s->events=0;s->accepted=false;s->speed=0;
+    if(dt==0)return;
+    if(!s->horizontalInitialized) {
+        banjo_horizontal_init(&s->horizontal,s->motion.actor.yaw);
+        s->horizontalInitialized=true;
+    }
+    BanjoHorizontal *h=&s->horizontal;
+    float stick[2]={0},direction[2];
+    if(!cameraMode)movementNormalize(x,y,stick);
+    float magnitude=banjo_horizontal_magnitude(stick[0],stick[1]);
+    movementDirection(stick[0],stick[1],yaw,direction);
+    float heading=magnitude>0?atan2f(direction[0],direction[1])/0.017453292519943295f:h->intent.desired_yaw;
+    banjo_horizontal_intent(h,magnitude,heading);
     MovementActor before=s->motion.actor;
     bool wasGrounded=s->motion.grounded;
-    s->events=banjo_jump_step(&s->motion,x,y,yaw,dt,jumpPressed,cameraMode,true,v,t,n);
-    /* Contact consumes the rest of the frame. Resume accepted ground-speed
-     * gait selection on the next grounded movement step, never teleport speed. */
+    if(wasGrounded) {
+        BanjoGait old=(BanjoGait)s->locomotion.gait;
+        BanjoHorizontalMetrics previous=banjo_horizontal_metrics(h,dt);
+        BanjoGait next=banjo_gait_motion_select(&s->locomotion,&previous,dt);
+        /* Original stand update starts movement for the NEXT physics frame.
+         * Takeoff explicitly replaces this target with current stick intent. */
+        if(old==BANJO_GAIT_IDLE && next!=BANJO_GAIT_IDLE)h->target_speed=0;
+    }
+    s->events=banjo_jump_step_horizontal(&s->motion,h,dt,jumpPressed,cameraMode,v,t,n);
+    float dx=s->motion.actor.x-before.x,dz=s->motion.actor.z-before.z;
+    if(s->events&BANJO_JUMP_RECOVERED) {
+        /* Diagnostic teleport is neither accepted movement nor stored momentum. */
+        banjo_horizontal_init(h,s->motion.actor.yaw);dx=dz=0;
+    }
+    banjo_horizontal_accept(h,dx,dz);
+    s->metrics=banjo_horizontal_metrics(h,dt);
     s->accepted=wasGrounded && s->motion.grounded && (s->events&BANJO_JUMP_MOVED) &&
                 !(s->events&(BANJO_JUMP_TAKEOFF|BANJO_JUMP_LANDED|BANJO_JUMP_RECOVERED));
-    float dx=s->motion.actor.x-before.x,dz=s->motion.actor.z-before.z;
-    s->speed=s->accepted && dt>0?sqrtf(dx*dx+dz*dz)/fminf(dt,0.05f):0;
+    s->speed=s->accepted?s->metrics.accepted_speed:0;
+    /* Preserve M4.6 contact-frame idle handoff; input selects gait next frame. */
+    if(s->events&(BANJO_JUMP_LANDED|BANJO_JUMP_RECOVERED)) {
+        s->locomotion.gait=BANJO_GAIT_IDLE;s->locomotion.downshift_remaining=0;
+    }
 }
 bool playerRuntimeAnimate(PlayerRuntime *s,const uint8_t *packet,size_t size,float dt) {
     if(!s || !isfinite(dt) || dt<0)return false;
@@ -27,14 +58,16 @@ bool playerRuntimeAnimate(PlayerRuntime *s,const uint8_t *packet,size_t size,flo
     if(s->jumpActive) {
         /* Freeze the last actually evaluated jump/mixed pose, not a freshly
          * sampled jump target. Same handoff as the M4.6B contact contract. */
-        banjo_jump_animation_land(&s->jump,s->accepted,s->speed);
+        banjo_jump_animation_land(&s->jump,false,0);
         memcpy(&s->gait.pose,&s->jump.pose,sizeof(s->gait.pose));
         memcpy(s->gait.source,s->jump.source,sizeof(s->gait.source));
         s->gait.phase=s->jump.phase;s->gait.factor=s->jump.factor;
-        s->gait.gait=(uint8_t)banjo_gait_select(BANJO_GAIT_IDLE,s->accepted,s->speed);
+        s->gait.gait=BANJO_GAIT_IDLE;
         s->gait.initialized=true;s->jumpActive=false;
     }
-    return banjo_gait_update(&s->gait,packet,size,s->accepted,s->speed,dt);
+    BanjoGait next=(BanjoGait)s->locomotion.gait;
+    return banjo_gait_update_selected(&s->gait,packet,size,next,
+        banjo_gait_motion_duration(next,s->metrics.physics_speed),dt);
 }
 bool playerRuntimeWriteVertices(const PlayerRuntime *s,const uint8_t *packet,void *vertices,
                                 size_t total,size_t first,size_t count,size_t stride) {

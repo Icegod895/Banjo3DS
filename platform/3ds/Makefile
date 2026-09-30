@@ -45,9 +45,9 @@ include $(DEVKITARM)/3ds_rules
 #---------------------------------------------------------------------------------
 TARGET		:=	banjo3ds
 BUILD		:=	build
-SOURCES		:=	source ../../tools/banjo3ds/pose ../../tools/banjo3ds/gait ../../tools/banjo3ds/jump
+SOURCES		:=	source ../../tools/banjo3ds/pose ../../tools/banjo3ds/gait ../../tools/banjo3ds/jump ../../tools/banjo3ds/horizontal
 DATA		:=	data
-INCLUDES	:=	include source ../../tools/banjo3ds/pose ../../tools/banjo3ds/gait ../../tools/banjo3ds/jump
+INCLUDES	:=	include source ../../tools/banjo3ds/pose ../../tools/banjo3ds/gait ../../tools/banjo3ds/jump ../../tools/banjo3ds/horizontal
 GRAPHICS	:=	gfx
 GFXBUILD	:=	$(BUILD)
 #ROMFS		:=	romfs

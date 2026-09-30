@@ -1,6 +1,7 @@
 #ifndef BANJO_JUMP_H
 #define BANJO_JUMP_H
 #include "movement.h"
+#include "../horizontal/horizontal.h"
 /* Banjo3DS policy, not the full Rare controller. Static point-foot collision.
  * Scene minimum collision Y (-504) minus 500 diagnostic safety margin. */
 #define BANJO_JUMP_VOID_Y (-1004.0f)
@@ -25,5 +26,9 @@ bool banjo_jump_sweep(const FloorVertex *vertices, const FloorTriangle *triangle
  * cameraMode likewise suppresses input, not simulation. */
 unsigned banjo_jump_step(BanjoJumpMotion *state, float padX, float padY, float cameraYaw,
                         float dt, bool jumpPressed, bool cameraMode, bool horizontalAllowed,
+                        const FloorVertex *vertices, const FloorTriangle *triangles, size_t count);
+/* Prepared intent; shared vertical/sweep/recovery path, accelerated XZ. */
+unsigned banjo_jump_step_horizontal(BanjoJumpMotion *state, BanjoHorizontal *horizontal,
+                        float dt, bool jumpPressed, bool cameraMode,
                         const FloorVertex *vertices, const FloorTriangle *triangles, size_t count);
 #endif

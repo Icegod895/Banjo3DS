@@ -19,4 +19,8 @@ float banjo_gait_start_phase(BanjoGait oldGait, BanjoGait newGait, float phase);
  * Packet must be the validated immutable canonical B3P3 v3/v4 export. */
 bool banjo_gait_update(BanjoGaitState *state, const uint8_t *packet, size_t size,
                        bool accepted, float actualSpeed, float dt);
+/* Same proven pose/phase/blend path, driven by an explicit gameplay decision.
+ * Legacy acceptedSpeed/150 entry point remains for M4.5/M4.6 golden fixtures. */
+bool banjo_gait_update_selected(BanjoGaitState *state, const uint8_t *packet, size_t size,
+                               BanjoGait next, float duration, float dt);
 #endif

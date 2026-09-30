@@ -43,12 +43,18 @@ float banjo_gait_start_phase(BanjoGait old, BanjoGait next, float phase) {
 }
 bool banjo_gait_update(BanjoGaitState *s,const uint8_t *packet,size_t size,
                        bool accepted,float speed,float dt) {
+    BanjoGait current=s && s->initialized?(BanjoGait)s->gait:BANJO_GAIT_IDLE;
+    BanjoGait next=banjo_gait_select(current,accepted,speed);
+    return banjo_gait_update_selected(s,packet,size,next,banjo_gait_duration(next,speed),dt);
+}
+bool banjo_gait_update_selected(BanjoGaitState *s,const uint8_t *packet,size_t size,
+                               BanjoGait next,float duration,float dt) {
     if(!s || !isfinite(dt) || dt<0 || (size!=26234 && size!=28022) || !packet)return false;
+    if((unsigned)next>BANJO_GAIT_FAST || !isfinite(duration) || duration<=0)return false;
     if(!s->initialized) {
         if(!banjo_pose_sample(packet,size,BANJO_CLIP_IDLE,0,s->pose.bones))return false;
         s->gait=BANJO_GAIT_IDLE;s->phase=0;s->factor=1;s->initialized=true;
     }
-    BanjoGait next=banjo_gait_select((BanjoGait)s->gait,accepted,speed);
     if(banjo_gait_clip(next)!=banjo_gait_clip((BanjoGait)s->gait)) {
         memcpy(s->source,s->pose.bones,sizeof(s->source));
         s->phase=banjo_gait_start_phase((BanjoGait)s->gait,next,s->phase);
@@ -57,7 +63,7 @@ bool banjo_gait_update(BanjoGaitState *s,const uint8_t *packet,size_t size,
     /* WALK<->FAST retains phase AND any in-flight transition; rate only. */
     s->gait=(uint8_t)next;
     dt=fminf(dt,0.05f);
-    float phase=s->phase+dt/banjo_gait_duration(next,speed);
+    float phase=s->phase+dt/duration;
     phase-=floorf(phase);
     float factor=fminf(1.0f,s->factor+dt/0.2f);
     if(!banjo_pose_sample(packet,size,banjo_gait_clip(next),phase,s->pose.bones))return false;

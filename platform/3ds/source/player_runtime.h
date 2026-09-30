@@ -2,7 +2,7 @@
 #define BANJO_PLAYER_RUNTIME_H
 #include "jump.h"
 #include "jump_animation.h"
-#include "gait.h"
+#include "gait_motion.h"
 /* Thin integration of the proven movement/gait/jump modules, no new physics.
  * Separate controller storage makes both handoffs explicit, without aliasing. */
 typedef struct {
@@ -12,6 +12,10 @@ typedef struct {
     unsigned events;
     float speed;
     bool accepted, jumpActive;
+    BanjoHorizontal horizontal;
+    BanjoHorizontalMetrics metrics;
+    BanjoGaitMotion locomotion;
+    bool horizontalInitialized;
 } PlayerRuntime;
 /* Initialize motion.actor and motion.grounded; zero all remaining fields. */
 void playerRuntimeMove(PlayerRuntime *s, float x, float y, float cameraYaw, float dt,

@@ -21,6 +21,14 @@ void movementDirection(float x, float y, float cameraYaw, float out[2]);
 float movementDelta(uint64_t now, uint64_t previous);
 bool movementFloor(const FloorVertex *vertices, const FloorTriangle *triangles,
                    size_t count, float x, float z, float previousY, float *height);
+/* Ground-only point-floor following from a previously confirmed position.
+ * Ordered segments preserve movementFloor's +/-30/highest-valid semantics.
+ * The whole candidate is rejected on any failed query; height is untouched.
+ * No actor, velocity, yaw or collision data is mutated. Endpoint sampling is
+ * not a continuous ground sweep and does not add wall/volume collision. */
+bool movementFollowFloor(const FloorVertex *vertices, const FloorTriangle *triangles,
+                         size_t count, float startX, float startY, float startZ,
+                         float endX, float endZ, float *height);
 bool movementUpdate(MovementActor *actor, float padX, float padY, float cameraYaw,
                     float dt, bool cameraMode, const FloorVertex *vertices,
                     const FloorTriangle *triangles, size_t count);

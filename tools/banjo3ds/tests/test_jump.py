@@ -47,7 +47,7 @@ class JumpTests(unittest.TestCase):
                 '-ffp-contract=off','-fno-fast-math','-fexcess-precision=standard',
                 *['-I'+str(ROOT/p) for p in ('platform/3ds/source','tools/banjo3ds/pose','tools/banjo3ds/gait')],
                 *[str(ROOT/p) for p in ('platform/3ds/source/movement.c','tools/banjo3ds/pose/pose.c',
-                  'tools/banjo3ds/gait/gait.c','tools/banjo3ds/jump/jump.c','tools/banjo3ds/jump/jump_animation.c')],
+                  'tools/banjo3ds/gait/gait.c','tools/banjo3ds/horizontal/horizontal.c','tools/banjo3ds/jump/jump.c','tools/banjo3ds/jump/jump_animation.c')],
                 '-lm','-o',str(out)],check=True)
             lib=C.CDLL(str(out));fp=C.POINTER(F)
             lib.banjo_jump_sweep.argtypes=[C.POINTER(Vertex),C.POINTER(Triangle),C.c_size_t,fp,fp,fp,C.POINTER(C.c_size_t)]

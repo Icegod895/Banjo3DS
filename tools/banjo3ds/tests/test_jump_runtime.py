@@ -18,10 +18,15 @@ from tools.banjo3ds.floor_collision import scene_collision
 from tools.banjo3ds.export_3ds_model import export_scene
 from transition_reference import pack
 
+from test_horizontal import State as Horizontal, Metrics
 F=C.c_float
+class GaitMotion(C.Structure):
+    _fields_=[('timer',F),('gait',C.c_uint8)]
 class Player(C.Structure):
     _fields_=[('motion',Motion),('gait',GaitState),('jump',Animation),('events',C.c_uint),
-              ('speed',F),('accepted',C.c_bool),('jumpActive',C.c_bool)]
+              ('speed',F),('accepted',C.c_bool),('jumpActive',C.c_bool),
+              ('horizontal',Horizontal),('metrics',Metrics),('locomotion',GaitMotion),
+              ('horizontalInitialized',C.c_bool)]
 
 class JumpRuntimeTests(unittest.TestCase):
     @classmethod
@@ -33,8 +38,8 @@ class JumpRuntimeTests(unittest.TestCase):
             subprocess.run(['cc','-std=c99',opt,'-Wall','-Wextra','-Werror','-shared','-fPIC',
                 '-ffp-contract=off','-fno-fast-math','-fexcess-precision=standard',
                 *['-I'+str(ROOT/p) for p in ('platform/3ds/source','tools/banjo3ds/pose','tools/banjo3ds/gait','tools/banjo3ds/jump')],
-                *[str(ROOT/p) for p in ('tools/banjo3ds/pose/pose.c','tools/banjo3ds/gait/gait.c',
-                  'tools/banjo3ds/jump/jump.c','tools/banjo3ds/jump/jump_animation.c',
+                *[str(ROOT/p) for p in ('tools/banjo3ds/pose/pose.c','tools/banjo3ds/gait/gait.c','tools/banjo3ds/gait/gait_motion.c',
+                  'tools/banjo3ds/horizontal/horizontal.c','tools/banjo3ds/jump/jump.c','tools/banjo3ds/jump/jump_animation.c',
                   'platform/3ds/source/movement.c','platform/3ds/source/player_runtime.c')],'-lm','-o',str(output)],check=True)
             lib=C.CDLL(str(output))
             lib.playerRuntimeMove.argtypes=[C.POINTER(Player),F,F,F,F,C.c_bool,C.c_bool,
@@ -75,15 +80,15 @@ class JumpRuntimeTests(unittest.TestCase):
             self.tick(lib,p,jump=False);self.tick(lib,p,jump=True)
             self.assertTrue(p.events&1);self.assertTrue(p.jumpActive)
 
-    def test_ground_movement_and_gait_stay_identical_without_jumps(self):
+    def test_ground_gait_uses_intent_and_physics_metrics(self):
         for lib in self.libs:
-            p=self.player();expected=GaitState()
-            # Accepted-speed bands including hysteresis, stop and camera suppression.
+            p=self.player()
             for x,camera in [(0,False),(34,False),(75,False),(110,False),(156,False),
                              (145,False),(100,False),(50,False),(0,False),(156,True)]:
                 self.tick(lib,p,x=x,camera=camera,mesh=floor(x0=-1000,x1=1000))
-                self.assertTrue(lib.banjo_gait_update(C.byref(expected),self.packet,len(self.packet),p.accepted,p.speed,.025))
-                self.assertEqual(bytes(p.gait),bytes(expected));self.assertFalse(p.jumpActive)
+                self.assertEqual(p.gait.gait,p.locomotion.gait)
+                self.assertFalse(p.jumpActive)
+                if camera:self.assertEqual(p.metrics.magnitude,0)
 
     def test_horizontal_jump_camera_orbit_and_collision_landing_handoff(self):
         for lib in self.libs:
@@ -91,7 +96,7 @@ class JumpRuntimeTests(unittest.TestCase):
             self.assertGreater(p.motion.actor.x,0);self.assertTrue(p.jumpActive)
             before=p.motion.actor.x;vy=p.motion.vy
             self.tick(lib,p,x=156,camera=True)
-            self.assertEqual(p.motion.actor.x,before);self.assertLess(p.motion.vy,vy)
+            self.assertGreater(p.motion.actor.x,before);self.assertLess(p.motion.vy,vy)
             # Land while the animation is still in the first takeoff segment.
             p.motion.actor.y=1900;p.motion.vy=-3000
             mixed=bytes(p.jump.pose.bones)
@@ -164,7 +169,7 @@ class JumpRuntimeTests(unittest.TestCase):
         for name,n in [('VERTEX',12600),('TEXTURE',97),('MATERIAL',469),('DRAW',510),
                        ('OPA_DRAW',436),('ACTOR_DRAW',28),('XLU_DRAW',46),('GEO_NODE',36)]:
             self.assertIn(f'#define BANJO_{name}_COUNT {n}\n',new)
-        self.assertEqual(C.sizeof(Player),42552)
+        self.assertEqual(C.sizeof(Player),42644)
 
     def test_main_uses_press_edge_and_wait_before_vbo_write_then_flush(self):
         source=(ROOT/'platform/3ds/source/main.c').read_text()
