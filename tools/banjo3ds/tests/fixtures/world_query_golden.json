@@ -1,0 +1,29 @@
+{
+  "14CF": {
+    "source_sha256": "469f471eb0845c988ba83c7ee759b4572993d669a35ebb1caf9aeab690e7f851",
+    "packet_bytes": 143964,
+    "packet_sha256": "59d398308ec5ed0fc249f684dfb6726bc77bf645dfd01a0a7976974fc80e6953",
+    "semantic_sha256": "5c91d0ce6f89b436678237cf657d0ef975a79033ed296080bdbbfa91803d428d",
+    "vertex_block_sha256": "5b72ca60d2d8b4536725462f7870cb5bcacc968c6c1d01ba490eb1c803ce17ee",
+    "collision_block_sha256": "878312b020bd45a550506b0f51fc70d4d30813bfff9e40a165e2b05df63b5338",
+    "vertices": 4568,
+    "cells": 792,
+    "raw_records": 5633,
+    "cell_occurrences": 5633,
+    "unique_records": 2945
+  },
+  "14D0": {
+    "source_sha256": "641b68978bfd380047793a217264bf489ac59d4d18d26e5cf939353a22903099",
+    "packet_bytes": 14580,
+    "packet_sha256": "500d3ee02856c57f9bf379c3631514e36efb6019e4abd04453a6f26d3d86831f",
+    "semantic_sha256": "f132cff8e1d41c53f4993e042e47001a812ba220ea228a5e91d43d2de753b72f",
+    "vertex_block_sha256": "79d1f0039c7466399a8b4b62db5d465f8590293b6cbfd16baf29d0b27bd99900",
+    "collision_block_sha256": "7c752f6ceab672c5b4ba7062608eb02fd52a9fc4ccbdba3c8e1eda83e6fa2d53",
+    "vertices": 672,
+    "cells": 50,
+    "raw_records": 293,
+    "cell_occurrences": 293,
+    "unique_records": 200
+  },
+  "movement_sha256": "0199b14f719357a42ae0ab61d3bfebd4705db9418e79ff8699521130b5e405c7"
+}

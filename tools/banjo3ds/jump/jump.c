@@ -49,7 +49,8 @@ static void remember(BanjoJumpMotion *s) {
 }
 static unsigned step(BanjoJumpMotion *s,BanjoHorizontal *h,float padX,float padY,float yaw,float dt,
                         bool jumpPressed,bool cameraMode,bool horizontalAllowed,
-                        const FloorVertex *v,const FloorTriangle *t,size_t n) {
+                        const FloorVertex *v,const FloorTriangle *t,size_t n,
+                        BanjoCandidateObserver observe,void *context) {
     if(!s || !isfinite(dt) || dt<0 || !isfinite(padX) || !isfinite(padY) || !isfinite(yaw))return 0;
     dt=fminf(dt,0.05f);
     unsigned events=0;
@@ -65,6 +66,10 @@ static unsigned step(BanjoJumpMotion *s,BanjoHorizontal *h,float padX,float padY
                 if(h) {
                     banjo_horizontal_step(h,BANJO_HORIZONTAL_GROUND,dt);
                     float x=s->actor.x+h->candidate[0],z=s->actor.z+h->candidate[1],height;
+                    if(observe) {
+                        const float candidate[3]={x,s->actor.y,z};
+                        observe(context,candidate);
+                    }
                     if(movementFollowFloor(v,t,n,s->actor.x,s->actor.y,s->actor.z,x,z,&height)) {
                         if(x!=s->actor.x || z!=s->actor.z)events|=BANJO_JUMP_MOVED;
                         s->actor.x=x;s->actor.y=height;s->actor.z=z;
@@ -83,6 +88,7 @@ static unsigned step(BanjoJumpMotion *s,BanjoHorizontal *h,float padX,float padY
     end[0]=start[0]+(h?h->candidate[0]:direction[0]*MOVEMENT_SPEED*dt);
     end[1]=start[1]+s->verticalVelocity*dt;
     end[2]=start[2]+(h?h->candidate[1]:direction[1]*MOVEMENT_SPEED*dt);
+    if(observe)observe(context,end);
     float hit[3];
     if(banjo_jump_sweep(v,t,n,start,end,hit,NULL)) {
         memcpy(end,hit,sizeof(end));s->verticalVelocity=0;s->grounded=true;events|=BANJO_JUMP_LANDED;
@@ -106,11 +112,18 @@ static unsigned step(BanjoJumpMotion *s,BanjoHorizontal *h,float padX,float padY
 unsigned banjo_jump_step(BanjoJumpMotion *s,float padX,float padY,float yaw,float dt,
                         bool jumpPressed,bool cameraMode,bool horizontalAllowed,
                         const FloorVertex *v,const FloorTriangle *t,size_t n) {
-    return step(s,NULL,padX,padY,yaw,dt,jumpPressed,cameraMode,horizontalAllowed,v,t,n);
+    return step(s,NULL,padX,padY,yaw,dt,jumpPressed,cameraMode,horizontalAllowed,v,t,n,NULL,NULL);
 }
 unsigned banjo_jump_step_horizontal(BanjoJumpMotion *s,BanjoHorizontal *h,float dt,
                         bool jumpPressed,bool cameraMode,
                         const FloorVertex *v,const FloorTriangle *t,size_t n) {
     if(!h)return 0;
-    return step(s,h,0,0,0,dt,jumpPressed,cameraMode,true,v,t,n);
+    return step(s,h,0,0,0,dt,jumpPressed,cameraMode,true,v,t,n,NULL,NULL);
+}
+unsigned banjo_jump_step_observed(BanjoJumpMotion *s,BanjoHorizontal *h,float dt,
+                        bool jumpPressed,bool cameraMode,
+                        const FloorVertex *v,const FloorTriangle *t,size_t n,
+                        BanjoCandidateObserver observe,void *context) {
+    if(!h)return 0;
+    return step(s,h,0,0,0,dt,jumpPressed,cameraMode,true,v,t,n,observe,context);
 }

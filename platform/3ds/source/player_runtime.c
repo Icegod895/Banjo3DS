@@ -2,8 +2,9 @@
 #include <math.h>
 #include <string.h>
 
-void playerRuntimeMove(PlayerRuntime *s,float x,float y,float yaw,float dt,
-                       bool jumpPressed,bool cameraMode,const FloorVertex *v,const FloorTriangle *t,size_t n) {
+void playerRuntimeMoveObserved(PlayerRuntime *s,float x,float y,float yaw,float dt,
+                       bool jumpPressed,bool cameraMode,const FloorVertex *v,const FloorTriangle *t,size_t n,
+                       BanjoCandidateObserver observe,void *context) {
     if(!s || !isfinite(dt) || dt<0 || !isfinite(x) || !isfinite(y) || !isfinite(yaw))return;
     dt=fminf(dt,.05f);
     s->events=0;s->accepted=false;s->speed=0;
@@ -29,7 +30,7 @@ void playerRuntimeMove(PlayerRuntime *s,float x,float y,float yaw,float dt,
          * Takeoff explicitly replaces this target with current stick intent. */
         if(old==BANJO_GAIT_IDLE && next!=BANJO_GAIT_IDLE)h->target_speed=0;
     }
-    s->events=banjo_jump_step_horizontal(&s->motion,h,dt,jumpPressed,cameraMode,v,t,n);
+    s->events=banjo_jump_step_observed(&s->motion,h,dt,jumpPressed,cameraMode,v,t,n,observe,context);
     float dx=s->motion.actor.x-before.x,dz=s->motion.actor.z-before.z;
     if(s->events&BANJO_JUMP_RECOVERED) {
         /* Diagnostic teleport is neither accepted movement nor stored momentum. */
@@ -44,6 +45,10 @@ void playerRuntimeMove(PlayerRuntime *s,float x,float y,float yaw,float dt,
     if(s->events&(BANJO_JUMP_LANDED|BANJO_JUMP_RECOVERED)) {
         s->locomotion.gait=BANJO_GAIT_IDLE;s->locomotion.downshift_remaining=0;
     }
+}
+void playerRuntimeMove(PlayerRuntime *s,float x,float y,float yaw,float dt,
+                       bool jumpPressed,bool cameraMode,const FloorVertex *v,const FloorTriangle *t,size_t n) {
+    playerRuntimeMoveObserved(s,x,y,yaw,dt,jumpPressed,cameraMode,v,t,n,NULL,NULL);
 }
 bool playerRuntimeAnimate(PlayerRuntime *s,const uint8_t *packet,size_t size,float dt) {
     if(!s || !isfinite(dt) || dt<0)return false;

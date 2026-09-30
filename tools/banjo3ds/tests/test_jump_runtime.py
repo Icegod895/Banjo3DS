@@ -174,7 +174,7 @@ class JumpRuntimeTests(unittest.TestCase):
     def test_main_uses_press_edge_and_wait_before_vbo_write_then_flush(self):
         source=(ROOT/'platform/3ds/source/main.c').read_text()
         self.assertIn('(down & KEY_A) != 0',source);self.assertNotIn('(held & KEY_A)',source)
-        names=['playerRuntimeMove(&player','playerRuntimeAnimate(&player','C3D_FrameBegin(C3D_FRAME_SYNCDRAW)',
+        names=['cameraRuntimeMove(&rareCamera, &player','playerRuntimeAnimate(&player','C3D_FrameBegin(C3D_FRAME_SYNCDRAW)',
                'playerRuntimeWriteVertices(&player','GSPGPU_FlushDataCache((Banjo3DSVertex *)vbo_data + BANJO_ACTOR_FIRST_VERTEX']
         positions=[source.index(n) for n in names];self.assertEqual(positions,sorted(positions))
         self.assertIn('movementActorMatrix(&player.motion.actor, rows)',source)

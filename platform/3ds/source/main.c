@@ -7,6 +7,22 @@
 #include "movement.h"
 #include "player_runtime.h"
 #include "generated_model.h"
+#include "renderer_culling.h"
+#include "camera_runtime.h"
+#include "generated_camera.h"
+
+/* Temporary diagnostic build choice, not an N64 camera-button mapping. */
+#ifndef BANJO_DEBUG_CAMERA
+#define BANJO_DEBUG_CAMERA 0
+#endif
+#ifndef BANJO_CAMERA_ASPECT
+#define BANJO_CAMERA_ASPECT C3D_AspectRatioTop /* Banjo3DS presentation policy. */
+#endif
+
+_Static_assert((int)BANJO_CULL_NONE == (int)RENDERER_CULL_NONE
+    && (int)BANJO_CULL_FRONT == (int)RENDERER_CULL_FRONT
+    && (int)BANJO_CULL_BACK == (int)RENDERER_CULL_BACK
+    && (int)BANJO_CULL_BOTH == (int)RENDERER_CULL_BOTH, "Exported cull bits must match");
 
 #define CLEAR_COLOR 0x68B0D8FF
 
@@ -20,6 +36,10 @@ static DVLB_s *vshader_dvlb;
 static shaderProgram_s program;
 static int uLoc_projection, uLoc_modelView;
 static C3D_Mtx projection, modelView;
+static RendererWindingParity viewWindingParity = RENDERER_WINDING_NORMAL;
+static CameraRuntime rareCamera;
+/* Explicit debugger-visible failure, never a query-miss debug fallback. */
+static volatile int cameraRuntimeStatus;
 static void *vbo_data;
 static PlayerRuntime player = {.motion = {.actor = {0.0f, 1800.0f, 0.0f, 0.0f}, .grounded = true}};
 /* Debugger-visible CPU measurements: evaluator + corner XYZ propagation,
@@ -84,6 +104,7 @@ static void cameraReset(void)
 
 static void cameraUpdateMatrices(void)
 {
+    viewWindingParity = RENDERER_WINDING_NORMAL;
     Mtx_OrthoTilt(&projection,
         -1500.0f / camera.zoom, 1500.0f / camera.zoom,
         -900.0f / camera.zoom, 900.0f / camera.zoom,
@@ -92,6 +113,19 @@ static void cameraUpdateMatrices(void)
     Mtx_RotateX(&modelView, C3D_AngleFromDegrees(camera.pitchDegrees), true);
     Mtx_RotateY(&modelView, C3D_AngleFromDegrees(camera.yawDegrees), true);
     Mtx_Translate(&modelView, -camera.focusX, -camera.focusY, -camera.focusZ, true);
+}
+
+static void cameraApplyRareView(void)
+{
+    /* Fixed positive clips are a bounded viewer policy, not Rare dynamic clips.
+     * Perspective 40 degrees and XY-preserving RH->LH conversion were proven
+     * separately; cameraRareView supplies the matching REVERSED parity. */
+    Mtx_PerspTilt(&projection, C3D_AngleFromDegrees(40.0f),
+        BANJO_CAMERA_ASPECT, 10.0f, 20000.0f, true);
+    for (int i = 0; i < 4; ++i)
+        modelView.r[i] = FVec4_New(rareCamera.view[i][0], rareCamera.view[i][1],
+            rareCamera.view[i][2], rareCamera.view[i][3]);
+    viewWindingParity = rareCamera.parity;
 }
 
 static void cameraUpdate(u32 down, u32 held, const circlePosition *pad, float dt)
@@ -538,20 +572,10 @@ static void sceneDrawRange(unsigned int first, unsigned int count,
 {
     for (unsigned int i = first; i < first + count; i++) {
         const Banjo3DSDraw *draw = &banjo_draws[i];
-        // This left-handed viewer preserves N64 front faces as clockwise.
-        switch (draw->cull_mode) {
-            case BANJO_CULL_BOTH:
-                continue;
-            case BANJO_CULL_BACK:
-                C3D_CullFace(GPU_CULL_FRONT_CCW);
-                break;
-            case BANJO_CULL_FRONT:
-                C3D_CullFace(GPU_CULL_BACK_CCW);
-                break;
-            case BANJO_CULL_NONE:
-                C3D_CullFace(GPU_CULL_NONE);
-                break;
-        }
+        int cull = rendererCullMode(draw->cull_mode, viewWindingParity);
+        if (cull == RENDERER_CULL_SKIP)
+            continue;
+        C3D_CullFace((GPU_CULLMODE)cull);
 
 #if BANJO_MATERIAL_COUNT > 0
         if (draw->material_index >= 0) {
@@ -595,6 +619,9 @@ static void sceneDrawRange(unsigned int first, unsigned int count,
 #if BANJO_GEO_NODE_COUNT > 0
 static C3D_FVec cameraSortProxyEye(void)
 {
+    if (!BANJO_DEBUG_CAMERA)
+        return FVec4_New(rareCamera.camera.position[0], rareCamera.camera.position[1],
+            rareCamera.camera.position[2], 1.0f);
     return FVec4_New(
         camera.focusX - camera.eyeDistance * modelView.r[2].x,
         camera.focusY - camera.eyeDistance * modelView.r[2].y,
@@ -721,12 +748,26 @@ int main(void)
     );
 
     sceneInit();
+    if (!cameraRuntimeInit(&rareCamera, &player,
+            camera_opa_packet, sizeof(camera_opa_packet),
+            camera_xlu_packet, sizeof(camera_xlu_packet),
+            &camera_zoom, camera_triggers, CAMERA_TRIGGER_COUNT)) {
+        cameraRuntimeStatus = CAMERA_RUNTIME_INVALID;
+        sceneExit();
+        C3D_Fini();
+        gfxExit();
+        return 1;
+    }
 
     u64 previousFrameMs = osGetTime();
+    u32 previousVi = C3D_FrameCounter(0);
     while (aptMainLoop()) {
         u64 now = osGetTime();
         float dt = movementDelta(now, previousFrameMs);
         previousFrameMs = now;
+        u32 currentVi = C3D_FrameCounter(0);
+        int viFrames = cameraViFrames(currentVi, previousVi);
+        previousVi = currentVi;
         hidScanInput();
 
         u32 down = hidKeysDown();
@@ -736,10 +777,17 @@ int main(void)
         circlePosition pad;
         hidCircleRead(&pad);
         u32 held = hidKeysHeld();
-        cameraUpdate(down, held, &pad, dt);
-        playerRuntimeMove(&player, pad.dx, pad.dy, camera.yawDegrees, dt,
+        if (BANJO_DEBUG_CAMERA)
+            cameraUpdate(down, held, &pad, dt);
+        float movementInput[3];
+        cameraMovementInput(&rareCamera.camera, BANJO_DEBUG_CAMERA, camera.yawDegrees,
+            pad.dx, pad.dy, movementInput);
+        cameraRuntimeStatus = cameraRuntimeMove(&rareCamera, &player,
+            movementInput[0], movementInput[1], movementInput[2], dt, viFrames,
             (down & KEY_A) != 0, (held & KEY_Y) != 0,
             banjo_floor_vertices, banjo_floor_triangles, BANJO_FLOOR_TRIANGLE_COUNT);
+        if (!BANJO_DEBUG_CAMERA && rareCamera.view_ready)
+            cameraApplyRareView();
 
         u64 poseStart = svcGetSystemTick();
         bool evaluated = playerRuntimeAnimate(&player,
@@ -762,7 +810,9 @@ int main(void)
                 BANJO_ACTOR_VERTEX_COUNT * sizeof(Banjo3DSVertex));
         C3D_RenderTargetClear(target, C3D_CLEAR_ALL, CLEAR_COLOR, 0);
         C3D_FrameDrawOn(target);
-        sceneRender();
+        /* Do not publish the bootstrap floor seed as a rendered camera frame. */
+        if (BANJO_DEBUG_CAMERA || rareCamera.view_ready)
+            sceneRender();
         C3D_FrameEnd(0);
     }
 

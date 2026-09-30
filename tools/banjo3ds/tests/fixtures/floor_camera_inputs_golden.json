@@ -1,0 +1,82 @@
+{
+  "node_stationary": {
+    "frames": 240,
+    "sha256": "ee591415b0fcf63641f287a75509e11539d8da8756c8663d13ff079f0ba68efd",
+    "modes": [
+      [
+        17,
+        32
+      ]
+    ],
+    "air": 0,
+    "landings": 0
+  },
+  "node_walk": {
+    "frames": 240,
+    "sha256": "9d703be47bf3c9cfc82dfaa1a39dd21ecc8b4e8bb4fb922f9a3ca4ff54d6e368",
+    "modes": [
+      [
+        17,
+        32
+      ]
+    ],
+    "air": 0,
+    "landings": 0
+  },
+  "node_jump_landing": {
+    "frames": 240,
+    "sha256": "972fa33a75d827daf9b82d3d15dc095e9215553b46497ab8337d000ab4c5fd2d",
+    "modes": [
+      [
+        17,
+        32
+      ]
+    ],
+    "air": 62,
+    "landings": 1
+  },
+  "node_exit_jump_landing": {
+    "frames": 240,
+    "sha256": "d4678bd85bd2340e06c7e980ec753b39cf2b89eb7a37f393fee4656a4eb3ac66",
+    "modes": [
+      [
+        11,
+        -1
+      ],
+      [
+        17,
+        -1
+      ],
+      [
+        17,
+        32
+      ]
+    ],
+    "air": 146,
+    "landings": 1
+  },
+  "free_walk": {
+    "frames": 240,
+    "sha256": "0bdd344479df2ad6f74d838b8fd3ab0883498c2f85cec5318d050f503a777434",
+    "modes": [
+      [
+        11,
+        -1
+      ]
+    ],
+    "air": 0,
+    "landings": 0
+  },
+  "free_jump_landing": {
+    "frames": 240,
+    "sha256": "170efec81a64e15eab35029a713c4078b3174bd6cef9f92c8357767086437141",
+    "modes": [
+      [
+        11,
+        -1
+      ]
+    ],
+    "air": 65,
+    "landings": 1
+  }
+}

@@ -1,0 +1,647 @@
+{
+  "floor": {
+    "node_stationary": {
+      "frames": 240,
+      "calls": 240,
+      "sha256": "daaf2235f1e9484bf4dfc2711849ab15a3d7ccde8134965a74c21ab35f59f4b9"
+    },
+    "node_walk": {
+      "frames": 240,
+      "calls": 240,
+      "sha256": "8a750f531f4b8fb9a19b88f8302b5ed6313ecbc7dd634f4078cca6a1f5b72914"
+    },
+    "node_jump_landing": {
+      "frames": 240,
+      "calls": 240,
+      "sha256": "4b0e3951fca13778160410976017dc929d72196ce7ea563d6b29b4d5475e178e"
+    },
+    "node_exit_jump_landing": {
+      "frames": 240,
+      "calls": 240,
+      "sha256": "7e129cb536f5bf9adff4af9c74e0758faecb563666467229be87386eaff5720b"
+    },
+    "free_walk": {
+      "frames": 240,
+      "calls": 240,
+      "sha256": "7c342405436fa9d5af57717565b0544fa24f780c77c2d06cc774d4145d57f8db"
+    },
+    "free_jump_landing": {
+      "frames": 240,
+      "calls": 240,
+      "sha256": "54dd79c0bc8c4c82558acd116424e8a2de536c1592ee48fe900e59e0879b529f"
+    },
+    "rejected_ground": {
+      "frames": 240,
+      "calls": 240,
+      "sha256": "ecdc9a9ddf2c0cdf78bda9150c6715202f36c16e395132e1666ef6148111bd15"
+    },
+    "orbit_ground": {
+      "frames": 240,
+      "calls": 240,
+      "sha256": "bd3371131a1a44f421abc7b4f8978159393518011a1547ec344dc4b3bcd80cc1"
+    },
+    "orbit_air": {
+      "frames": 240,
+      "calls": 240,
+      "sha256": "a4783ae3ca3fe29b39106a2d7bf6782bb51294b2cd94fcaadfce5ebe48b90e38"
+    },
+    "void_recovery": {
+      "frames": 240,
+      "calls": 241,
+      "sha256": "dd238204c9b7c7f77ceddaa8ab0faa52bd71dee905a09b2f444f516211de65e0"
+    },
+    "reinitialize": {
+      "frames": 240,
+      "calls": 240,
+      "sha256": "3428a71bac3a9c94ff9257613b27358f34c3103688f1666f131022281eb170ec"
+    },
+    "slope_down": {
+      "frames": 240,
+      "calls": 240,
+      "sha256": "67c62ec376730eb89c5f4e9ca7f6c5995df798f13d2f519841a860ef04f83ad0"
+    },
+    "slope_up": {
+      "frames": 240,
+      "calls": 240,
+      "sha256": "0eecaac228961691a8aa2b0a05ee2724c2083fccd4d66961c40a5b8c24c52d21"
+    },
+    "zero_dt": {
+      "frames": 240,
+      "calls": 160,
+      "sha256": "fa928762cf365ea88932453ecbf08ffe7d342e73deec979c5615faafdb057afa"
+    },
+    "roundtrip": {
+      "frames": 600,
+      "calls": 600,
+      "sha256": "7e9659c4203c57172ffacde00c946d4a4ec1402c72fd881a8a8c11b08c612d28"
+    }
+  },
+  "camera": {
+    "node_stationary": {
+      "frames": 240,
+      "camera_frames": 240,
+      "sha256": "ee591415b0fcf63641f287a75509e11539d8da8756c8663d13ff079f0ba68efd",
+      "modes": [
+        [
+          17,
+          32
+        ]
+      ],
+      "unsupported_frame": null,
+      "counterfactual_final": {
+        "first_floor": null,
+        "max_floor": 0.0,
+        "first_fbase": null,
+        "max_fbase": 0.0,
+        "first_camera": null,
+        "max_camera_xyz": 0.0,
+        "max_camera_focus": 0.0
+      },
+      "first_difference_values": null,
+      "max_floor_difference_values": null,
+      "max_camera_step_xyz": 20.36663818359375
+    },
+    "node_walk": {
+      "frames": 240,
+      "camera_frames": 240,
+      "sha256": "9d703be47bf3c9cfc82dfaa1a39dd21ecc8b4e8bb4fb922f9a3ca4ff54d6e368",
+      "modes": [
+        [
+          17,
+          32
+        ]
+      ],
+      "unsupported_frame": null,
+      "counterfactual_final": {
+        "first_floor": null,
+        "max_floor": 0.0,
+        "first_fbase": null,
+        "max_fbase": 0.0,
+        "first_camera": null,
+        "max_camera_xyz": 0.0,
+        "max_camera_focus": 0.0
+      },
+      "first_difference_values": null,
+      "max_floor_difference_values": null,
+      "max_camera_step_xyz": 20.65216064453125
+    },
+    "node_jump_landing": {
+      "frames": 240,
+      "camera_frames": 240,
+      "sha256": "972fa33a75d827daf9b82d3d15dc095e9215553b46497ab8337d000ab4c5fd2d",
+      "modes": [
+        [
+          17,
+          32
+        ]
+      ],
+      "unsupported_frame": null,
+      "counterfactual_final": {
+        "first_floor": null,
+        "max_floor": 0.0,
+        "first_fbase": null,
+        "max_fbase": 0.0,
+        "first_camera": null,
+        "max_camera_xyz": 0.0,
+        "max_camera_focus": 0.0
+      },
+      "first_difference_values": null,
+      "max_floor_difference_values": null,
+      "max_camera_step_xyz": 20.36663818359375
+    },
+    "node_exit_jump_landing": {
+      "frames": 240,
+      "camera_frames": 240,
+      "sha256": "d4678bd85bd2340e06c7e980ec753b39cf2b89eb7a37f393fee4656a4eb3ac66",
+      "modes": [
+        [
+          11,
+          -1
+        ],
+        [
+          17,
+          -1
+        ],
+        [
+          17,
+          32
+        ]
+      ],
+      "unsupported_frame": null,
+      "counterfactual_final": {
+        "first_floor": 156,
+        "max_floor": 19.44061279296875,
+        "first_fbase": 156,
+        "max_fbase": 19.44061279296875,
+        "first_camera": 156,
+        "max_camera_xyz": 0.0,
+        "max_camera_focus": 19.44061279296875
+      },
+      "first_difference_values": {
+        "candidate": [
+          0.0,
+          -539.7465209960938,
+          1262.8603515625
+        ],
+        "accepted": [
+          0.0,
+          -500.0,
+          1255.2093505859375
+        ],
+        "pre_floor": -500.0000305175781,
+        "final_floor": -500.0,
+        "events": 10
+      },
+      "max_floor_difference_values": {
+        "frame": 227,
+        "candidate": [
+          0.0,
+          -500.0,
+          1813.54296875
+        ],
+        "accepted": [
+          0.0,
+          -500.0,
+          1805.2095947265625
+        ],
+        "pre_floor": -480.55938720703125,
+        "final_floor": -500.0
+      },
+      "max_camera_step_xyz": 26.71270751953125
+    },
+    "free_walk": {
+      "frames": 240,
+      "camera_frames": 240,
+      "sha256": "0bdd344479df2ad6f74d838b8fd3ab0883498c2f85cec5318d050f503a777434",
+      "modes": [
+        [
+          11,
+          -1
+        ]
+      ],
+      "unsupported_frame": null,
+      "counterfactual_final": {
+        "first_floor": 2,
+        "max_floor": 10625.77783203125,
+        "first_fbase": 2,
+        "max_fbase": 130.0,
+        "first_camera": 2,
+        "max_camera_xyz": 130.0,
+        "max_camera_focus": 130.0
+      },
+      "first_difference_values": {
+        "candidate": [
+          0.6324625015258789,
+          1625.77783203125,
+          -1000.0
+        ],
+        "accepted": [
+          0.6324625015258789,
+          1625.7777099609375,
+          -1000.0
+        ],
+        "pre_floor": 1625.77783203125,
+        "final_floor": 1625.7777099609375,
+        "events": 8
+      },
+      "max_floor_difference_values": {
+        "frame": 88,
+        "candidate": [
+          125.43584442138672,
+          1625.77783203125,
+          -1000.0
+        ],
+        "accepted": [
+          123.90806579589844,
+          1625.77783203125,
+          -1000.0
+        ],
+        "pre_floor": -9000.0,
+        "final_floor": 1625.77783203125
+      },
+      "max_camera_step_xyz": 4.453369140625
+    },
+    "free_jump_landing": {
+      "frames": 240,
+      "camera_frames": 240,
+      "sha256": "170efec81a64e15eab35029a713c4078b3174bd6cef9f92c8357767086437141",
+      "modes": [
+        [
+          11,
+          -1
+        ]
+      ],
+      "unsupported_frame": null,
+      "counterfactual_final": {
+        "first_floor": 3,
+        "max_floor": 0.0001220703125,
+        "first_fbase": 3,
+        "max_fbase": 0.0001220703125,
+        "first_camera": 3,
+        "max_camera_xyz": 0.0001220703125,
+        "max_camera_focus": 0.0001220703125
+      },
+      "first_difference_values": {
+        "candidate": [
+          -3.1690791502114735e-07,
+          1625.287109375,
+          -1006.5745239257812
+        ],
+        "accepted": [
+          -3.1690791502114735e-07,
+          1624.8427734375,
+          -1006.5745239257812
+        ],
+        "pre_floor": 1624.8426513671875,
+        "final_floor": 1624.8427734375,
+        "events": 8
+      },
+      "max_floor_difference_values": {
+        "frame": 3,
+        "candidate": [
+          -3.1690791502114735e-07,
+          1625.287109375,
+          -1006.5745239257812
+        ],
+        "accepted": [
+          -3.1690791502114735e-07,
+          1624.8427734375,
+          -1006.5745239257812
+        ],
+        "pre_floor": 1624.8426513671875,
+        "final_floor": 1624.8427734375
+      },
+      "max_camera_step_xyz": 11.970947265625
+    },
+    "rejected_ground": {
+      "frames": 240,
+      "camera_frames": 240,
+      "sha256": "91bba9f6c1c97d2e0266b3e1385c7bb795d5c19e13a071d883a25db5e10b1265",
+      "modes": [
+        [
+          17,
+          32
+        ]
+      ],
+      "unsupported_frame": null,
+      "counterfactual_final": {
+        "first_floor": 54,
+        "max_floor": 332.0,
+        "first_fbase": 54,
+        "max_fbase": 130.0,
+        "first_camera": 54,
+        "max_camera_xyz": 0.0,
+        "max_camera_focus": 130.0
+      },
+      "first_difference_values": {
+        "candidate": [
+          0.0,
+          1800.0,
+          400.87255859375
+        ],
+        "accepted": [
+          0.0,
+          1800.0,
+          392.5409851074219
+        ],
+        "pre_floor": 1468.0,
+        "final_floor": 1800.0,
+        "events": 0
+      },
+      "max_floor_difference_values": {
+        "frame": 54,
+        "candidate": [
+          0.0,
+          1800.0,
+          400.87255859375
+        ],
+        "accepted": [
+          0.0,
+          1800.0,
+          392.5409851074219
+        ],
+        "pre_floor": 1468.0,
+        "final_floor": 1800.0
+      },
+      "max_camera_step_xyz": 22.036041259765625
+    },
+    "orbit_ground": {
+      "frames": 240,
+      "camera_frames": 240,
+      "sha256": "ad36f02dbf01a3332f0f5925546719550fa73e9be850ca1e369c91fa9645e87f",
+      "modes": [
+        [
+          17,
+          32
+        ]
+      ],
+      "unsupported_frame": null,
+      "counterfactual_final": {
+        "first_floor": null,
+        "max_floor": 0.0,
+        "first_fbase": null,
+        "max_fbase": 0.0,
+        "first_camera": null,
+        "max_camera_xyz": 0.0,
+        "max_camera_focus": 0.0
+      },
+      "first_difference_values": null,
+      "max_floor_difference_values": null,
+      "max_camera_step_xyz": 21.57366943359375
+    },
+    "orbit_air": {
+      "frames": 240,
+      "camera_frames": 240,
+      "sha256": "6dfeef6d74b9316fd31dee1f10a60d7bbd13b718aa78e656948ae1a067e1f887",
+      "modes": [
+        [
+          17,
+          32
+        ]
+      ],
+      "unsupported_frame": null,
+      "counterfactual_final": {
+        "first_floor": null,
+        "max_floor": 0.0,
+        "first_fbase": null,
+        "max_fbase": 0.0,
+        "first_camera": null,
+        "max_camera_xyz": 0.0,
+        "max_camera_focus": 0.0
+      },
+      "first_difference_values": null,
+      "max_floor_difference_values": null,
+      "max_camera_step_xyz": 21.942214965820312
+    },
+    "void_recovery": {
+      "frames": 240,
+      "camera_frames": 240,
+      "sha256": "ca447cb7c1686f89edb89b5f4a04aede31788db0d266df628e70075952c471a9",
+      "modes": [
+        [
+          17,
+          32
+        ]
+      ],
+      "unsupported_frame": null,
+      "counterfactual_final": {
+        "first_floor": null,
+        "max_floor": 0.0,
+        "first_fbase": null,
+        "max_fbase": 0.0,
+        "first_camera": null,
+        "max_camera_xyz": 0.0,
+        "max_camera_focus": 0.0
+      },
+      "first_difference_values": null,
+      "max_floor_difference_values": null,
+      "max_camera_step_xyz": 20.36663818359375
+    },
+    "reinitialize": {
+      "frames": 240,
+      "camera_frames": 240,
+      "sha256": "bf3f475e8fc222870786c6ab9a11960a0b01d2e789587c25ce0e3442f1283c60",
+      "modes": [
+        [
+          17,
+          32
+        ]
+      ],
+      "unsupported_frame": null,
+      "counterfactual_final": {
+        "first_floor": null,
+        "max_floor": 0.0,
+        "first_fbase": null,
+        "max_fbase": 0.0,
+        "first_camera": null,
+        "max_camera_xyz": 0.0,
+        "max_camera_focus": 0.0
+      },
+      "first_difference_values": null,
+      "max_floor_difference_values": null,
+      "max_camera_step_xyz": 20.65216064453125
+    },
+    "slope_down": {
+      "frames": 240,
+      "camera_frames": 240,
+      "sha256": "d993598eb69296854dec375dd8cc580f8911317ff8fd5a7026c9229731f8eba8",
+      "modes": [
+        [
+          11,
+          -1
+        ]
+      ],
+      "unsupported_frame": null,
+      "counterfactual_final": {
+        "first_floor": 1,
+        "max_floor": 55.22414779663086,
+        "first_fbase": 1,
+        "max_fbase": 55.22414779663086,
+        "first_camera": 1,
+        "max_camera_xyz": 36.584075927734375,
+        "max_camera_focus": 55.22414779663086
+      },
+      "first_difference_values": {
+        "candidate": [
+          -2093.1455078125,
+          133.33334350585938,
+          -384.5210876464844
+        ],
+        "accepted": [
+          -2093.1455078125,
+          131.69554138183594,
+          -384.5210876464844
+        ],
+        "pre_floor": 131.6954803466797,
+        "final_floor": 131.69549560546875,
+        "events": 8
+      },
+      "max_floor_difference_values": {
+        "frame": 80,
+        "candidate": [
+          -1663.23388671875,
+          -49.540767669677734,
+          -814.43310546875
+        ],
+        "accepted": [
+          -1669.12646484375,
+          -49.540767669677734,
+          -808.5405883789062
+        ],
+        "pre_floor": -104.76502990722656,
+        "final_floor": -49.5408821105957
+      },
+      "max_camera_step_xyz": 6.849853515625
+    },
+    "slope_up": {
+      "frames": 240,
+      "camera_frames": 240,
+      "sha256": "a675d5676a3e38fc99828e8859a80eeedf86e5946a6c17fe983d4e4e08be7aa2",
+      "modes": [
+        [
+          11,
+          -1
+        ]
+      ],
+      "unsupported_frame": null,
+      "counterfactual_final": {
+        "first_floor": 1,
+        "max_floor": 24.123001098632812,
+        "first_fbase": 1,
+        "max_fbase": 24.123016357421875,
+        "first_camera": 1,
+        "max_camera_xyz": 24.1212158203125,
+        "max_camera_focus": 24.123016357421875
+      },
+      "first_difference_values": {
+        "candidate": [
+          -2094.8544921875,
+          133.33334350585938,
+          -382.8122253417969
+        ],
+        "accepted": [
+          -2094.8544921875,
+          134.97113037109375,
+          -382.8122253417969
+        ],
+        "pre_floor": 134.9711151123047,
+        "final_floor": 134.97108459472656,
+        "events": 8
+      },
+      "max_floor_difference_values": {
+        "frame": 80,
+        "candidate": [
+          -2141.16015625,
+          212.43357849121094,
+          -336.5064697265625
+        ],
+        "accepted": [
+          -2135.267578125,
+          212.43357849121094,
+          -342.3990173339844
+        ],
+        "pre_floor": 236.55650329589844,
+        "final_floor": 212.43350219726562
+      },
+      "max_camera_step_xyz": 3.63134765625
+    },
+    "roundtrip": {
+      "frames": 600,
+      "camera_frames": 600,
+      "sha256": "d26e29e888e30d9f4b497a1a2fb20fc240b634c448e942c1cee4f0d84934e47a",
+      "modes": [
+        [
+          11,
+          -1
+        ],
+        [
+          17,
+          -1
+        ],
+        [
+          17,
+          32
+        ]
+      ],
+      "unsupported_frame": null,
+      "counterfactual_final": {
+        "first_floor": 54,
+        "max_floor": 332.0,
+        "first_fbase": 54,
+        "max_fbase": 130.0,
+        "first_camera": 54,
+        "max_camera_xyz": 0.000244140625,
+        "max_camera_focus": 130.0
+      },
+      "first_difference_values": {
+        "candidate": [
+          -5.704343038814841e-06,
+          1800.0,
+          -400.87255859375
+        ],
+        "accepted": [
+          -5.704343038814841e-06,
+          1799.7208251953125,
+          -400.87255859375
+        ],
+        "pre_floor": 1799.720703125,
+        "final_floor": 1799.7205810546875,
+        "events": 8
+      },
+      "max_floor_difference_values": {
+        "frame": 294,
+        "candidate": [
+          -1.2676317965087947e-05,
+          1800.0,
+          400.8627624511719
+        ],
+        "accepted": [
+          -1.2676317965087947e-05,
+          1800.0,
+          392.5294189453125
+        ],
+        "pre_floor": 1468.0,
+        "final_floor": 1800.0
+      },
+      "max_camera_step_xyz": 18.969879150390625,
+      "mode_sequence": [
+        [
+          17,
+          32
+        ],
+        [
+          17,
+          -1
+        ],
+        [
+          11,
+          -1
+        ],
+        [
+          17,
+          32
+        ]
+      ]
+    }
+  }
+}

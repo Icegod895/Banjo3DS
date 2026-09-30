@@ -21,6 +21,10 @@ typedef struct {
 void playerRuntimeMove(PlayerRuntime *s, float x, float y, float cameraYaw, float dt,
                        bool jumpPressed, bool cameraMode, const FloorVertex *vertices,
                        const FloorTriangle *triangles, size_t count);
+void playerRuntimeMoveObserved(PlayerRuntime *s, float x, float y, float cameraYaw, float dt,
+                       bool jumpPressed, bool cameraMode, const FloorVertex *vertices,
+                       const FloorTriangle *triangles, size_t count,
+                       BanjoCandidateObserver observe, void *context);
 bool playerRuntimeAnimate(PlayerRuntime *s, const uint8_t *packet, size_t size, float dt);
 /* Caller waits for GPU completion, then flushes the actor range afterwards. */
 bool playerRuntimeWriteVertices(const PlayerRuntime *s, const uint8_t *packet, void *vertices,

@@ -16,6 +16,8 @@ typedef struct {
     float lastSafeGroundPosition[3];
     bool grounded, hasSafeGround;
 } BanjoJumpMotion;
+/* Read-only observation of the genuine proposal BEFORE collision. */
+typedef void (*BanjoCandidateObserver)(void *context, const float xyz[3]);
 /* Inclusive edges; equal-time hits retain the lowest exported triangle index.
  * Outputs untouched on failure. No wall/ceiling/volume response. */
 bool banjo_jump_sweep(const FloorVertex *vertices, const FloorTriangle *triangles,
@@ -31,4 +33,8 @@ unsigned banjo_jump_step(BanjoJumpMotion *state, float padX, float padY, float c
 unsigned banjo_jump_step_horizontal(BanjoJumpMotion *state, BanjoHorizontal *horizontal,
                         float dt, bool jumpPressed, bool cameraMode,
                         const FloorVertex *vertices, const FloorTriangle *triangles, size_t count);
+unsigned banjo_jump_step_observed(BanjoJumpMotion *state, BanjoHorizontal *horizontal,
+                        float dt, bool jumpPressed, bool cameraMode,
+                        const FloorVertex *vertices, const FloorTriangle *triangles, size_t count,
+                        BanjoCandidateObserver observe, void *context);
 #endif
