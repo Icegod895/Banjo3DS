@@ -2,9 +2,9 @@
 #include <math.h>
 #include <string.h>
 
-bool banjo_jump_sweep(const FloorVertex *vertices, const FloorTriangle *triangles,
+bool banjo_jump_sweep_overlay(const FloorVertex *vertices, const FloorTriangle *triangles,
                      size_t count, const float start[3], const float end[3],
-                     float contact[3], size_t *triangleIndex) {
+                     float contact[3], size_t *triangleIndex, const MovementOverlay *overlay) {
     if (!(end[1] < start[1])) return false;
     bool found=false;
     float best=2.0f, hit[3]={0};
@@ -12,7 +12,9 @@ bool banjo_jump_sweep(const FloorVertex *vertices, const FloorTriangle *triangle
     for(size_t i=0;i<count;i++) {
         const FloorTriangle *t=&triangles[i];
         if(t->flags & MOVEMENT_FLOOR_FILTER)continue;
-        const FloorVertex *a=&vertices[t->a], *b=&vertices[t->b], *c=&vertices[t->c];
+        const FloorVertex av=movementVertex(vertices,t->a,overlay),
+            bv=movementVertex(vertices,t->b,overlay), cv=movementVertex(vertices,t->c,overlay);
+        const FloorVertex *a=&av, *b=&bv, *c=&cv;
         float u[3]={b->x-a->x,b->y-a->y,b->z-a->z};
         float v[3]={c->x-a->x,c->y-a->y,c->z-a->z};
         float n[3]={u[1]*v[2]-u[2]*v[1],u[2]*v[0]-u[0]*v[2],u[0]*v[1]-u[1]*v[0]};
@@ -37,9 +39,14 @@ bool banjo_jump_sweep(const FloorVertex *vertices, const FloorTriangle *triangle
     if(found){memcpy(contact,hit,sizeof(hit));if(triangleIndex)*triangleIndex=index;}
     return found;
 }
-static bool supported(const MovementActor *a,const FloorVertex *v,const FloorTriangle *t,size_t n) {
+bool banjo_jump_sweep(const FloorVertex *v,const FloorTriangle *t,size_t n,
+    const float start[3],const float end[3],float hit[3],size_t *index) {
+    return banjo_jump_sweep_overlay(v,t,n,start,end,hit,index,NULL);
+}
+static bool supported(const MovementActor *a,const FloorVertex *v,const FloorTriangle *t,size_t n,
+                      const MovementOverlay *overlay) {
     float height;
-    return movementFloor(v,t,n,a->x,a->z,a->y,&height) &&
+    return movementFloorOverlay(v,t,n,a->x,a->z,a->y,&height,overlay) &&
            fabsf(height-a->y)<=BANJO_JUMP_CONTACT_EPSILON;
 }
 static void remember(BanjoJumpMotion *s) {
@@ -50,12 +57,12 @@ static void remember(BanjoJumpMotion *s) {
 static unsigned step(BanjoJumpMotion *s,BanjoHorizontal *h,float padX,float padY,float yaw,float dt,
                         bool jumpPressed,bool cameraMode,bool horizontalAllowed,
                         const FloorVertex *v,const FloorTriangle *t,size_t n,
-                        BanjoCandidateObserver observe,void *context) {
+                        BanjoCandidateObserver observe,void *context,const MovementOverlay *overlay) {
     if(!s || !isfinite(dt) || dt<0 || !isfinite(padX) || !isfinite(padY) || !isfinite(yaw))return 0;
     dt=fminf(dt,0.05f);
     unsigned events=0;
     if(s->grounded) {
-        if(!supported(&s->actor,v,t,n)){s->grounded=false;s->verticalVelocity=0;}
+        if(!supported(&s->actor,v,t,n,overlay)){s->grounded=false;s->verticalVelocity=0;}
         else {
             remember(s);
             if(jumpPressed && !cameraMode){
@@ -70,13 +77,13 @@ static unsigned step(BanjoJumpMotion *s,BanjoHorizontal *h,float padX,float padY
                         const float candidate[3]={x,s->actor.y,z};
                         observe(context,candidate);
                     }
-                    if(movementFollowFloor(v,t,n,s->actor.x,s->actor.y,s->actor.z,x,z,&height)) {
+                    if(movementFollowFloorOverlay(v,t,n,s->actor.x,s->actor.y,s->actor.z,x,z,&height,overlay)) {
                         if(x!=s->actor.x || z!=s->actor.z)events|=BANJO_JUMP_MOVED;
                         s->actor.x=x;s->actor.y=height;s->actor.z=z;
                     }
                     /* Facing and physics velocity are independent of acceptance. */
                     s->actor.yaw=h->visible_yaw;
-                } else if(horizontalAllowed && movementUpdate(&s->actor,padX,padY,yaw,dt,cameraMode,v,t,n))events|=BANJO_JUMP_MOVED;
+                } else if(horizontalAllowed && movementUpdateOverlay(&s->actor,padX,padY,yaw,dt,cameraMode,v,t,n,overlay))events|=BANJO_JUMP_MOVED;
                 remember(s);return events;
             }
         }
@@ -90,7 +97,7 @@ static unsigned step(BanjoJumpMotion *s,BanjoHorizontal *h,float padX,float padY
     end[2]=start[2]+(h?h->candidate[1]:direction[1]*MOVEMENT_SPEED*dt);
     if(observe)observe(context,end);
     float hit[3];
-    if(banjo_jump_sweep(v,t,n,start,end,hit,NULL)) {
+    if(banjo_jump_sweep_overlay(v,t,n,start,end,hit,NULL,overlay)) {
         memcpy(end,hit,sizeof(end));s->verticalVelocity=0;s->grounded=true;events|=BANJO_JUMP_LANDED;
     }
     s->actor.x=end[0];s->actor.y=end[1];s->actor.z=end[2];
@@ -102,7 +109,7 @@ static unsigned step(BanjoJumpMotion *s,BanjoHorizontal *h,float padX,float padY
     if(s->grounded)remember(s);
     else if(s->actor.y<BANJO_JUMP_VOID_Y && s->hasSafeGround) {
         MovementActor safe={s->lastSafeGroundPosition[0],s->lastSafeGroundPosition[1],s->lastSafeGroundPosition[2],s->actor.yaw};
-        if(supported(&safe,v,t,n)) {
+        if(supported(&safe,v,t,n,overlay)) {
             s->actor=safe;s->verticalVelocity=0;s->grounded=true;events|=BANJO_JUMP_RECOVERED;
         }
     }
@@ -112,18 +119,24 @@ static unsigned step(BanjoJumpMotion *s,BanjoHorizontal *h,float padX,float padY
 unsigned banjo_jump_step(BanjoJumpMotion *s,float padX,float padY,float yaw,float dt,
                         bool jumpPressed,bool cameraMode,bool horizontalAllowed,
                         const FloorVertex *v,const FloorTriangle *t,size_t n) {
-    return step(s,NULL,padX,padY,yaw,dt,jumpPressed,cameraMode,horizontalAllowed,v,t,n,NULL,NULL);
+    return step(s,NULL,padX,padY,yaw,dt,jumpPressed,cameraMode,horizontalAllowed,v,t,n,NULL,NULL,NULL);
 }
 unsigned banjo_jump_step_horizontal(BanjoJumpMotion *s,BanjoHorizontal *h,float dt,
                         bool jumpPressed,bool cameraMode,
                         const FloorVertex *v,const FloorTriangle *t,size_t n) {
     if(!h)return 0;
-    return step(s,h,0,0,0,dt,jumpPressed,cameraMode,true,v,t,n,NULL,NULL);
+    return step(s,h,0,0,0,dt,jumpPressed,cameraMode,true,v,t,n,NULL,NULL,NULL);
 }
 unsigned banjo_jump_step_observed(BanjoJumpMotion *s,BanjoHorizontal *h,float dt,
                         bool jumpPressed,bool cameraMode,
                         const FloorVertex *v,const FloorTriangle *t,size_t n,
                         BanjoCandidateObserver observe,void *context) {
     if(!h)return 0;
-    return step(s,h,0,0,0,dt,jumpPressed,cameraMode,true,v,t,n,observe,context);
+    return step(s,h,0,0,0,dt,jumpPressed,cameraMode,true,v,t,n,observe,context,NULL);
+}
+unsigned banjo_jump_step_overlay(BanjoJumpMotion *s,BanjoHorizontal *h,float dt,
+    bool jumpPressed,bool cameraMode,const FloorVertex *v,const FloorTriangle *t,size_t n,
+    BanjoCandidateObserver observe,void *context,const MovementOverlay *overlay) {
+    if(!h)return 0;
+    return step(s,h,0,0,0,dt,jumpPressed,cameraMode,true,v,t,n,observe,context,overlay);
 }

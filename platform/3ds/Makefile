@@ -18,6 +18,8 @@ BANJO3DS_CREEP_ANIMATION := $(REPO_ROOT)/assets/anim/0002.anim.bin
 BANJO3DS_RUN_ANIMATION := $(REPO_ROOT)/assets/anim/000C.anim.bin
 BANJO3DS_JUMP_ANIMATION := $(REPO_ROOT)/assets/anim/0008.anim.bin
 BANJO3DS_GENERATED_MODEL := $(TOPDIR)/source/generated_model.h
+BANJO3DS_GENERATED_BRIDGE := $(TOPDIR)/build/generated_bridge.h
+BANJO3DS_GENERATED_MOVEMENT_BRIDGE := $(TOPDIR)/build/generated_bridge_movement.h
 BANJO3DS_GENERATED_CAMERA := $(TOPDIR)/build/generated_camera.h
 BANJO3DS_CAMERA_SETUP := $(REPO_ROOT)/assets/lvl_setup/071D.lvl_setup.bin
 
@@ -47,7 +49,7 @@ include $(DEVKITARM)/3ds_rules
 #---------------------------------------------------------------------------------
 TARGET		:=	banjo3ds
 BUILD		:=	build
-SOURCES		:=	source ../../tools/banjo3ds/pose ../../tools/banjo3ds/gait ../../tools/banjo3ds/jump ../../tools/banjo3ds/horizontal ../../tools/banjo3ds/camera ../../tools/banjo3ds/world_query
+SOURCES		:=	source ../../tools/banjo3ds/body ../../tools/banjo3ds/ground ../../tools/banjo3ds/pose ../../tools/banjo3ds/gait ../../tools/banjo3ds/jump ../../tools/banjo3ds/horizontal ../../tools/banjo3ds/camera ../../tools/banjo3ds/camera_contact ../../tools/banjo3ds/world_query ../../tools/banjo3ds/bridge_state
 DATA		:=	data
 INCLUDES	:=	include source ../../tools/banjo3ds/pose ../../tools/banjo3ds/gait ../../tools/banjo3ds/jump ../../tools/banjo3ds/horizontal ../../tools/banjo3ds/camera ../../tools/banjo3ds/world_query
 GRAPHICS	:=	gfx
@@ -65,7 +67,9 @@ CFLAGS	:=	-g -Wall -O2 -mword-relocations \
 			$(ARCH)
 
 BANJO3DS_DEBUG_CAMERA ?= 0
-CFLAGS	+=	$(INCLUDE) -D__3DS__ -DBANJO_DEBUG_CAMERA=$(BANJO3DS_DEBUG_CAMERA) -Wextra -Werror -ffp-contract=off -fno-fast-math -fexcess-precision=standard
+# Temporary explicit progress input; no save-state integration. Use 0 for tutorial bridge.
+BANJO3DS_LEARNED_ABILITIES ?= 0x9DB1
+CFLAGS	+=	$(INCLUDE) -D__3DS__ -DBANJO_DEBUG_CAMERA=$(BANJO3DS_DEBUG_CAMERA) -DBANJO_LEARNED_ABILITIES=$(BANJO3DS_LEARNED_ABILITIES) -Wextra -Werror -ffp-contract=off -fno-fast-math -fexcess-precision=standard
 
 CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions -std=gnu++11
 
@@ -176,8 +180,14 @@ endif
 .PHONY: all clean
 
 #---------------------------------------------------------------------------------
-all: $(BANJO3DS_GENERATED_MODEL) $(BANJO3DS_GENERATED_CAMERA) $(BUILD) $(GFXBUILD) $(DEPSDIR) $(ROMFS_T3XFILES) $(T3XHFILES)
+all: $(BANJO3DS_GENERATED_MODEL) $(BANJO3DS_GENERATED_CAMERA) $(BANJO3DS_GENERATED_BRIDGE) $(BANJO3DS_GENERATED_MOVEMENT_BRIDGE) $(BUILD) $(GFXBUILD) $(DEPSDIR) $(ROMFS_T3XFILES) $(T3XHFILES)
 	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile
+
+$(BANJO3DS_GENERATED_BRIDGE): $(BANJO3DS_XLU_MODEL) $(REPO_ROOT)/tools/banjo3ds/bridge_state/render_binding.py $(REPO_ROOT)/tools/banjo3ds/n64_displaylist_decoder.py | $(BUILD)
+	@cd $(REPO_ROOT) && $(BANJO3DS_PYTHON) -B -m tools.banjo3ds.bridge_state.render_binding $(BANJO3DS_XLU_MODEL) $@
+
+$(BANJO3DS_GENERATED_MOVEMENT_BRIDGE): $(BANJO3DS_MODEL) $(BANJO3DS_XLU_MODEL) $(REPO_ROOT)/tools/banjo3ds/bridge_state/movement_binding.py $(REPO_ROOT)/tools/banjo3ds/floor_collision.py | $(BUILD)
+	@cd $(REPO_ROOT) && $(BANJO3DS_PYTHON) -B -m tools.banjo3ds.bridge_state.movement_binding $(BANJO3DS_MODEL) $(BANJO3DS_XLU_MODEL) $@ $(TOPDIR)/build/generated_bridge_movement.json
 
 $(BANJO3DS_GENERATED_CAMERA): $(BANJO3DS_MODEL) $(BANJO3DS_XLU_MODEL) $(BANJO3DS_CAMERA_SETUP) $(REPO_ROOT)/tools/banjo3ds/export_camera_data.py $(REPO_ROOT)/tools/banjo3ds/world_query_packet.py $(REPO_ROOT)/tools/banjo3ds/camera/setup.py | $(BUILD)
 	@cd $(REPO_ROOT) && $(BANJO3DS_PYTHON) -B -m tools.banjo3ds.export_camera_data $(BANJO3DS_MODEL) $(BANJO3DS_XLU_MODEL) $(BANJO3DS_CAMERA_SETUP) $@

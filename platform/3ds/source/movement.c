@@ -27,15 +27,18 @@ void movementDirection(float x, float y, float cameraYaw, float out[2])
     out[1] = s*x + c*y;
 }
 
-bool movementFloor(const FloorVertex *vertices, const FloorTriangle *triangles,
-                   size_t count, float x, float z, float previousY, float *height)
+bool movementFloorOverlay(const FloorVertex *vertices, const FloorTriangle *triangles,
+                   size_t count, float x, float z, float previousY, float *height,
+                   const MovementOverlay *overlay)
 {
     bool found = false;
     float highest = previousY - MOVEMENT_STEP;
     for (size_t i = 0; i < count; ++i) {
         const FloorTriangle *t = &triangles[i];
         if (t->flags & MOVEMENT_FLOOR_FILTER) continue;
-        const FloorVertex *a = &vertices[t->a], *b = &vertices[t->b], *c = &vertices[t->c];
+        const FloorVertex av=movementVertex(vertices,t->a,overlay),
+            bv=movementVertex(vertices,t->b,overlay), cv=movementVertex(vertices,t->c,overlay);
+        const FloorVertex *a=&av, *b=&bv, *c=&cv;
         float ux = b->x-a->x, uy = b->y-a->y, uz = b->z-a->z;
         float vx = c->x-a->x, vy = c->y-a->y, vz = c->z-a->z;
         float nx = uy*vz-uz*vy, ny = uz*vx-ux*vz, nz = ux*vy-uy*vx;
@@ -56,9 +59,9 @@ bool movementFloor(const FloorVertex *vertices, const FloorTriangle *triangles,
     return found;
 }
 
-bool movementFollowFloor(const FloorVertex *vertices, const FloorTriangle *triangles,
+bool movementFollowFloorOverlay(const FloorVertex *vertices, const FloorTriangle *triangles,
                          size_t count, float startX, float startY, float startZ,
-                         float endX, float endZ, float *height)
+                         float endX, float endZ, float *height, const MovementOverlay *overlay)
 {
     if (!height || !isfinite(startX) || !isfinite(startY) || !isfinite(startZ) ||
         !isfinite(endX) || !isfinite(endZ)) return false;
@@ -80,15 +83,15 @@ bool movementFollowFloor(const FloorVertex *vertices, const FloorTriangle *trian
         float fraction = (float)i/countSteps;
         float x = i == countSteps ? endX : startX+dx*fraction;
         float z = i == countSteps ? endZ : startZ+dz*fraction;
-        if (!movementFloor(vertices, triangles, count, x, z, y, &y)) return false;
+        if (!movementFloorOverlay(vertices, triangles, count, x, z, y, &y, overlay)) return false;
     }
     *height = y;
     return true;
 }
 
-bool movementUpdate(MovementActor *actor, float padX, float padY, float cameraYaw,
+bool movementUpdateOverlay(MovementActor *actor, float padX, float padY, float cameraYaw,
                     float dt, bool cameraMode, const FloorVertex *vertices,
-                    const FloorTriangle *triangles, size_t count)
+                    const FloorTriangle *triangles, size_t count, const MovementOverlay *overlay)
 {
     float stick[2], direction[2], floor;
     if (cameraMode || dt <= 0.0f) return false;
@@ -98,12 +101,25 @@ bool movementUpdate(MovementActor *actor, float padX, float padY, float cameraYa
     dt = fminf(dt, 0.05f);
     float x = actor->x + direction[0]*MOVEMENT_SPEED*dt;
     float z = actor->z + direction[1]*MOVEMENT_SPEED*dt;
-    if (!movementFollowFloor(vertices, triangles, count, actor->x, actor->y,
-                             actor->z, x, z, &floor)) return false;
+    if (!movementFollowFloorOverlay(vertices, triangles, count, actor->x, actor->y,
+                             actor->z, x, z, &floor, overlay)) return false;
     /* Commit all position/heading state together, only after a valid floor. */
     actor->x = x; actor->y = floor; actor->z = z;
     actor->yaw = atan2f(direction[0], direction[1]) / radians;
     return true;
+}
+
+bool movementFloor(const FloorVertex *v,const FloorTriangle *t,size_t n,
+                   float x,float z,float y,float *height) {
+    return movementFloorOverlay(v,t,n,x,z,y,height,NULL);
+}
+bool movementFollowFloor(const FloorVertex *v,const FloorTriangle *t,size_t n,
+                         float x,float y,float z,float endX,float endZ,float *height) {
+    return movementFollowFloorOverlay(v,t,n,x,y,z,endX,endZ,height,NULL);
+}
+bool movementUpdate(MovementActor *a,float x,float y,float yaw,float dt,bool camera,
+                    const FloorVertex *v,const FloorTriangle *t,size_t n) {
+    return movementUpdateOverlay(a,x,y,yaw,dt,camera,v,t,n,NULL);
 }
 
 void movementActorMatrix(const MovementActor *a, float rows[4][4])

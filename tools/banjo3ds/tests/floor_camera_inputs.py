@@ -26,8 +26,10 @@ def player_library(opt):
     tmp=tempfile.TemporaryDirectory(prefix='floor-player-observer-');p=Path(tmp.name)
     source=(ROOT/'tools/banjo3ds/jump/jump.c').read_text()
     source=source.replace('#include "jump.h"','#include "jump.h"\nfloat floor_test_candidate[3];')
-    source=source.replace('if(movementFollowFloor(v,t,n,s->actor.x,s->actor.y,s->actor.z,x,z,&height)) {',
-        'floor_test_candidate[0]=x;floor_test_candidate[1]=s->actor.y;floor_test_candidate[2]=z;\n                    if(movementFollowFloor(v,t,n,s->actor.x,s->actor.y,s->actor.z,x,z,&height)) {')
+    hook='if(movementFollowFloorOverlay(v,t,n,s->actor.x,s->actor.y,s->actor.z,x,z,&height,overlay)) {'
+    assert source.count(hook)==1
+    source=source.replace(hook,
+        'floor_test_candidate[0]=x;floor_test_candidate[1]=s->actor.y;floor_test_candidate[2]=z;\n                    '+hook)
     source=source.replace('float hit[3];\n    if(banjo_jump_sweep',
         'memcpy(floor_test_candidate,end,12);\n    float hit[3];\n    if(banjo_jump_sweep')
     (p/'jump.c').write_text(source)

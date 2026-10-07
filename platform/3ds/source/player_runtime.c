@@ -2,9 +2,10 @@
 #include <math.h>
 #include <string.h>
 
-void playerRuntimeMoveObserved(PlayerRuntime *s,float x,float y,float yaw,float dt,
+void playerRuntimeMoveStepped(PlayerRuntime *s,float x,float y,float yaw,float dt,
                        bool jumpPressed,bool cameraMode,const FloorVertex *v,const FloorTriangle *t,size_t n,
-                       BanjoCandidateObserver observe,void *context) {
+                       BanjoCandidateObserver observe,void *context,const MovementOverlay *overlay,
+                       PlayerMotionStep step,void *step_context) {
     if(!s || !isfinite(dt) || dt<0 || !isfinite(x) || !isfinite(y) || !isfinite(yaw))return;
     dt=fminf(dt,.05f);
     s->events=0;s->accepted=false;s->speed=0;
@@ -30,7 +31,8 @@ void playerRuntimeMoveObserved(PlayerRuntime *s,float x,float y,float yaw,float 
          * Takeoff explicitly replaces this target with current stick intent. */
         if(old==BANJO_GAIT_IDLE && next!=BANJO_GAIT_IDLE)h->target_speed=0;
     }
-    s->events=banjo_jump_step_observed(&s->motion,h,dt,jumpPressed,cameraMode,v,t,n,observe,context);
+    s->events=step?step(step_context,&s->motion,h,dt,jumpPressed,cameraMode):
+        banjo_jump_step_overlay(&s->motion,h,dt,jumpPressed,cameraMode,v,t,n,observe,context,overlay);
     float dx=s->motion.actor.x-before.x,dz=s->motion.actor.z-before.z;
     if(s->events&BANJO_JUMP_RECOVERED) {
         /* Diagnostic teleport is neither accepted movement nor stored momentum. */
@@ -45,6 +47,16 @@ void playerRuntimeMoveObserved(PlayerRuntime *s,float x,float y,float yaw,float 
     if(s->events&(BANJO_JUMP_LANDED|BANJO_JUMP_RECOVERED)) {
         s->locomotion.gait=BANJO_GAIT_IDLE;s->locomotion.downshift_remaining=0;
     }
+}
+void playerRuntimeMoveOverlay(PlayerRuntime *s,float x,float y,float yaw,float dt,
+    bool jump,bool cameraMode,const FloorVertex *v,const FloorTriangle *t,size_t n,
+    BanjoCandidateObserver observe,void *context,const MovementOverlay *overlay) {
+    playerRuntimeMoveStepped(s,x,y,yaw,dt,jump,cameraMode,v,t,n,observe,context,overlay,NULL,NULL);
+}
+void playerRuntimeMoveObserved(PlayerRuntime *s,float x,float y,float yaw,float dt,
+    bool jumpPressed,bool cameraMode,const FloorVertex *v,const FloorTriangle *t,size_t n,
+    BanjoCandidateObserver observe,void *context) {
+    playerRuntimeMoveOverlay(s,x,y,yaw,dt,jumpPressed,cameraMode,v,t,n,observe,context,NULL);
 }
 void playerRuntimeMove(PlayerRuntime *s,float x,float y,float yaw,float dt,
                        bool jumpPressed,bool cameraMode,const FloorVertex *v,const FloorTriangle *t,size_t n) {

@@ -32,18 +32,32 @@ def read_collision(path):
     return vertices, records
 
 
-def scene_collision(paths):
-    vertices, triangles = [], []
+def collision_models(paths):
+    """Yield the actual export remap, before source identity is discarded.
+
+    This is transient host metadata, not a new movement collision format.
+    Sparse consumers can retain selected identities without coordinate matching.
+    """
+    vertex_base, triangle_base = 0, 0
     for path in paths:
         local_vertices, local_triangles = read_collision(path)
         # Export only vertices actually referenced by collision, preserving a
         # deterministic source-index mapping and original triangle winding.
         used = sorted({i for t in local_triangles for i in t[:3]})
-        remap = {old: len(vertices)+i for i, old in enumerate(used)}
+        remap = {old: vertex_base+i for i, old in enumerate(used)}
+        yield path, local_vertices, local_triangles, remap, triangle_base
+        vertex_base += len(used)
+        triangle_base += len(local_triangles)
+    if vertex_base > 65536:
+        raise ValueError('Collision vertex indices exceed uint16')
+
+
+def scene_collision(paths):
+    vertices, triangles = [], []
+    for _, local_vertices, local_triangles, remap, _ in collision_models(paths):
+        used = sorted(remap)
         vertices.extend(local_vertices[i] for i in used)
         triangles.extend(tuple(remap[i] for i in t[:3])+t[3:] for t in local_triangles)
-    if len(vertices) > 65536:
-        raise ValueError('Collision vertex indices exceed uint16')
     return vertices, triangles
 
 

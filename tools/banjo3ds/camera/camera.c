@@ -134,9 +134,9 @@ static void smooth_angles(BanjoCamera *s,const float desired[3],float gain,float
     }
     s->rotation[2]=0;
 }
-bool banjo_camera_update(BanjoCamera *s,const BanjoCameraMath *m,const BanjoCameraZoom *z,
+bool banjo_camera_prepare(BanjoCameraPhase *phase,const BanjoCamera *s,const BanjoCameraMath *m,const BanjoCameraZoom *z,
                          const BanjoCameraTrigger *ts,size_t count,const BanjoCameraInput *in) {
-    if(!s || !m || !z || !in || (count && !ts) || (z->flags&1) || !isfinite(in->dt) || in->dt<0 || in->dt>.05f
+    if(!phase || !s || !m || !z || !in || (count && !ts) || (z->flags&1) || !isfinite(in->dt) || in->dt<0 || in->dt>.05f
        || in->vi_frames<1 || in->vi_frames>15 || s->preset<1 || s->preset>3
        || !isfinite(in->floor_height) || !isfinite(in->floor_under_camera)
        || !isfinite(in->visible_yaw) || fabsf(in->visible_yaw)>36000) return false;
@@ -183,13 +183,33 @@ bool banjo_camera_update(BanjoCamera *s,const BanjoCameraMath *m,const BanjoCame
         pg=z->position_gains[0];pr=z->position_gains[1];ag=z->rotation_gains[0];ar=z->rotation_gains[1];
     }
     smooth_position(&next,desired,pg,pr,in->vi_frames);
+    phase->next=next;memcpy(phase->previous,s->position,12);
+    memcpy(phase->desired,desired,12);phase->angular_gain=ag;
+    phase->angular_response=ar;phase->anchor_distance=anchor_distance;
+    return true;
+}
+bool banjo_camera_finish(BanjoCamera *s,const BanjoCameraPhase *phase,
+                         const BanjoCameraMath *m,const BanjoCameraZoom *z,
+                         const BanjoCameraInput *in,bool changed,bool recovered,float look_output[3]) {
+    if(!s || !phase || !m || !z || !in || (recovered && !changed)
+       || (changed && phase->next.state!=0xB))return false;
+    BanjoCamera next=phase->next;
+    if(changed)next.orbit_yaw=heading(m,next.position[0]-next.focus[0],next.position[2]-next.focus[2]);
     float angles[3];look(m,next.focus,next.position,angles);
-    if(next.state==0x11 && anchor_distance<150.f) {
+    if(next.state==0x11 && phase->anchor_distance<150.f) {
         float target[3],a[3];for(int i=0;i<3;i++)target[i]=z->anchor[i]+z->offset[i];
         look(m,next.focus,target,a);angles[1]=a[1];
     }
-    smooth_angles(&next,angles,ag,ar,in->dt);
+    if(look_output)memcpy(look_output,angles,12);
+    if(recovered)memcpy(next.rotation,angles,12);
+    smooth_angles(&next,angles,phase->angular_gain,phase->angular_response,in->dt);
     *s=next;return true;
+}
+bool banjo_camera_update(BanjoCamera *s,const BanjoCameraMath *m,const BanjoCameraZoom *z,
+                         const BanjoCameraTrigger *ts,size_t count,const BanjoCameraInput *in) {
+    BanjoCameraPhase phase;
+    if(!banjo_camera_prepare(&phase,s,m,z,ts,count,in))return false;
+    return banjo_camera_finish(s,&phase,m,z,in,false,false,NULL);
 }
 bool banjo_camera_project(const BanjoCamera *s,const float world[3],float aspect,float near_plane,float far_plane,float ndc[3]) {
     if(!s || !world || !ndc || !isfinite(aspect) || aspect<=0 || !isfinite(near_plane)

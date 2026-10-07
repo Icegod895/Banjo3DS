@@ -1,0 +1,20 @@
+/* Private compile-time query namespace, shared math with explicit bridge-coordinate reads. */
+#define bq_open bridge_query_open
+#define bq_segment bridge_segment
+#define bq_camera_terrain bridge_camera_terrain
+#define bc_sphere bridge_sphere
+#define bc_moving bridge_moving
+#define bc_gated bridge_gated
+#define bc_contact bridge_contact
+#define bc_state_b bridge_state_b
+#define bc_free_b_update bridge_free_b_update
+#define bc_free_b_rollback bridge_free_b_rollback
+#define bq_floor_init bridge_floor_init
+#define bq_floor_reinit bridge_floor_reinit
+#define bq_floor_update bridge_floor_update
+#define bq_bridge_init bridge_cadence_init
+#define bq_bridge_parity bridge_cadence_parity
+#define bq_bridge_begin bridge_cadence_begin
+#define bq_bridge_reinit bridge_cadence_reinit
+#define bq_bridge_candidate bridge_cadence_candidate
+#define bq_bridge_end bridge_cadence_end

@@ -2,6 +2,11 @@
 #include <math.h>
 #include <string.h>
 
+/* Optional isolated world-state reader. Default preserves immutable queries. */
+#ifndef BQ_VERTEX_COMPONENT
+#define BQ_VERTEX_COMPONENT(m,v,a) s16((m)->vertices+24+16*(v)+2*(a))
+#endif
+
 static uint16_t u16(const uint8_t *p) { return (uint16_t)((unsigned)p[0]*256+p[1]); }
 static int16_t s16(const uint8_t *p) { return (int16_t)u16(p); }
 static uint32_t u32(const uint8_t *p) {
@@ -61,7 +66,7 @@ static int model_query(const BqModel *m,const float *start,float *end,uint32_t f
             float tri[3][3];uint16_t indices[3];
             for(int j=0;j<3;j++) {
                 indices[j]=u16(record+2*j);
-                for(int i=0;i<3;i++)tri[j][i]=s16(m->vertices+24+16*indices[j]+2*i);
+                for(int i=0;i<3;i++)tri[j][i]=BQ_VERTEX_COMPONENT(m,indices[j],i);
             }
             int reject=0;
             for(int i=0;i<3;i++)if((tri[0][i]<lo[i] && tri[1][i]<lo[i] && tri[2][i]<lo[i]) ||

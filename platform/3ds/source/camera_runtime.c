@@ -1,4 +1,5 @@
 #include "camera_runtime.h"
+#include "../../../tools/banjo3ds/bridge_state/movement_overlay.h"
 #include <assert.h>
 #include <math.h>
 #include <string.h>
@@ -38,8 +39,11 @@ bool cameraRuntimeInit(CameraRuntime *s,const PlayerRuntime *player,
     const BanjoCameraZoom *zoom,const BanjoCameraTrigger *triggers,size_t count) {
     if(!s || !player || !zoom || !triggers || !count)return false;
     memset(s,0,sizeof(*s));s->status=CAMERA_RUNTIME_INVALID;
-    if(bq_open(&s->opa,opa,opa_size)!=1 || bq_open(&s->xlu,xlu,xlu_size)!=1
-       || s->opa.role!=0 || s->xlu.role!=1)return false;
+    bridge_init(&s->world_bridge);
+    playerGroundInit(&s->player_ground,&player->motion);
+    if(bridge_model_open(&s->opa,opa,opa_size,&s->world_bridge)!=1 ||
+       bridge_model_open(&s->xlu,xlu,xlu_size,&s->world_bridge)!=1 ||
+       s->opa.base.role!=0 || s->xlu.base.role!=1)return false;
     s->zoom=zoom;s->triggers=triggers;s->trigger_count=count;
     if(bq_bridge_init(&s->bridge,0)!=1)return false;
     banjo_camera_math_init(&s->math);
@@ -54,42 +58,91 @@ bool cameraRuntimeInit(CameraRuntime *s,const PlayerRuntime *player,
 static void candidate(void *context,const float xyz[3]) {
     CameraRuntime *s=context;
     ++s->candidate_calls;
-    /* B.9 permits exactly one ordinary callback, before either collision path. */
+    /* One physics candidate. E.2 owns the subsequent 1..5 floor queries. */
     assert(s->candidate_calls==1);
     memcpy(s->pre_candidate,xyz,sizeof(s->pre_candidate));
-    if(s->candidate_calls!=1 || bq_bridge_candidate(&s->bridge,&s->opa,&s->xlu,xyz,0)!=1)
-        s->status=CAMERA_RUNTIME_QUERY_FAILED;
-    else s->floor_ready=true;
+    if(s->candidate_calls!=1)s->status=CAMERA_RUNTIME_INVALID;
 }
-int cameraRuntimeMove(CameraRuntime *s,PlayerRuntime *player,
+static int cameraRuntimeMoveQueries(CameraRuntime *s,PlayerRuntime *player,
     float x,float y,float yaw,float dt,int vi,bool jump,bool camera_mode,
     const FloorVertex *vertices,const FloorTriangle *triangles,size_t count) {
     if(!s || !s->initialized || !player || !isfinite(dt) || dt<0 || dt>.05f
        || !isfinite(x) || !isfinite(y) || !isfinite(yaw) || vi<1 || vi>15)return CAMERA_RUNTIME_INVALID;
     s->candidate_calls=0;s->status=CAMERA_RUNTIME_OK;
     if(bq_bridge_begin(&s->bridge)!=1)return s->status=CAMERA_RUNTIME_INVALID;
-    playerRuntimeMoveObserved(player,x,y,yaw,dt,jump,camera_mode,vertices,triangles,count,candidate,s);
+    /* Borrow committed geometry before mesh publication, exactly like B3Q1.
+     * No alternate BridgeState, copied collision buffer or final-position call. */
+    const MovementOverlay overlay=bridge_movement_overlay(&s->world_bridge);
+    PlayerGroundContext ground={&s->player_ground,&s->bridge,candidate,s,
+        vertices,triangles,count,&overlay,&s->status,&s->body,
+        &s->query_scratch.player,&s->opa,&s->xlu,&s->math};
+    playerRuntimeMoveStepped(player,x,y,yaw,dt,jump,camera_mode,vertices,triangles,count,
+        candidate,s,&overlay,playerGroundStep,&ground);
     assert(s->candidate_calls==(dt>0?1u:0u));
     if(s->candidate_calls!=(dt>0?1u:0u))s->status=CAMERA_RUNTIME_INVALID;
+    if(dt>0 && s->status==CAMERA_RUNTIME_OK) {
+        assert(s->bridge.next_ordinal>=1 && s->bridge.next_ordinal<=5);
+        if(s->bridge.next_ordinal<1 || s->bridge.next_ordinal>5)s->status=CAMERA_RUNTIME_INVALID;
+        else s->floor_ready=true;
+    }
     if((player->events&BANJO_JUMP_RECOVERED) && s->status==CAMERA_RUNTIME_OK) {
         /* B.9 diagnostic relocation event: reinit preserves history and clock.
          * This is not a collision-contact/final-position replay. */
         const float relocated[3]={player->motion.actor.x,player->motion.actor.y,player->motion.actor.z};
         if(bq_bridge_reinit(&s->bridge)!=1 ||
-           bq_bridge_candidate(&s->bridge,&s->opa,&s->xlu,relocated,s->bridge.next_ordinal)!=1)
+           bridge_cadence_candidate(&s->bridge,&s->opa.base,&s->xlu.base,relocated,s->bridge.next_ordinal)!=1)
             s->status=CAMERA_RUNTIME_QUERY_FAILED;
+        if(s->status==CAMERA_RUNTIME_OK) {
+            memcpy(s->player_ground.phase.position,relocated,sizeof(relocated));
+            s->player_ground.phase.floor_height=s->bridge.floor.height;
+            s->player_ground.phase.vertical_velocity=player->motion.verticalVelocity;
+            s->player_ground.phase.grounded=player->motion.grounded;
+        }
     }
     if(bq_bridge_end(&s->bridge)!=1)return s->status=CAMERA_RUNTIME_INVALID;
     if(s->status!=CAMERA_RUNTIME_OK)return s->status;
     if(!s->floor_ready)return s->status=CAMERA_RUNTIME_WAIT;
     float under;
-    if(bq_camera_terrain(&s->opa,&s->xlu,s->camera.position,&under)<0)
+    if(bridge_camera_terrain(&s->opa.base,&s->xlu.base,s->camera.position,&under)<0)
         return s->status=CAMERA_RUNTIME_QUERY_FAILED;
     const MovementActor *a=&player->motion.actor;
     BanjoCameraInput in={{a->x,a->y,a->z},s->bridge.floor.height,a->yaw,under,dt,vi,player->motion.grounded};
+    /* Original code_7060.c:430 -> code_C4B0.c:248/260: normal Banjo's
+     * collider center is +80Y. Stand/gaits/ordinary jump do not change it.
+     * This is not camera focus/lead and does not add player-volume physics. */
+    const float target[3]={a->x,a->y+80.0f,a->z};
+    return cameraRuntimeUpdateView(s,&in,target);
+}
+void cameraRuntimeSetLearnedAbilities(CameraRuntime *s,uint32_t bits) {
+    if(s)s->learned_abilities=bits;
+}
+int cameraRuntimeMove(CameraRuntime *s,PlayerRuntime *player,
+    float x,float y,float yaw,float dt,int vi,bool jump,bool camera_mode,
+    const FloorVertex *vertices,const FloorTriangle *triangles,size_t count) {
+    if(!s || !s->initialized || !player || !isfinite(dt) || dt<0 || dt>.05f
+       || !isfinite(x) || !isfinite(y) || !isfinite(yaw) || vi<1 || vi>15)return CAMERA_RUNTIME_INVALID;
+    /* Original actor -> player/camera queries -> mesh publication ordering.
+     * Even a bounded unsupported camera zone does not cancel the world tick. */
+    bridge_actor_tick(&s->world_bridge,s->learned_abilities);
+    int status=cameraRuntimeMoveQueries(s,player,x,y,yaw,dt,vi,jump,camera_mode,vertices,triangles,count);
+    bridge_mesh_tick(&s->world_bridge,dt);
+    return status;
+}
+int cameraRuntimeUpdateView(CameraRuntime *s,const BanjoCameraInput *in,const float target[3]) {
+    if(!s || !s->initialized || !in || !target)return CAMERA_RUNTIME_INVALID;
     BanjoCamera next=s->camera;
-    if(!banjo_camera_update(&next,&s->math,s->zoom,s->triggers,s->trigger_count,&in))
-        return s->status=CAMERA_RUNTIME_UNSUPPORTED;
-    if(!cameraRareView(&next,s->view,&s->parity))return s->status=CAMERA_RUNTIME_INVALID;
-    s->camera=next;s->view_ready=true;return s->status;
+    BcFreeBState post=s->contact;
+    BcFreeBTrace trace;
+    if(!bridge_free_b_update(&next,&post,&s->math,s->zoom,s->triggers,s->trigger_count,in,
+                        &s->opa.base,&s->xlu.base,target,&s->query_scratch.camera,&trace)) {
+        /* Error classification only: pure prepare neither commits state nor
+         * executes contact. Preserve unsupported-trigger vs query-failure API. */
+        BanjoCameraPhase probe;
+        bool supported=banjo_camera_prepare(&probe,&s->camera,&s->math,s->zoom,s->triggers,s->trigger_count,in);
+        return s->status=supported?CAMERA_RUNTIME_QUERY_FAILED:CAMERA_RUNTIME_UNSUPPORTED;
+    }
+    float view[4][4];RendererWindingParity parity;
+    if(!cameraRareView(&next,view,&parity))return s->status=CAMERA_RUNTIME_INVALID;
+    s->camera=next;s->contact=post;memcpy(s->view,view,sizeof(view));s->parity=parity;
+    s->view_ready=true;return s->status=CAMERA_RUNTIME_OK;
 }

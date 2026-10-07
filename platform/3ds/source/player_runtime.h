@@ -26,6 +26,15 @@ void playerRuntimeMoveObserved(PlayerRuntime *s, float x, float y, float cameraY
                        const FloorTriangle *triangles, size_t count,
                        BanjoCandidateObserver observe, void *context);
 bool playerRuntimeAnimate(PlayerRuntime *s, const uint8_t *packet, size_t size, float dt);
+void playerRuntimeMoveOverlay(PlayerRuntime *,float,float,float,float,bool,bool,
+    const FloorVertex *,const FloorTriangle *,size_t,BanjoCandidateObserver,void *,
+    const MovementOverlay *);
+/* Explicit motion phase supplied by the world runtime. The legacy entry points
+ * remain historical host contracts; the live camera runtime supplies E.1. */
+typedef unsigned (*PlayerMotionStep)(void *,BanjoJumpMotion *,BanjoHorizontal *,float,bool,bool);
+void playerRuntimeMoveStepped(PlayerRuntime *,float,float,float,float,bool,bool,
+    const FloorVertex *,const FloorTriangle *,size_t,BanjoCandidateObserver,void *,
+    const MovementOverlay *,PlayerMotionStep,void *);
 /* Caller waits for GPU completion, then flushes the actor range afterwards. */
 bool playerRuntimeWriteVertices(const PlayerRuntime *s, const uint8_t *packet, void *vertices,
                                 size_t total, size_t first, size_t count, size_t stride);

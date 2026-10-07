@@ -28,6 +28,26 @@ typedef struct {
     bool stable; /* player_isStable(): refresh zone probe only when true */
 } BanjoCameraInput;
 
+/* Transactional internal phase boundary. prepare leaves the committed camera
+ * untouched. next contains position smoothing, but NO look/rotation update.
+ * previous is immutable rollback input; contact must push a separate copy.
+ * Keep zoom/input/math unchanged between prepare and finish. */
+typedef struct {
+    BanjoCamera next;
+    float previous[3], desired[3];
+    float angular_gain, angular_response, anchor_distance;
+} BanjoCameraPhase;
+bool banjo_camera_prepare(BanjoCameraPhase *phase, const BanjoCamera *s,
+    const BanjoCameraMath *, const BanjoCameraZoom *, const BanjoCameraTrigger *,
+    size_t count, const BanjoCameraInput *);
+/* Postprocessing may change next.position and its smoothing accumulators.
+ * Reheading only on effective contact change; recovery sets rotation BEFORE
+ * ordinary angular smoothing. Optional look_output observes that target.
+ * Successful recovery's accumulator reset belongs to the contact layer. */
+bool banjo_camera_finish(BanjoCamera *s, const BanjoCameraPhase *phase,
+    const BanjoCameraMath *, const BanjoCameraZoom *, const BanjoCameraInput *,
+    bool contact_changed, bool recovered, float look_output[3]);
+
 void banjo_camera_math_init(BanjoCameraMath *math);
 /* Explicit initial viewport/probe. Lead/accumulators reset to zero as Rare init.
  * State B starts at its init hook; first zone selection occurs in update. */

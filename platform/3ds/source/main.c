@@ -10,6 +10,8 @@
 #include "renderer_culling.h"
 #include "camera_runtime.h"
 #include "generated_camera.h"
+#include "generated_bridge.h"
+#include "../../../tools/banjo3ds/bridge_state/render.h"
 
 /* Temporary diagnostic build choice, not an N64 camera-button mapping. */
 #ifndef BANJO_DEBUG_CAMERA
@@ -759,6 +761,8 @@ int main(void)
         return 1;
     }
 
+    cameraRuntimeSetLearnedAbilities(&rareCamera, BANJO_LEARNED_ABILITIES);
+
     u64 previousFrameMs = osGetTime();
     u32 previousVi = C3D_FrameCounter(0);
     while (aptMainLoop()) {
@@ -808,6 +812,22 @@ int main(void)
         if (changed)
             GSPGPU_FlushDataCache((Banjo3DSVertex *)vbo_data + BANJO_ACTOR_FIRST_VERTEX,
                 BANJO_ACTOR_VERTEX_COUNT * sizeof(Banjo3DSVertex));
+        /* Original mesh publication follows the camera queries. Commit the same
+         * state to the 48 bridge corners only after the GPU wait, never a packet
+         * copy. Failed draw frames catch up from the absolute source coordinates. */
+        const size_t bridgeFirst = BANJO_VERTEX_COUNT - BANJO_BRIDGE_XLU_VERTEX_COUNT
+                                 + BANJO_BRIDGE_XLU_FIRST_CORNER;
+        int bridgeChanged = bridge_render_y(&rareCamera.xlu, vbo_data,
+            BANJO_VERTEX_COUNT, sizeof(Banjo3DSVertex), bridgeFirst,
+            banjo_bridge_source_ids, BANJO_BRIDGE_CORNER_COUNT);
+        if (bridgeChanged < 0) {
+            cameraRuntimeStatus = CAMERA_RUNTIME_INVALID;
+            C3D_FrameEnd(0);
+            break; /* Never render mismatched visible/query bridge geometry. */
+        }
+        if (bridgeChanged)
+            GSPGPU_FlushDataCache((Banjo3DSVertex *)vbo_data + bridgeFirst,
+                BANJO_BRIDGE_CORNER_COUNT * sizeof(Banjo3DSVertex));
         C3D_RenderTargetClear(target, C3D_CLEAR_ALL, CLEAR_COLOR, 0);
         C3D_FrameDrawOn(target);
         /* Do not publish the bootstrap floor seed as a rendered camera frame. */

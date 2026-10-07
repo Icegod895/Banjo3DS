@@ -37,4 +37,10 @@ unsigned banjo_jump_step_observed(BanjoJumpMotion *state, BanjoHorizontal *horiz
                         float dt, bool jumpPressed, bool cameraMode,
                         const FloorVertex *vertices, const FloorTriangle *triangles, size_t count,
                         BanjoCandidateObserver observe, void *context);
+/* Shared algorithms with a borrowed, optional world-coordinate overlay. */
+bool banjo_jump_sweep_overlay(const FloorVertex *,const FloorTriangle *,size_t,
+    const float[3],const float[3],float[3],size_t *,const MovementOverlay *);
+unsigned banjo_jump_step_overlay(BanjoJumpMotion *,BanjoHorizontal *,float,bool,bool,
+    const FloorVertex *,const FloorTriangle *,size_t,BanjoCandidateObserver,void *,
+    const MovementOverlay *);
 #endif
