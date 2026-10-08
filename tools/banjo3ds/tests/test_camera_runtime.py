@@ -37,12 +37,26 @@ F=C.c_float
 from ground_corpus import State as GroundPhase
 class GroundRuntime(C.Structure):
     _fields_=[('phase',GroundPhase),('fall_request',C.c_uint32),('jump_flight',C.c_bool)]
+from test_camera_manual import State as ManualState
 class Runtime(C.Structure):
-    _fields_=[('math',cam.Math),('camera',cam.State),('bridge',Bridge),('opa',RuntimeModel),('xlu',RuntimeModel),
-        ('zone_data',C.POINTER(ZoneData)),('zones',ZoneSelection),
+    _fields_=[('math',cam.Math),('manual',ManualState),('manual_buttons',C.c_uint32),('manual_enabled',C.c_uint32),('bridge',Bridge),('opa',RuntimeModel),('xlu',RuntimeModel),
+        ('zone_data',C.POINTER(ZoneData)),
         ('view',(F*4)*4),('pre',F*3),('calls',C.c_uint),('status',C.c_int),('parity',C.c_int),
         ('initialized',C.c_bool),('floor_ready',C.c_bool),('view_ready',C.c_bool),
-        ('contact',PostState),('world_bridge',BridgeState),('learned_abilities',C.c_uint32),('player_ground',GroundRuntime),('body',BodyHistory),('scratch',BodyScratch)]
+        ('world_bridge',BridgeState),('learned_abilities',C.c_uint32),('player_ground',GroundRuntime),('body',BodyHistory),('scratch',BodyScratch)]
+
+    @property
+    def camera(self):return self.manual.camera
+    @camera.setter
+    def camera(self,value):self.manual.camera=value
+    @property
+    def zones(self):return self.manual.zones
+    @zones.setter
+    def zones(self,value):self.manual.zones=value
+    @property
+    def contact(self):return self.manual.post
+    @contact.setter
+    def contact(self,value):self.manual.post=value
 
     # Historical isolated B.6 tests still supply bounded node32/no-zone scenarios.
     # These are test accessors only; runtime has a single full-zone path.
@@ -98,13 +112,17 @@ int runtime_cull(const CameraRuntime *s,unsigned cull){return rendererCullMode(c
             'camera_contact/contact.c','camera_contact/free_b.c','camera_zones/zones.c',
             'world_query/segment.c','world_query/floor_state.c','world_query/floor_bridge.c',
             'bridge_state/bridge.c','bridge_state/query_segment.c','bridge_state/query_contact.c',
-            'bridge_state/query_free_b.c','bridge_state/query_zones.c','bridge_state/query_floor_state.c','bridge_state/query_floor_bridge.c',
+            'bridge_state/query_free_b.c','bridge_state/query_zones.c',
+            'bridge_state/query_manual.c','bridge_state/query_manual_contact.c','bridge_state/query_floor_state.c','bridge_state/query_floor_bridge.c',
             'bridge_state/render.c','bridge_state/movement_overlay.c')]
         extra_sources=[];extra_flags=[]
         if getattr(cls,'body_observer',False):
             extra_sources=[str(Path(__file__).parent/'body_runtime_observer.c')]
             extra_flags=['-Wl,--wrap='+n for n in ('bp_frame_resolve','bridge_floor_update',
                          'bridge_sphere','bridge_moving','bridge_segment')]
+        if getattr(cls,'manual_observer',False):
+            extra_sources.append(str(Path(__file__).parent/'manual_runtime_observer.c'))
+            extra_flags.append('-Wl,--wrap=bm_update')
         cls.libs=[]
         includes=['platform/3ds/source','tools/banjo3ds/pose','tools/banjo3ds/gait','tools/banjo3ds/jump',
                   'tools/banjo3ds/camera','tools/banjo3ds/world_query']
@@ -116,6 +134,8 @@ int runtime_cull(const CameraRuntime *s,unsigned cull){return rendererCullMode(c
                 *[str(ROOT/p) for p in sources],str(path/'wrapper.c'),*extra_sources,*extra_flags,'-lm','-o',str(out)],check=True)
             lib=C.CDLL(str(out));cls.libs.append(lib)
             lib.runtime_size.restype=C.c_size_t
+            lib.cameraRuntimeManualInput.argtypes=[C.POINTER(Runtime),C.c_uint32,C.c_uint32]
+            lib.cameraRuntimeMovementInput.argtypes=[C.POINTER(Runtime),C.c_bool,F,F,F,C.POINTER(F)]
             lib.cameraRuntimeSetLearnedAbilities.argtypes=[C.POINTER(Runtime),C.c_uint32]
             lib.cameraRuntimeUpdateView.argtypes=[C.POINTER(Runtime),C.POINTER(cam.Input),C.POINTER(F)]
             lib.banjo_camera_update.argtypes=[C.POINTER(cam.State),C.POINTER(cam.Math),C.POINTER(cam.Zoom),C.POINTER(cam.Trigger),C.c_size_t,C.POINTER(cam.Input)]

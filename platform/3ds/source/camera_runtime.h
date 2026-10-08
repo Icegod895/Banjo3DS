@@ -3,6 +3,7 @@
 #include "player_runtime.h"
 #include "player_ground.h"
 #include "camera.h"
+#include "../../../tools/banjo3ds/camera_manual/manual.h"
 #include "floor_bridge.h"
 #include "renderer_culling.h"
 #include "../../../tools/banjo3ds/bridge_state/queries.h"
@@ -12,18 +13,17 @@ enum { CAMERA_RUNTIME_OK=1, CAMERA_RUNTIME_WAIT=0,
        CAMERA_RUNTIME_INVALID=-3 };
 typedef struct {
     BanjoCameraMath math;
-    BanjoCamera camera;
+    BmState manual; /* Internal camera, zones/contact history and visible viewport. */
+    uint32_t manual_buttons, manual_enabled; /* Logical N64 inputs, no physical mapping. */
     BqFloorBridge bridge;
     BridgeModel opa, xlu; /* Borrowed constant packet blocks. */
     const BzData *zone_data; /* Immutable canonical setup, borrowed. */
-    BzState zones; /* Cache/enablebits/profile, retained across B/zoom changes. */
     float view[4][4];
     float pre_candidate[3]; /* Last genuine proposal, never accepted-position replay. */
     unsigned candidate_calls;
     int status;
     RendererWindingParity parity;
     bool initialized, floor_ready, view_ready;
-    BcFreeBState contact; /* Lifetime state, never reset on B entry/landing. */
     BridgeState world_bridge;
     uint32_t learned_abilities; /* Explicit viewer input, not a save system. */
     PlayerGroundState player_ground;
@@ -44,8 +44,15 @@ int cameraRuntimeMove(CameraRuntime *s,PlayerRuntime *player,
     float pad_x,float pad_y,float movement_yaw,float dt,int vi_frames,
     bool jump_pressed,bool camera_mode,
     const FloorVertex *vertices,const FloorTriangle *triangles,size_t count);
-/* Single camera update after the existing floor bridge. Explicit original
- * collider-center target. No player/physics mutation, inactive viewport path. */
+/* Held logical BM_* inputs; enabled is the original bainput mask (bits 0,1,5).
+ * Viewer supplies zero buttons. Repeated updates derive edges in bm_update. */
+void cameraRuntimeManualInput(CameraRuntime *s,uint32_t buttons,uint32_t enabled);
+/* Read BEFORE the player/camera update: movement follows the previous visible
+ * viewport yaw even while the internal R camera has already moved. */
+void cameraRuntimeMovementInput(const CameraRuntime *s,bool debug,float debug_yaw,
+    float pad_x,float pad_y,float input[3]);
+/* Single camera/viewport update after the existing floor bridge. Explicit
+ * original collider-center target. No player/physics mutation. */
 int cameraRuntimeUpdateView(CameraRuntime *s,const BanjoCameraInput *input,
     const float collider_center[3]);
 /* One explicit RH -> LH boundary. No projection or camera-state mutation. */

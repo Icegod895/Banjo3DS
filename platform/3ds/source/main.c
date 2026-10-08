@@ -622,8 +622,8 @@ static void sceneDrawRange(unsigned int first, unsigned int count,
 static C3D_FVec cameraSortProxyEye(void)
 {
     if (!BANJO_DEBUG_CAMERA)
-        return FVec4_New(rareCamera.camera.position[0], rareCamera.camera.position[1],
-            rareCamera.camera.position[2], 1.0f);
+        return FVec4_New(rareCamera.manual.viewport_position[0], rareCamera.manual.viewport_position[1],
+            rareCamera.manual.viewport_position[2], 1.0f);
     return FVec4_New(
         camera.focusX - camera.eyeDistance * modelView.r[2].x,
         camera.focusY - camera.eyeDistance * modelView.r[2].y,
@@ -784,7 +784,9 @@ int main(void)
         if (BANJO_DEBUG_CAMERA)
             cameraUpdate(down, held, &pad, dt);
         float movementInput[3];
-        cameraMovementInput(&rareCamera.camera, BANJO_DEBUG_CAMERA, camera.yawDegrees,
+        /* D-C: explicit neutral logical N64 camera input. No 3DS mapping yet. */
+        cameraRuntimeManualInput(&rareCamera, 0, 0x23);
+        cameraRuntimeMovementInput(&rareCamera, BANJO_DEBUG_CAMERA, camera.yawDegrees,
             pad.dx, pad.dy, movementInput);
         cameraRuntimeStatus = cameraRuntimeMove(&rareCamera, &player,
             movementInput[0], movementInput[1], movementInput[2], dt, viFrames,

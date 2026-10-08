@@ -45,15 +45,15 @@ bool cameraRuntimeInit(CameraRuntime *s,const PlayerRuntime *player,
     if(bridge_model_open(&s->opa,opa,opa_size,&s->world_bridge)!=1 ||
        bridge_model_open(&s->xlu,xlu,xlu_size,&s->world_bridge)!=1 ||
        s->opa.base.role!=0 || s->xlu.base.role!=1)return false;
-    s->zone_data=zones;bz_init(&s->zones);
+    s->zone_data=zones;s->manual_enabled=0x23;
     if(bq_bridge_init(&s->bridge,0)!=1)return false;
     banjo_camera_math_init(&s->math);
     const MovementActor *a=&player->motion.actor;
     BanjoCameraInput in={{a->x,a->y,a->z},a->y,a->yaw,a->y,0,1,player->motion.grounded};
     const float eye[3]={a->x,a->y+375,a->z-850},rotation[3]={340,180,0};
     /* Explicit B.9 bootstrap seed, not a published floor_getXPosition result. */
-    banjo_camera_init(&s->camera,&s->math,&in,eye,rotation);
-    if(!cameraRareView(&s->camera,s->view,&s->parity))return false;
+    bm_init(&s->manual,&s->math,&in,eye,rotation);
+    if(!cameraRareView(&s->manual.camera,s->view,&s->parity))return false;
     s->initialized=true;s->status=CAMERA_RUNTIME_WAIT;return true;
 }
 static void candidate(void *context,const float xyz[3]) {
@@ -104,7 +104,7 @@ static int cameraRuntimeMoveQueries(CameraRuntime *s,PlayerRuntime *player,
     if(s->status!=CAMERA_RUNTIME_OK)return s->status;
     if(!s->floor_ready)return s->status=CAMERA_RUNTIME_WAIT;
     float under;
-    if(bridge_camera_terrain(&s->opa.base,&s->xlu.base,s->camera.position,&under)<0)
+    if(bridge_camera_terrain(&s->opa.base,&s->xlu.base,s->manual.camera.position,&under)<0)
         return s->status=CAMERA_RUNTIME_QUERY_FAILED;
     const MovementActor *a=&player->motion.actor;
     BanjoCameraInput in={{a->x,a->y,a->z},s->bridge.floor.height,a->yaw,under,dt,vi,player->motion.grounded};
@@ -131,18 +131,16 @@ int cameraRuntimeMove(CameraRuntime *s,PlayerRuntime *player,
 }
 int cameraRuntimeUpdateView(CameraRuntime *s,const BanjoCameraInput *in,const float target[3]) {
     if(!s || !s->initialized || !in || !target)return CAMERA_RUNTIME_INVALID;
-    BanjoCamera next=s->camera;
-    BcFreeBState post=s->contact;
-    BzState selection=s->zones;
-    BcFreeBTrace trace;
-    if(!bridge_bz_update(&selection,&next,&post,&s->math,s->zone_data,in,false,
-                        &s->opa.base,&s->xlu.base,target,&s->query_scratch.camera,&trace)) {
+    BmState next=s->manual;
+    BmTrace trace;
+    if(!bm_update(&next,&s->math,s->zone_data,in,s->manual_buttons,s->manual_enabled,
+                  &s->opa.base,&s->xlu.base,target,&s->query_scratch.camera,&trace)) {
         /* Classify unsupported data without running another camera/contact update.
          * Ordinary misses remain successful world-query results. */
-        const float *probe=in->stable?in->player:s->camera.stable_position;
+        const float *probe=in->stable?in->player:s->manual.camera.stable_position;
         for(int i=0;i<3;i++)if(!isfinite(probe[i]) || fabsf(probe[i])>20000)
             return s->status=CAMERA_RUNTIME_INVALID;
-        BzState lookup=s->zones;
+        BzState lookup=s->manual.zones;
         int n=bz_select(&lookup,s->zone_data,probe);
         if(n>=0) {
             if((size_t)n>=s->zone_data->node_count)return s->status=CAMERA_RUNTIME_UNSUPPORTED;
@@ -153,7 +151,22 @@ int cameraRuntimeUpdateView(CameraRuntime *s,const BanjoCameraInput *in,const fl
         return s->status=CAMERA_RUNTIME_QUERY_FAILED;
     }
     float view[4][4];RendererWindingParity parity;
-    if(!cameraRareView(&next,view,&parity))return s->status=CAMERA_RUNTIME_INVALID;
-    s->camera=next;s->contact=post;s->zones=selection;memcpy(s->view,view,sizeof(view));s->parity=parity;
+    /* Render and SORT use the viewport, not the potentially ahead-of-transition
+     * internal camera. Keep RH->LH/parity conversion at the existing boundary. */
+    BanjoCamera visible=next.camera;
+    memcpy(visible.position,next.viewport_position,sizeof(visible.position));
+    memcpy(visible.rotation,next.viewport_rotation,sizeof(visible.rotation));
+    if(!cameraRareView(&visible,view,&parity))return s->status=CAMERA_RUNTIME_INVALID;
+    s->manual=next;memcpy(s->view,view,sizeof(view));s->parity=parity;
     s->view_ready=true;return s->status=CAMERA_RUNTIME_OK;
+}
+
+void cameraRuntimeManualInput(CameraRuntime *s,uint32_t buttons,uint32_t enabled) {
+    if(s){s->manual_buttons=buttons;s->manual_enabled=enabled;}
+}
+void cameraRuntimeMovementInput(const CameraRuntime *s,bool debug,float debug_yaw,
+    float pad_x,float pad_y,float input[3]) {
+    BanjoCamera visible={0};
+    memcpy(visible.rotation,s->manual.viewport_rotation,sizeof(visible.rotation));
+    cameraMovementInput(&visible,debug,debug_yaw,pad_x,pad_y,input);
 }
