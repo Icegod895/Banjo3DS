@@ -3,6 +3,7 @@
 #include "bridge.h"
 #include "../world_query/floor_bridge.h"
 #include "../camera_contact/free_b.h"
+#include "../camera_zones/zones.h"
 /* Only BridgeModel.base pointers are valid for these isolated entry points.
  * Other inputs/outputs retain the original query API and math contracts. */
 int bridge_segment(const BqModel *,const BqModel *,const float[3],float[3],uint32_t,BqHit *);
@@ -17,4 +18,7 @@ bool bridge_free_b_update(BanjoCamera *,BcFreeBState *,const BanjoCameraMath *,
  const BqModel *,const BqModel *,const float[3],BcScratch *,BcFreeBTrace *);
 bool bridge_free_b_rollback(float *,const float[3],const float[3],float[3],float *);
 int bridge_cadence_candidate(BqFloorBridge *,const BqModel *,const BqModel *,const float[3],uint32_t);
+bool bridge_bz_update(BzState *,BanjoCamera *,BcFreeBState *,const BanjoCameraMath *,
+ const BzData *,const BanjoCameraInput *,bool,const BqModel *,const BqModel *,
+ const float[3],BcScratch *,BcFreeBTrace *);
 #endif

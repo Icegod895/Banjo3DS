@@ -150,8 +150,17 @@ bool banjo_camera_prepare(BanjoCameraPhase *phase,const BanjoCamera *s,const Ban
     /* Refuse ambiguous/unsupported new zones instead of guessing their mode.
      * Original lookup checks current group first (gccube.c:func_803077FC). */
     if(other && !(next.node==32 && member))return false;
-    next.node=member?32:-1;
-    if(member){next.mode=9;next.state=0x11;}
+    static const float radii[]={550,850,1100},heights[]={175,375,675};
+    return banjo_camera_prepare_selected(phase,&next,m,z,in,member?32:-1,member,
+        radii[next.preset-1],heights[next.preset-1]);
+}
+bool banjo_camera_prepare_selected(BanjoCameraPhase *phase,const BanjoCamera *s,
+    const BanjoCameraMath *m,const BanjoCameraZoom *z,const BanjoCameraInput *in,
+    int32_t node,bool zoom_selected,float radius,float height) {
+    if(!phase || !s || !m || !z || !in || (z->flags&1))return false;
+    BanjoCamera next=*s;
+    next.node=node;
+    if(zoom_selected){next.mode=9;next.state=0x11;}
     else if(next.mode==9)next.mode=2; /* one final zoom update, as Rare */
     else if(next.state!=0xB)enter_free(&next,m,in);
     float dx=in->player[0]-next.position[0],dz=in->player[2]-next.position[2];
@@ -162,10 +171,9 @@ bool banjo_camera_prepare(BanjoCameraPhase *phase,const BanjoCamera *s,const Ban
     focus(&next,in);
     float desired[3],pg,pr,ag,ar,anchor_distance=0;
     if(next.state==0xB) {
-        static const float radius[]={550,850,1100},height[]={175,375,675};
-        float offset[3];vector(offset,next.orbit_yaw,radius[next.preset-1]);
+        float offset[3];vector(offset,next.orbit_yaw,radius);
         for(int i=0;i<3;i++)desired[i]=next.focus[i]+offset[i];
-        desired[1]=in->player[1]-in->floor_height>130.f ? in->player[1]+height[next.preset-1]-130.f : height[next.preset-1]+in->floor_height;
+        desired[1]=in->player[1]-in->floor_height>130.f ? in->player[1]+height-130.f : height+in->floor_height;
         float clearance=in->floor_under_camera+35.f+20.f;
         if(desired[1]<clearance)desired[1]=clearance;
         pg=3;pr=8;ag=5;ar=10;

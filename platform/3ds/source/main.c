@@ -753,7 +753,7 @@ int main(void)
     if (!cameraRuntimeInit(&rareCamera, &player,
             camera_opa_packet, sizeof(camera_opa_packet),
             camera_xlu_packet, sizeof(camera_xlu_packet),
-            &camera_zoom, camera_triggers, CAMERA_TRIGGER_COUNT)) {
+            &camera_zone_data)) {
         cameraRuntimeStatus = CAMERA_RUNTIME_INVALID;
         sceneExit();
         C3D_Fini();

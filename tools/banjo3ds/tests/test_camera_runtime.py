@@ -26,6 +26,7 @@ from test_camera_contact import Scratch
 from test_free_b import PostState
 from test_bridge_state import State as BridgeState
 from body_corpus import History as BodyHistory
+from test_camera_zones import Data as ZoneData, Selection as ZoneSelection
 from test_body import Scratch as BodyScratch
 
 class RuntimeModel(Model):
@@ -38,10 +39,23 @@ class GroundRuntime(C.Structure):
     _fields_=[('phase',GroundPhase),('fall_request',C.c_uint32),('jump_flight',C.c_bool)]
 class Runtime(C.Structure):
     _fields_=[('math',cam.Math),('camera',cam.State),('bridge',Bridge),('opa',RuntimeModel),('xlu',RuntimeModel),
-        ('zoom',C.POINTER(cam.Zoom)),('triggers',C.POINTER(cam.Trigger)),('count',C.c_size_t),
+        ('zone_data',C.POINTER(ZoneData)),('zones',ZoneSelection),
         ('view',(F*4)*4),('pre',F*3),('calls',C.c_uint),('status',C.c_int),('parity',C.c_int),
         ('initialized',C.c_bool),('floor_ready',C.c_bool),('view_ready',C.c_bool),
         ('contact',PostState),('world_bridge',BridgeState),('learned_abilities',C.c_uint32),('player_ground',GroundRuntime),('body',BodyHistory),('scratch',BodyScratch)]
+
+    # Historical isolated B.6 tests still supply bounded node32/no-zone scenarios.
+    # These are test accessors only; runtime has a single full-zone path.
+    @property
+    def zoom(self):return C.pointer(self.zone_data.contents.nodes[32].zoom)
+    @property
+    def triggers(self):return self.zone_data.contents.triggers
+    @property
+    def count(self):return 150 if self.zones.enabled[32] else 0
+    @count.setter
+    def count(self,value):
+        assert value==0
+        self.zones.enabled[:]=[0]*80
 
 
 def inputs(name,frame):
@@ -73,7 +87,7 @@ void movement_read(const FloorVertex *v,unsigned i,const MovementOverlay *o,Floo
 size_t runtime_size(void){return sizeof(CameraRuntime);}
 int init(CameraRuntime *s,PlayerRuntime *p){return cameraRuntimeInit(s,p,
  camera_opa_packet,sizeof(camera_opa_packet),camera_xlu_packet,sizeof(camera_xlu_packet),
- &camera_zoom,camera_triggers,CAMERA_TRIGGER_COUNT);}
+ &camera_zone_data);}
 const void *packet(int n){return n?camera_xlu_packet:camera_opa_packet;}
 size_t packet_size(int n){return n?sizeof(camera_xlu_packet):sizeof(camera_opa_packet);}
 int runtime_cull(const CameraRuntime *s,unsigned cull){return rendererCullMode(cull,s->parity);}
@@ -81,10 +95,10 @@ int runtime_cull(const CameraRuntime *s,unsigned cull){return rendererCullMode(c
         sources=['platform/3ds/source/'+s for s in ('camera_runtime.c','player_runtime.c','player_ground.c','movement.c')]
         sources += ['tools/banjo3ds/'+s for s in ('pose/pose.c','gait/gait.c','gait/gait_motion.c',
             'horizontal/horizontal.c','body/body.c','body/frame.c','ground/ground.c','jump/jump.c','jump/jump_animation.c','camera/camera.c',
-            'camera_contact/contact.c','camera_contact/free_b.c',
+            'camera_contact/contact.c','camera_contact/free_b.c','camera_zones/zones.c',
             'world_query/segment.c','world_query/floor_state.c','world_query/floor_bridge.c',
             'bridge_state/bridge.c','bridge_state/query_segment.c','bridge_state/query_contact.c',
-            'bridge_state/query_free_b.c','bridge_state/query_floor_state.c','bridge_state/query_floor_bridge.c',
+            'bridge_state/query_free_b.c','bridge_state/query_zones.c','bridge_state/query_floor_state.c','bridge_state/query_floor_bridge.c',
             'bridge_state/render.c','bridge_state/movement_overlay.c')]
         extra_sources=[];extra_flags=[]
         if getattr(cls,'body_observer',False):
@@ -108,7 +122,7 @@ int runtime_cull(const CameraRuntime *s,unsigned cull){return rendererCullMode(c
             lib.banjo_camera_update.restype=C.c_bool
             lib.init.argtypes=[C.POINTER(Runtime),C.POINTER(Player)]
             lib.cameraRuntimeInit.argtypes=[C.POINTER(Runtime),C.POINTER(Player),C.c_void_p,C.c_size_t,
-                C.c_void_p,C.c_size_t,C.POINTER(cam.Zoom),C.POINTER(cam.Trigger),C.c_size_t]
+                C.c_void_p,C.c_size_t,C.POINTER(ZoneData)]
             lib.cameraRuntimeInit.restype=C.c_bool
             lib.packet.argtypes=[C.c_int];lib.packet.restype=C.c_void_p
             lib.packet_size.argtypes=[C.c_int];lib.packet_size.restype=C.c_size_t
@@ -281,18 +295,19 @@ int runtime_cull(const CameraRuntime *s,unsigned cull){return rendererCullMode(c
             self.assertEqual(bytes(s.camera),invalid);self.assertEqual(s.parity,1)
             self.assertNotEqual(old,invalid)
 
-    def test_unsupported_real_trigger_holds_last_published_camera_and_view(self):
+    def test_previously_unsupported_real_zoom_trigger_is_now_selected(self):
         from tools.banjo3ds.camera.setup import read_spiral_camera
         data=read_spiral_camera(ROOT/'assets/lvl_setup/071D.lvl_setup.bin')
         trigger=next(t for t in data['triggers'] if t['node']==12 and t['mask']&1)
         for lib in self.libs:
             s,p=self.start(lib);self.assertEqual(self.move(lib,s,p),1)
-            # Supply an unsupported retained query position, without inventing a mode.
+            # Supply a retained real node12 probe; M4.10 now supports this zoom node.
             # Airborne stable=false preserves this probe, as in the proven API.
             s.camera.stable_position[:]=trigger['position'];p.motion.grounded=False
             before=bytes(s.camera);view=bytes(s.view);frame=s.bridge.frame
-            self.assertEqual(self.move(lib,s,p,dt=0),-2)
-            self.assertEqual(bytes(s.camera),before);self.assertEqual(bytes(s.view),view)
+            self.assertEqual(self.move(lib,s,p,dt=0),1)
+            self.assertEqual(s.camera.node,12)
+            self.assertNotEqual(bytes(s.camera),before)
             self.assertEqual((s.calls,s.bridge.frame,s.parity),(0,frame+1,1))
 
     def test_packet_validation_precedes_runtime_queries(self):
@@ -302,7 +317,7 @@ int runtime_cull(const CameraRuntime *s,unsigned cull){return rendererCullMode(c
             bad[0]=b'X'
             failed=Runtime()
             self.assertFalse(lib.cameraRuntimeInit(C.byref(failed),C.byref(p),bad,lib.packet_size(0),
-                lib.packet(1),lib.packet_size(1),s.zoom,s.triggers,s.count))
+                lib.packet(1),lib.packet_size(1),s.zone_data))
             self.assertFalse(failed.initialized)
             self.assertEqual(self.move(lib,failed,p),-3)
             self.assertEqual(failed.bridge.frame,0)

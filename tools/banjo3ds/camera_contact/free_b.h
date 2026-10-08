@@ -22,4 +22,9 @@ bool bc_free_b_update(BanjoCamera *, BcFreeBState *, const BanjoCameraMath *,
     const BanjoCameraZoom *, const BanjoCameraTrigger *, size_t, const BanjoCameraInput *,
     const BqModel *opa, const BqModel *xlu, const float player_target[3],
     BcScratch *, BcFreeBTrace *);
+/* Same proven post-position phase, with selection supplied by the host-only
+ * zone controller. No contact algorithm or persistent-state reset is added. */
+bool bc_free_b_finish_phase(BanjoCamera *, BcFreeBState *, const BanjoCameraMath *,
+    const BanjoCameraZoom *, const BanjoCameraInput *, const BanjoCameraPhase *,
+    const BqModel *, const BqModel *, const float target[3], BcScratch *, BcFreeBTrace *);
 #endif

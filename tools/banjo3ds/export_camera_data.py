@@ -5,6 +5,7 @@ import sys
 
 from tools.banjo3ds.world_query_packet import read_model
 from tools.banjo3ds.camera.setup import read_spiral_camera
+from tools.banjo3ds.camera_zones.setup import read_zones
 
 PACKET_HASHES = (
     '59d398308ec5ed0fc249f684dfb6726bc77bf645dfd01a0a7976974fc80e6953',
@@ -35,6 +36,29 @@ def export_camera_data(opa_path, xlu_path, setup_path):
         out.append('    {{'+','.join(map(str,t['position']))+'},'+
                    ','.join(str(t[k]) for k in ('radius','node','mask'))+'},')
     out.extend(('};', '#define CAMERA_TRIGGER_COUNT '+str(len(data['triggers']))))
+    zones=read_zones(Path(setup_path))
+    out.append('#include "camera_zones/zones.h"')
+    out.append('static const BanjoCameraTrigger camera_zone_triggers[] = {')
+    for group in zones['groups']:
+        for t in group:
+            out.append('    {{'+','.join(map(str,t['position']))+'},'+
+                       ','.join(str(t[k]) for k in ('radius','node','mask'))+'},')
+    out.append('};')
+    out.append('static const BzGroup camera_zone_groups[] = {')
+    first=0
+    for group in zones['groups']:
+        out.append('    {'+f"{first},{len(group)},{group[0]['node']}"+'},')
+        first+=len(group)
+    out.append('};')
+    out.append('static const BzNode camera_zone_nodes[43] = {')
+    for i,n in sorted(zones['nodes'].items()):
+        f=n['fields'];payload='{{0,0,0},{0,0,0},{0,0},{0,0},0,0,0}';profile=0
+        if n['type']==4:profile=f[1]
+        if n['type']==3:
+            payload='{'+','.join((vec(f[1]),vec(f[4]),vec(f[2]),vec(f[3]),
+                float(f[6][0]).hex()+'f',float(f[6][1]).hex()+'f',str(f[5])))+'}'
+        out.append(f"    [{i}] = {{.type={n['type']},.profile={profile},.zoom={payload}}},")
+    out.extend(('};','static const BzData camera_zone_data = {camera_zone_triggers, camera_zone_groups, camera_zone_nodes, 27, 43};'))
     return '\n'.join(out)+'\n'
 
 

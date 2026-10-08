@@ -15,9 +15,8 @@ typedef struct {
     BanjoCamera camera;
     BqFloorBridge bridge;
     BridgeModel opa, xlu; /* Borrowed constant packet blocks. */
-    const BanjoCameraZoom *zoom;
-    const BanjoCameraTrigger *triggers;
-    size_t trigger_count;
+    const BzData *zone_data; /* Immutable canonical setup, borrowed. */
+    BzState zones; /* Cache/enablebits/profile, retained across B/zoom changes. */
     float view[4][4];
     float pre_candidate[3]; /* Last genuine proposal, never accepted-position replay. */
     unsigned candidate_calls;
@@ -37,7 +36,7 @@ typedef struct {
  * No manufactured floor candidate or simulation frame during initialization. */
 bool cameraRuntimeInit(CameraRuntime *s,const PlayerRuntime *player,
     const uint8_t *opa,size_t opa_size,const uint8_t *xlu,size_t xlu_size,
-    const BanjoCameraZoom *zoom,const BanjoCameraTrigger *triggers,size_t count);
+    const BzData *zones);
 /* Input changes do not resurrect a despawned actor. Full RuntimeInit is the
  * fresh map lifecycle; diagnostic player void recovery preserves bridge state. */
 void cameraRuntimeSetLearnedAbilities(CameraRuntime *s,uint32_t bits);

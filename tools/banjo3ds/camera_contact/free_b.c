@@ -26,6 +26,13 @@ bool bc_free_b_update(BanjoCamera *camera,BcFreeBState *state,const BanjoCameraM
     if(!state || !scratch || !trace)return false;
     BanjoCameraPhase phase;
     if(!banjo_camera_prepare(&phase,camera,math,zoom,triggers,count,input))return false;
+    return bc_free_b_finish_phase(camera,state,math,zoom,input,&phase,opa,xlu,target,scratch,trace);
+}
+bool bc_free_b_finish_phase(BanjoCamera *camera,BcFreeBState *state,const BanjoCameraMath *math,
+    const BanjoCameraZoom *zoom,const BanjoCameraInput *input,const BanjoCameraPhase *prepared,
+    const BqModel *opa,const BqModel *xlu,const float target[3],BcScratch *scratch,BcFreeBTrace *trace) {
+    if(!prepared || !state || !scratch || !trace)return false;
+    BanjoCameraPhase phase=*prepared;
     BcFreeBState next=*state;BcFreeBTrace t={0};
     memcpy(t.previous,phase.previous,12);memcpy(t.desired,phase.desired,12);
     memcpy(t.smoothed,phase.next.position,12);t.free_b=phase.next.state==0xB;

@@ -49,9 +49,9 @@ include $(DEVKITARM)/3ds_rules
 #---------------------------------------------------------------------------------
 TARGET		:=	banjo3ds
 BUILD		:=	build
-SOURCES		:=	source ../../tools/banjo3ds/body ../../tools/banjo3ds/ground ../../tools/banjo3ds/pose ../../tools/banjo3ds/gait ../../tools/banjo3ds/jump ../../tools/banjo3ds/horizontal ../../tools/banjo3ds/camera ../../tools/banjo3ds/camera_contact ../../tools/banjo3ds/world_query ../../tools/banjo3ds/bridge_state
+SOURCES		:=	source ../../tools/banjo3ds/camera_zones ../../tools/banjo3ds/body ../../tools/banjo3ds/ground ../../tools/banjo3ds/pose ../../tools/banjo3ds/gait ../../tools/banjo3ds/jump ../../tools/banjo3ds/horizontal ../../tools/banjo3ds/camera ../../tools/banjo3ds/camera_contact ../../tools/banjo3ds/world_query ../../tools/banjo3ds/bridge_state
 DATA		:=	data
-INCLUDES	:=	include source ../../tools/banjo3ds/pose ../../tools/banjo3ds/gait ../../tools/banjo3ds/jump ../../tools/banjo3ds/horizontal ../../tools/banjo3ds/camera ../../tools/banjo3ds/world_query
+INCLUDES	:=	include source ../../tools/banjo3ds ../../tools/banjo3ds/pose ../../tools/banjo3ds/gait ../../tools/banjo3ds/jump ../../tools/banjo3ds/horizontal ../../tools/banjo3ds/camera ../../tools/banjo3ds/world_query
 GRAPHICS	:=	gfx
 GFXBUILD	:=	$(BUILD)
 #ROMFS		:=	romfs
@@ -189,7 +189,7 @@ $(BANJO3DS_GENERATED_BRIDGE): $(BANJO3DS_XLU_MODEL) $(REPO_ROOT)/tools/banjo3ds/
 $(BANJO3DS_GENERATED_MOVEMENT_BRIDGE): $(BANJO3DS_MODEL) $(BANJO3DS_XLU_MODEL) $(REPO_ROOT)/tools/banjo3ds/bridge_state/movement_binding.py $(REPO_ROOT)/tools/banjo3ds/floor_collision.py | $(BUILD)
 	@cd $(REPO_ROOT) && $(BANJO3DS_PYTHON) -B -m tools.banjo3ds.bridge_state.movement_binding $(BANJO3DS_MODEL) $(BANJO3DS_XLU_MODEL) $@ $(TOPDIR)/build/generated_bridge_movement.json
 
-$(BANJO3DS_GENERATED_CAMERA): $(BANJO3DS_MODEL) $(BANJO3DS_XLU_MODEL) $(BANJO3DS_CAMERA_SETUP) $(REPO_ROOT)/tools/banjo3ds/export_camera_data.py $(REPO_ROOT)/tools/banjo3ds/world_query_packet.py $(REPO_ROOT)/tools/banjo3ds/camera/setup.py | $(BUILD)
+$(BANJO3DS_GENERATED_CAMERA): $(BANJO3DS_MODEL) $(BANJO3DS_XLU_MODEL) $(BANJO3DS_CAMERA_SETUP) $(REPO_ROOT)/tools/banjo3ds/export_camera_data.py $(REPO_ROOT)/tools/banjo3ds/world_query_packet.py $(REPO_ROOT)/tools/banjo3ds/camera/setup.py $(REPO_ROOT)/tools/banjo3ds/camera_zones/setup.py | $(BUILD)
 	@cd $(REPO_ROOT) && $(BANJO3DS_PYTHON) -B -m tools.banjo3ds.export_camera_data $(BANJO3DS_MODEL) $(BANJO3DS_XLU_MODEL) $(BANJO3DS_CAMERA_SETUP) $@
 
 $(BANJO3DS_GENERATED_MODEL): $(BANJO3DS_MODEL) $(BANJO3DS_XLU_MODEL) $(BANJO3DS_ACTOR_MODEL) $(BANJO3DS_IDLE_ANIMATION) $(REPO_ROOT)/tools/banjo3ds/export_3ds_model.py $(REPO_ROOT)/tools/banjo3ds/n64_displaylist_decoder.py $(REPO_ROOT)/tools/banjo3ds/geo_sort.py $(REPO_ROOT)/tools/banjo3ds/canonical_banjo.py $(REPO_ROOT)/tools/banjo3ds/static_idle.py $(REPO_ROOT)/tools/banjo3ds/floor_collision.py $(REPO_ROOT)/tools/banjo3ds/pose_binding.py $(BANJO3DS_WALK_ANIMATION) $(BANJO3DS_CREEP_ANIMATION) $(BANJO3DS_RUN_ANIMATION) $(BANJO3DS_JUMP_ANIMATION)

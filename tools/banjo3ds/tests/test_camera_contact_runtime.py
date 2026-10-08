@@ -87,12 +87,17 @@ class CameraContactRuntimeTests(unittest.TestCase):
                 for frame,row in enumerate(rows):
                     under=F();self.assertGreaterEqual(lib.bq_camera_terrain(C.byref(s.opa),C.byref(s.xlu),s.camera.position,C.byref(under)),0)
                     x,y,yaw,jump=runtime.inputs(name,frame)
+                    bounded=cam.State.from_buffer_copy(s.camera)
                     result=self.move(lib,s,p,x,y,yaw,row['dt'],row['vi'],jump,row['camera'])
                     if result==-2:break # original unsupported zone is outside bounded oracle
                     self.assertEqual(result,1,(name,frame))
                     a=p.motion.actor
                     cmd=corpus.command([a.x,a.y,a.z],floor=s.bridge.floor.height,yaw=a.yaw,under=under.value,
                                        dt=row['dt'],vi=row['vi'],stable=p.motion.grounded,target=[a.x,F(a.y+80).value,a.z])
+                    # Retain this M4.9 oracle only inside its original node32/B
+                    # scope. Full newly-supported zones are checked independently
+                    # throughout the trajectory in test_camera_zones_runtime.
+                    if not lib.banjo_camera_update(C.byref(bounded),C.byref(s.math),s.zoom,s.triggers,s.count,C.byref(cam.make_input(cmd))):break
                     want,ids,h,counter,t=corpus.step(ref,cmd);v=cam.values(s.camera)
                     self.assertEqual(cam.pack(v[:22],v[22:]),cam.pack(want,ids),(name,frame))
                     self.assertEqual(bytes(s.contact),bytes(PostState(counter,h)))

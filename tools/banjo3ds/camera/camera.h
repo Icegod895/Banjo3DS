@@ -40,6 +40,12 @@ typedef struct {
 bool banjo_camera_prepare(BanjoCameraPhase *phase, const BanjoCamera *s,
     const BanjoCameraMath *, const BanjoCameraZoom *, const BanjoCameraTrigger *,
     size_t count, const BanjoCameraInput *);
+/* Internal evaluator boundary for an independently resolved dry-Banjo zone.
+ * Caller validates input, maintains stable_position, profile and last zoom.
+ * Selection has completed BEFORE lead update/position smoothing. */
+bool banjo_camera_prepare_selected(BanjoCameraPhase *, const BanjoCamera *,
+    const BanjoCameraMath *, const BanjoCameraZoom *, const BanjoCameraInput *,
+    int32_t node, bool zoom_selected, float radius, float height);
 /* Postprocessing may change next.position and its smoothing accumulators.
  * Reheading only on effective contact change; recovery sets rotation BEFORE
  * ordinary angular smoothing. Optional look_output observes that target.

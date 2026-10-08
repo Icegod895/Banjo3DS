@@ -36,15 +36,16 @@ int cameraViFrames(uint32_t current,uint32_t previous) {
 }
 bool cameraRuntimeInit(CameraRuntime *s,const PlayerRuntime *player,
     const uint8_t *opa,size_t opa_size,const uint8_t *xlu,size_t xlu_size,
-    const BanjoCameraZoom *zoom,const BanjoCameraTrigger *triggers,size_t count) {
-    if(!s || !player || !zoom || !triggers || !count)return false;
+    const BzData *zones) {
+    if(!s || !player || !zones || !zones->triggers || !zones->groups || !zones->nodes
+       || zones->group_count!=27 || zones->node_count!=43)return false;
     memset(s,0,sizeof(*s));s->status=CAMERA_RUNTIME_INVALID;
     bridge_init(&s->world_bridge);
     playerGroundInit(&s->player_ground,&player->motion);
     if(bridge_model_open(&s->opa,opa,opa_size,&s->world_bridge)!=1 ||
        bridge_model_open(&s->xlu,xlu,xlu_size,&s->world_bridge)!=1 ||
        s->opa.base.role!=0 || s->xlu.base.role!=1)return false;
-    s->zoom=zoom;s->triggers=triggers;s->trigger_count=count;
+    s->zone_data=zones;bz_init(&s->zones);
     if(bq_bridge_init(&s->bridge,0)!=1)return false;
     banjo_camera_math_init(&s->math);
     const MovementActor *a=&player->motion.actor;
@@ -132,17 +133,27 @@ int cameraRuntimeUpdateView(CameraRuntime *s,const BanjoCameraInput *in,const fl
     if(!s || !s->initialized || !in || !target)return CAMERA_RUNTIME_INVALID;
     BanjoCamera next=s->camera;
     BcFreeBState post=s->contact;
+    BzState selection=s->zones;
     BcFreeBTrace trace;
-    if(!bridge_free_b_update(&next,&post,&s->math,s->zoom,s->triggers,s->trigger_count,in,
+    if(!bridge_bz_update(&selection,&next,&post,&s->math,s->zone_data,in,false,
                         &s->opa.base,&s->xlu.base,target,&s->query_scratch.camera,&trace)) {
-        /* Error classification only: pure prepare neither commits state nor
-         * executes contact. Preserve unsupported-trigger vs query-failure API. */
-        BanjoCameraPhase probe;
-        bool supported=banjo_camera_prepare(&probe,&s->camera,&s->math,s->zoom,s->triggers,s->trigger_count,in);
-        return s->status=supported?CAMERA_RUNTIME_QUERY_FAILED:CAMERA_RUNTIME_UNSUPPORTED;
+        /* Classify unsupported data without running another camera/contact update.
+         * Ordinary misses remain successful world-query results. */
+        const float *probe=in->stable?in->player:s->camera.stable_position;
+        for(int i=0;i<3;i++)if(!isfinite(probe[i]) || fabsf(probe[i])>20000)
+            return s->status=CAMERA_RUNTIME_INVALID;
+        BzState lookup=s->zones;
+        int n=bz_select(&lookup,s->zone_data,probe);
+        if(n>=0) {
+            if((size_t)n>=s->zone_data->node_count)return s->status=CAMERA_RUNTIME_UNSUPPORTED;
+            const BzNode *node=s->zone_data->nodes+n;
+            if(!((node->type==3 && !(node->zoom.flags&1)) ||
+                 (node->type==4 && node->profile==1)))return s->status=CAMERA_RUNTIME_UNSUPPORTED;
+        }
+        return s->status=CAMERA_RUNTIME_QUERY_FAILED;
     }
     float view[4][4];RendererWindingParity parity;
     if(!cameraRareView(&next,view,&parity))return s->status=CAMERA_RUNTIME_INVALID;
-    s->camera=next;s->contact=post;memcpy(s->view,view,sizeof(view));s->parity=parity;
+    s->camera=next;s->contact=post;s->zones=selection;memcpy(s->view,view,sizeof(view));s->parity=parity;
     s->view_ready=true;return s->status=CAMERA_RUNTIME_OK;
 }

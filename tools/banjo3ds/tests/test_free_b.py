@@ -145,7 +145,7 @@ class FreeBTests(unittest.TestCase):
         self.assertFalse(lib.bc_free_b_update(C.byref(s),C.byref(post),C.byref(m),C.byref(self.zoom),self.triggers,len(self.triggers),C.byref(camera.make_input(cmd)),*[C.byref(x) for x in models],(F*3)(*cmd['target']),C.byref(Scratch()),C.byref(trace)))
         self.assertEqual(before,(bytes(s),bytes(post),bytes(trace)))
         self.assertNotIn('bc_free_b_', (reference.ROOT/'platform/3ds/source/main.c').read_text())
-        self.assertEqual((reference.ROOT/'platform/3ds/source/camera_runtime.c').read_text().count('bridge_free_b_update('),1)
+        self.assertEqual((reference.ROOT/'platform/3ds/source/camera_runtime.c').read_text().count('bridge_bz_update('),1)
 
     def test_frozen_original_schedules(self):
         frozen=json.loads((Path(__file__).parent/'fixtures/free_b_golden.json').read_text())

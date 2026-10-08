@@ -8,6 +8,7 @@
 #define bc_contact bridge_contact
 #define bc_state_b bridge_state_b
 #define bc_free_b_update bridge_free_b_update
+#define bc_free_b_finish_phase bridge_free_b_finish_phase
 #define bc_free_b_rollback bridge_free_b_rollback
 #define bq_floor_init bridge_floor_init
 #define bq_floor_reinit bridge_floor_reinit
@@ -18,3 +19,7 @@
 #define bq_bridge_reinit bridge_cadence_reinit
 #define bq_bridge_candidate bridge_cadence_candidate
 #define bq_bridge_end bridge_cadence_end
+#define bz_init bridge_bz_init
+#define bz_enable bridge_bz_enable
+#define bz_select bridge_bz_select
+#define bz_update bridge_bz_update
