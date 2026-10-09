@@ -799,7 +799,7 @@ int main(void)
         }
     }
 
-    /* After the first presented frame the probe holds looped SFX_18 for 2000 ms, steps pitch with Rare's formula, then stops that voice and plays SFX_19 once. No new button, and this call does not enter crouch, gait, input, physics, or camera. */
+    /* The voice stays silent until a crouch coast raises the sustain latch. Sustained frames keep looped SFX_18 and step pitch with Rare's formula. The first unsustained frame stops that voice and plays SFX_19 once. No new button, and this call does not enter crouch, gait, input, physics, or camera. */
     sfxProbe3dsInit();
 
     u64 previousFrameMs = osGetTime();
@@ -898,8 +898,8 @@ int main(void)
         if (BANJO_DEBUG_CAMERA || rareCamera.view_ready)
             sceneRender();
         C3D_FrameEnd(0);
-        /* First presented frame starts looped SFX_18, holds it for 2000 ms, then plays SFX_19 once. */
-        sfxProbe3dsFrame();
+        /* The crouch-coast latch sustains looped SFX_18. The first frame without it plays SFX_19 once. */
+        sfxProbe3dsFrame(playerCrouchSlideSfx());
     }
 
     sceneExit();

@@ -16,6 +16,9 @@ enum { V4_PACKET = 28022, ENTER_BYTES = 2176, TURN_BYTES = 2576, NOINPUT_BYTES =
 
 static int32_t button_count[14], release_count[14];
 static int buttons_ready, yaw_ready, blocked, frame_ready, frame_context;
+/* Cleared at the start of playerCrouchFrame, before the crouch hook. Set when
+ * this frame's enter or step raises sfx_count. A missed hook stays silent. */
+static int sfx_latched, sfx_seen;
 static int last_requested, block_reentry, seen_starts, posed_crouch;
 static uint32_t learned;
 static PlayerRuntime *bound;
@@ -52,6 +55,11 @@ static int crouch_now(void) {
     CrouchView v;
     banjo_crouch_view(&v);
     return v.active && v.state == BANJO_CROUCH_STATE;
+}
+static void note_sfx(int count) {
+    if (count > sfx_seen)
+        sfx_latched = 1;
+    sfx_seen = count;
 }
 static void fill_input(CrouchInput *in, const BanjoJumpMotion *m, const BanjoHorizontal *h,
                        float dt, int should_fall) {
@@ -126,6 +134,8 @@ static void before_ground(BanjoJumpMotion *m, BanjoHorizontal *h, float dt, bool
     if (!yaw_ready) {
         banjo_crouch_reset(m->actor.yaw, m->actor.yaw);
         yaw_ready = 1;
+        sfx_seen = 0;
+        sfx_latched = 0;
     }
     was_active = crouch_now();
     if (!m->grounded && !was_active) return;
@@ -144,6 +154,7 @@ static void before_ground(BanjoJumpMotion *m, BanjoHorizontal *h, float dt, bool
     }
     banjo_crouch_view(&view);
     last_requested = view.requested;
+    note_sfx(view.sfx_count);
     apply_view(h, jump, was_active, should_fall, &view, lock_mode, facing, use_facing);
 }
 static int clip_for(int32_t index) {
@@ -208,6 +219,8 @@ void playerCrouchInstall(void) {
 void playerCrouchSetAbilities(uint32_t mask) { learned = mask; }
 void playerCrouchReset(float yaw) {
     banjo_crouch_reset(yaw, yaw);
+    sfx_seen = 0;
+    sfx_latched = 0;
     buttons_up();
     yaw_ready = 1;
     blocked = 0;
@@ -225,6 +238,7 @@ void playerCrouchFrame(PlayerRuntime *s, uint32_t logical_held, int fp_blocked) 
         {PI_N64_CLEFT, BTN_C_LEFT}, {PI_N64_CDOWN, BTN_C_DOWN},
         {PI_N64_CUP, BTN_C_UP}, {PI_N64_CRIGHT, BTN_C_RIGHT}
     };
+    sfx_latched = 0;
     if (!s) return;
     if (!buttons_ready) buttons_up();
     bound = s;
@@ -235,6 +249,7 @@ void playerCrouchFrame(PlayerRuntime *s, uint32_t logical_held, int fp_blocked) 
         note(map[i].index, (logical_held & map[i].bit) != 0);
 }
 bool playerCrouchActive(void) { return crouch_now(); }
+int playerCrouchSlideSfx(void) { return sfx_latched; }
 int playerCrouchRequested(void) { return last_requested; }
 int playerCrouchState(void) {
     CrouchView v;

@@ -8,7 +8,9 @@
  * Pitch follows basfx_80299AAC: add unit*0.1 - 0.05 and clamp to [0.9, 1.5].
  * unit is in [0, 1), matching randf(). The live game seed is not known here,
  * so the voice draws unit from a fixed xorshift instead of claiming a retail
- * sequence. The step and the clamp are the original formula. */
+ * sequence. The step and the clamp are the original formula.
+ * sfxVoiceSustain is the gameplay lifecycle. sfxVoicePoll still ends a slide
+ * after slide_ms and is not the crouch stop. */
 
 #define SFX_SLIDE_NONE 0
 #define SFX_SLIDE_LOOP 1
@@ -52,6 +54,10 @@ float sfxSlidePitchStep(float pitch, float unit);
 int sfxVoiceBind(SfxVoice *voice, int ndsp_ready, int slide_ready, int closer_ready,
     int sample_rate, int slide_ms);
 int sfxVoicePoll(SfxVoice *voice, int now_ms);
+/* sustain is 1 on a frame that raised the crouch sfx_count. Pitch continues
+ * across coasts. A sustain during the closer cuts that one-shot and queues
+ * the slide again. Shutdown disarms the voice so a later sustain stays silent. */
+int sfxVoiceSustain(SfxVoice *voice, int sustain);
 int sfxVoiceSlideFinished(SfxVoice *voice, int now_ms);
 void sfxVoiceComplete(SfxVoice *voice);
 int sfxVoiceShutdown(SfxVoice *voice);

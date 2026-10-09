@@ -55,6 +55,7 @@ def bind(lib):
     lib.playerCrouchReset.argtypes = [F]
     lib.playerCrouchFrame.argtypes = [C.POINTER(Player), C.c_uint32, C.c_int]
     lib.playerCrouchActive.restype = C.c_bool
+    lib.playerCrouchSlideSfx.restype = C.c_int
     lib.playerCrouchRequested.restype = C.c_int
     lib.playerCrouchState.restype = C.c_int
     lib.playerCrouchCopy.argtypes = [C.POINTER(View)]
@@ -287,6 +288,90 @@ class CrouchRuntimeTests(unittest.TestCase):
             clip = {1: 5, 0x10C: 6, 0x116: 7}[phases[3].anim_index]
             self.assertTrue(lib.banjo_pose_sample(self.v5, len(self.v5), clip, phases[3].anim_timer, direct))
             self.assertEqual(bytes(recorded.gait.pose.bones), bytes(direct))
+
+    def test_slide_sfx_latch_follows_sfx_count(self):
+        for lib in self.libs:
+            still = self.fresh(lib)
+            for _ in range(5):
+                self.step(lib, still, Z)
+                self.assertTrue(lib.playerCrouchActive())
+                self.assertEqual(self.view(lib).sfx_count, 0)
+                self.assertEqual(lib.playerCrouchSlideSfx(), 0)
+
+            for speed, pulses in ((140, 0), (150, 1), (160, 1)):
+                player = self.fresh(lib)
+                player.horizontal.velocity[0] = speed
+                self.step(lib, player, Z)
+                entered = self.view(lib)
+                self.assertTrue(lib.playerCrouchActive())
+                self.assertEqual(entered.sfx_count, pulses)
+                self.assertEqual(lib.playerCrouchSlideSfx(), pulses)
+                self.step(lib, player, Z)
+                held = self.view(lib)
+                self.assertTrue(lib.playerCrouchActive())
+                self.assertEqual(held.sfx_count, pulses)
+                self.assertEqual(lib.playerCrouchSlideSfx(), 0)
+
+            coast = self.fresh(lib)
+            coast.horizontal.velocity[0] = 300
+            previous = 0
+            quiet = None
+            for i in range(22):
+                self.step(lib, coast, Z)
+                got = self.view(lib)
+                latch = lib.playerCrouchSlideSfx()
+                self.assertTrue(lib.playerCrouchActive())
+                self.assertEqual(latch, 1 if got.sfx_count > previous else 0)
+                if i == 0 or got.target_speed > 160:
+                    self.assertEqual(latch, 1)
+                if i > 0 and got.target_speed <= 160:
+                    self.assertEqual(latch, 0)
+                    quiet = got
+                previous = got.sfx_count
+            self.assertIsNotNone(quiet)
+            self.assertEqual(quiet.state, 7)
+            self.assertGreater(previous, 1)
+
+            lib.playerCrouchFrame(C.byref(coast), Z, 0)
+            self.assertEqual(lib.playerCrouchSlideSfx(), 0)
+            self.step(lib, coast, 0, dt=0.05)
+            self.assertEqual(lib.playerCrouchSlideSfx(), 0)
+            self.assertFalse(lib.playerCrouchActive())
+            coast.horizontal.velocity[0] = 300
+            self.step(lib, coast, Z)
+            self.assertEqual(lib.playerCrouchSlideSfx(), 1)
+            self.assertGreater(self.view(lib).sfx_count, previous)
+            self.assertTrue(lib.playerCrouchActive())
+
+            falling = self.fresh(lib)
+            falling.horizontal.velocity[0] = 300
+            self.step(lib, falling, Z)
+            lib.crouch_host_set_floor(1700)
+            self.step(lib, falling, Z)
+            self.assertEqual(self.view(lib).state, 0x2F)
+            lib.playerCrouchFrame(C.byref(falling), Z, 0)
+            self.assertEqual(lib.playerCrouchSlideSfx(), 0)
+
+            again = self.fresh(lib)
+            again.horizontal.velocity[0] = 300
+            self.step(lib, again, Z)
+            self.assertEqual(lib.playerCrouchSlideSfx(), 1)
+            self.step(lib, again, Z)
+            self.assertEqual(lib.playerCrouchSlideSfx(), 1)
+            self.step(lib, again, A, jump=1)
+            self.assertEqual(self.view(lib).state, 5)
+            self.step(lib, again, 0)
+            self.assertEqual(lib.playerCrouchSlideSfx(), 0)
+            self.assertFalse(lib.playerCrouchActive())
+            self.assertFalse(again.motion.grounded)
+
+            blocked = self.fresh(lib)
+            blocked.horizontal.velocity[0] = 300
+            lib.playerCrouchFrame(C.byref(blocked), Z, 1)
+            lib.crouch_host_step(
+                C.byref(blocked), 0, 0, DT, 0, self.floor_v, self.floor_t, len(self.floor_t))
+            self.assertEqual(lib.playerCrouchSlideSfx(), 0)
+            self.assertFalse(lib.playerCrouchActive())
 
     def test_release_latch_exit_fall_and_jump(self):
         for lib in self.libs:

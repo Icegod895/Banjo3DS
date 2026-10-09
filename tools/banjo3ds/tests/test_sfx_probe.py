@@ -39,15 +39,16 @@ GAMEPLAY = (
 RAW16 = b"\x12\x34\xff\xfe"
 RAW16_LE = b"\x34\x12\xfe\xff"
 INIT_COMMENT = (
-    "After the first presented frame the probe holds looped SFX_18 for 2000 ms, "
-    "steps pitch with Rare's formula, then stops that voice and plays SFX_19 once. "
+    "The voice stays silent until a crouch coast raises the sustain latch. "
+    "Sustained frames keep looped SFX_18 and step pitch with Rare's formula. "
+    "The first unsustained frame stops that voice and plays SFX_19 once. "
     "No new button, and this call does not enter crouch, gait, input, physics, or camera."
 )
 FRAME_COMMENT = (
     "C3D_FrameEnd(0);\n"
-    "        /* First presented frame starts looped SFX_18, holds it for 2000 ms, "
-    "then plays SFX_19 once. */\n"
-    "        sfxProbe3dsFrame();"
+    "        /* The crouch-coast latch sustains looped SFX_18. "
+    "The first frame without it plays SFX_19 once. */\n"
+    "        sfxProbe3dsFrame(playerCrouchSlideSfx());"
 )
 ORDER_LINE = "sfx 0x18 for the slide hold, then one sfx 0x19"
 
@@ -134,6 +135,8 @@ def bind_voice(lib):
     lib.sfxVoiceBind.restype = C.c_int
     lib.sfxVoicePoll.argtypes = [C.POINTER(Voice), C.c_int]
     lib.sfxVoicePoll.restype = C.c_int
+    lib.sfxVoiceSustain.argtypes = [C.POINTER(Voice), C.c_int]
+    lib.sfxVoiceSustain.restype = C.c_int
     lib.sfxVoiceSlideFinished.argtypes = [C.POINTER(Voice), C.c_int]
     lib.sfxVoiceSlideFinished.restype = C.c_int
     lib.sfxVoiceComplete.argtypes = [C.POINTER(Voice)]
@@ -601,7 +604,10 @@ class SfxProbeTriggerTests(unittest.TestCase):
         self.assertLess(body.index("return 1;"), body.index("sfxProbe3dsInit();"))
         self.assertLess(body.index("sfxProbe3dsInit();"), body.index("while (aptMainLoop())"))
         self.assertEqual(body.count("sfxProbe3dsInit();"), 1)
-        self.assertEqual(body.count("sfxProbe3dsFrame();"), 1)
+        self.assertEqual(body.count("sfxProbe3dsFrame("), 1)
+        self.assertNotIn("sfxProbe3dsFrame();", body)
+        self.assertNotIn("holds looped SFX_18 for 2000 ms", body)
+        self.assertNotIn("holds it for 2000 ms", body)
         self.assertEqual(body.count("sfxProbe3dsExit();"), 1)
         self.assertIn(INIT_COMMENT, body)
         self.assertIn(FRAME_COMMENT, body)
@@ -620,7 +626,7 @@ class SfxProbeTriggerTests(unittest.TestCase):
             "SFX_PROBE_SLIDE_MS",
             "SFX_SLIDE_SOURCE_VOLUME",
             "SFX_CLOSER_SOURCE_VOLUME",
-            "sfxVoicePoll",
+            "sfxVoiceSustain",
             "sfxVoiceSlideFinished",
             "sfxSynthVolume",
             "NDSP_FORMAT_MONO_PCM16",
@@ -638,12 +644,19 @@ class SfxProbeTriggerTests(unittest.TestCase):
         self.assertNotIn("DSP_FlushDataCache(linear_pcm, 0)", audio)
         self.assertLess(audio.index("SFX_VOICE_STOP_SLIDE"), audio.index("SFX_VOICE_QUEUE_SLIDE"))
         self.assertLess(audio.index("SFX_VOICE_QUEUE_SLIDE"), audio.index("SFX_VOICE_QUEUE_CLOSER"))
+        self.assertIn("once_done && sustain", audio)
+        self.assertNotIn("sfxVoicePoll", audio)
         self.assertIn(
-            "action = sfxVoiceSlideFinished(&voice, now_ms);\n"
+            "action = sfxVoiceSlideFinished(&voice, 0);\n"
             "    else\n"
-            "        action = sfxVoicePoll(&voice, now_ms);",
+            "        action = sfxVoiceSustain(&voice, sustain);",
             audio,
         )
+        crouch = (ROOT / "platform/3ds/source/player_crouch.c").read_text(encoding="utf-8")
+        frame = crouch[crouch.index("void playerCrouchFrame"):]
+        self.assertLess(frame.index("sfx_latched = 0;"), frame.index("note("))
+        self.assertNotIn("140.0f", crouch)
+        self.assertNotIn("160.0f", crouch)
         channels = set(re.findall(r"ndspChn\w+\((\d+)", audio))
         self.assertEqual(channels, {"0"})
         voice_c = (ROOT / "tools/banjo3ds/sfx_probe/sfx_voice.c").read_text(encoding="utf-8")
@@ -875,6 +888,8 @@ class SfxVoiceLifecycleTests(unittest.TestCase):
                 self.assertEqual(voice.armed, 0)
                 self.assertEqual(voice.slide_ready, SLIDE_NONE)
                 self.assertEqual(lib.sfxVoicePoll(C.byref(voice), 0), 0)
+                self.assertEqual(lib.sfxVoiceSustain(C.byref(voice), 1), 0)
+                self.assertEqual(voice.queue_slide_count, 0)
                 self.assertEqual(lib.sfxVoiceShutdown(C.byref(voice)), 0)
                 self.assertEqual(lib.sfxVoiceBind(C.byref(voice), 1, SLIDE_LOOP, 1, 22000, 2000), 0)
 
@@ -882,12 +897,113 @@ class SfxVoiceLifecycleTests(unittest.TestCase):
         for lib in self.libs:
             self.assertEqual(lib.sfxVoiceBind(None, 1, SLIDE_LOOP, 1, 22000, 2000), 0)
             self.assertEqual(lib.sfxVoicePoll(None, 0), 0)
+            self.assertEqual(lib.sfxVoiceSustain(None, 1), 0)
             self.assertEqual(lib.sfxVoiceSlideFinished(None, 0), 0)
             self.assertEqual(lib.sfxVoiceShutdown(None), 0)
             self.assertEqual(lib.sfxVoicePitch(None), 1.0)
             self.assertEqual(lib.sfxVoiceRate(None), 0.0)
             lib.sfxVoiceReset(None)
             lib.sfxVoiceComplete(None)
+
+    def test_sustain_holds_past_the_old_probe_and_closes_once(self):
+        for lib in self.libs:
+            voice = self.fresh(lib)
+            self.assertEqual(lib.sfxVoiceBind(C.byref(voice), 1, SLIDE_LOOP, 1, 22000, 2000), 1)
+            self.assertEqual(lib.sfxVoiceSustain(C.byref(voice), 0), 0)
+            self.assertEqual((voice.phase, voice.pitch_steps, voice.queue_slide_count, voice.pitch),
+                             (IDLE, 0, 0, 1.0))
+            self.assertEqual(lib.sfxVoiceSustain(C.byref(voice), 1), QUEUE_SLIDE | SET_RATE)
+            self.assertEqual((voice.phase, voice.queue_slide_count, voice.pitch_steps), (SLIDE, 1, 1))
+            self.assert_pitch_in_range(lib, voice)
+            for _ in range(3000):
+                self.assertEqual(lib.sfxVoiceSustain(C.byref(voice), 1), SET_RATE)
+                self.assert_pitch_in_range(lib, voice)
+            self.assertEqual((voice.phase, voice.pitch_steps, voice.queue_slide_count, voice.queue_closer_count),
+                             (SLIDE, 3001, 1, 0))
+            held = voice.pitch
+            steps = voice.pitch_steps
+            action = lib.sfxVoiceSustain(C.byref(voice), 0)
+            self.assertEqual(action, STOP_SLIDE | QUEUE_CLOSER | SET_RATE)
+            self.assertEqual((voice.phase, voice.pitch, voice.pitch_steps, voice.queue_closer_count),
+                             (CLOSER, held, steps, 1))
+            self.assertEqual(lib.sfxVoiceSustain(C.byref(voice), 0), 0)
+            self.assertEqual(voice.queue_closer_count, 1)
+            lib.sfxVoiceComplete(C.byref(voice))
+            self.assertEqual(voice.phase, DONE)
+            self.assertEqual(lib.sfxVoiceSustain(C.byref(voice), 0), 0)
+            self.assertEqual(voice.phase, DONE)
+
+    def test_sustain_pitch_continues_across_a_second_crouch(self):
+        for lib in self.libs:
+            coast = self.fresh(lib)
+            straight = self.fresh(lib)
+            self.assertEqual(lib.sfxVoiceBind(C.byref(coast), 1, SLIDE_LOOP, 1, 22000, 2000), 1)
+            self.assertEqual(lib.sfxVoiceBind(C.byref(straight), 1, SLIDE_LOOP, 1, 22000, 2000), 1)
+            for _ in range(4):
+                lib.sfxVoiceSustain(C.byref(coast), 1)
+                lib.sfxVoiceSustain(C.byref(straight), 1)
+            self.assertEqual(coast.pitch, straight.pitch)
+            self.assertEqual(lib.sfxVoiceSustain(C.byref(coast), 0), STOP_SLIDE | QUEUE_CLOSER | SET_RATE)
+            self.assertEqual(coast.pitch, straight.pitch)
+            lib.sfxVoiceComplete(C.byref(coast))
+            self.assertEqual(lib.sfxVoiceSustain(C.byref(coast), 1), QUEUE_SLIDE | SET_RATE)
+            self.assertEqual(lib.sfxVoiceSustain(C.byref(straight), 1), SET_RATE)
+            self.assertEqual(coast.pitch, straight.pitch)
+            self.assertEqual((coast.pitch_steps, coast.queue_slide_count, coast.queue_closer_count), (5, 2, 1))
+            self.assertEqual(straight.queue_slide_count, 1)
+            self.assert_pitch_in_range(lib, coast)
+
+    def test_sustain_during_the_closer_restarts_the_slide(self):
+        for lib in self.libs:
+            voice = self.fresh(lib)
+            twin = self.fresh(lib)
+            self.assertEqual(lib.sfxVoiceBind(C.byref(voice), 1, SLIDE_LOOP, 1, 22000, 2000), 1)
+            self.assertEqual(lib.sfxVoiceBind(C.byref(twin), 1, SLIDE_LOOP, 1, 22000, 2000), 1)
+            self.assertEqual(lib.sfxVoiceSustain(C.byref(voice), 1), QUEUE_SLIDE | SET_RATE)
+            self.assertEqual(lib.sfxVoiceSustain(C.byref(twin), 1), QUEUE_SLIDE | SET_RATE)
+            self.assertEqual(lib.sfxVoiceSustain(C.byref(voice), 0), STOP_SLIDE | QUEUE_CLOSER | SET_RATE)
+            action = lib.sfxVoiceSustain(C.byref(voice), 1)
+            self.assertEqual(action, STOP_SLIDE | QUEUE_SLIDE | SET_RATE)
+            self.assertEqual(action & QUEUE_CLOSER, 0)
+            self.assertEqual(lib.sfxVoiceSustain(C.byref(twin), 1), SET_RATE)
+            self.assertEqual(voice.pitch, twin.pitch)
+            self.assertEqual((voice.phase, voice.pitch_steps, voice.queue_slide_count, voice.queue_closer_count),
+                             (SLIDE, 2, 2, 1))
+            self.assert_pitch_in_range(lib, voice)
+
+    def test_missing_closer_can_start_again_after_the_stop(self):
+        for lib in self.libs:
+            voice = self.fresh(lib)
+            self.assertEqual(lib.sfxVoiceBind(C.byref(voice), 1, SLIDE_LOOP, 0, 22000, 2000), 1)
+            self.assertEqual(lib.sfxVoiceSustain(C.byref(voice), 1), QUEUE_SLIDE | SET_RATE)
+            steps = voice.pitch_steps
+            pitch = voice.pitch
+            self.assertEqual(lib.sfxVoiceSustain(C.byref(voice), 0), STOP_SLIDE)
+            self.assertEqual((voice.phase, voice.queue_closer_count, voice.pitch_steps, voice.pitch),
+                             (DONE, 0, steps, pitch))
+            self.assertEqual(lib.sfxVoiceSustain(C.byref(voice), 1), QUEUE_SLIDE | SET_RATE)
+            self.assertEqual(voice.phase, SLIDE)
+            self.assertEqual(voice.queue_slide_count, 2)
+            self.assertGreater(voice.pitch_steps, steps)
+            self.assert_pitch_in_range(lib, voice)
+
+    def test_shutdown_disarms_sustain(self):
+        for lib in self.libs:
+            voice = self.fresh(lib)
+            self.assertEqual(lib.sfxVoiceBind(C.byref(voice), 1, SLIDE_LOOP, 1, 22000, 2000), 1)
+            self.assertEqual(lib.sfxVoiceSustain(C.byref(voice), 1), QUEUE_SLIDE | SET_RATE)
+            self.assertEqual(lib.sfxVoiceShutdown(C.byref(voice)), 1)
+            self.assertEqual((voice.phase, voice.armed, voice.queue_closer_count, voice.release_count),
+                             (DONE, 0, 0, 1))
+            self.assertEqual(lib.sfxVoiceSustain(C.byref(voice), 1), 0)
+            voice = self.fresh(lib)
+            self.assertEqual(lib.sfxVoiceBind(C.byref(voice), 1, SLIDE_LOOP, 1, 22000, 2000), 1)
+            lib.sfxVoiceSustain(C.byref(voice), 1)
+            lib.sfxVoiceSustain(C.byref(voice), 0)
+            self.assertEqual(voice.phase, CLOSER)
+            self.assertEqual(lib.sfxVoiceShutdown(C.byref(voice)), 2)
+            self.assertEqual((voice.armed, voice.queue_closer_count, voice.release_count), (0, 1, 1))
+            self.assertEqual(lib.sfxVoiceSustain(C.byref(voice), 1), 0)
 
 
 @unittest.skipUnless((ROOT / "decompressed.us.v10.z64").is_file(), "us.v10 ROM is not in the workspace")

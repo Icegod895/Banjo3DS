@@ -7,12 +7,14 @@
 #include "sfx_voice.h"
 
 /* One NDSP channel. A verified SFX_18 loop queues the intro once, then
- * repeats the [start, end) body. NDSP cannot loop a subrange, and the
- * generator sets LOOP_VERIFIED only when the bank ADPCM state matches that
- * linear frame. An unverified slide plays the whole buffer once. The 3200 us
- * Rare release ramp is not applied: this channel hard-cuts, then queues
- * SFX_19. Pitch steps once per presented frame inside the voice, not on a
- * claimed N64 tick. */
+ * repeats the [start, end) body while sustain stays set. The first frame
+ * with sustain clear hard-cuts that voice and queues SFX_19. PCM stays
+ * allocated until exit so a later coast can start on the same pitch walk.
+ * NDSP cannot loop a subrange, and the generator sets LOOP_VERIFIED only
+ * when the bank ADPCM state matches that linear frame. An unverified slide
+ * plays the whole buffer once and waits out a finished buffer before the
+ * closer. The 3200 us Rare release ramp is not applied. Pitch steps once
+ * per sustained frame inside the voice, not on a claimed N64 tick. */
 
 _Static_assert(BANJO_SFX19_PCM_BYTES == 0 || (BANJO_SFX19_PCM_BYTES % 2) == 0,
     "SFX_19 probe PCM is whole 16-bit samples");
@@ -47,6 +49,7 @@ static u32 loop_samples;
 static u32 once_samples;
 static u32 closer_samples;
 static int slide_queued;
+static int channel_queued;
 static int ndsp_up;
 
 static void free_pcm(s16 **pcm)
@@ -118,20 +121,16 @@ static void configure_channel(float rate, float level)
     ndspChnSetMix(0, mix);
 }
 
-static void stop_slide(void)
+static void clear_channel(void)
 {
-    if (slide_queued)
+    if (channel_queued)
         ndspChnWaveBufClear(0);
+    channel_queued = 0;
     slide_queued = 0;
-    free_pcm(&intro_pcm);
-    free_pcm(&loop_pcm);
-    free_pcm(&once_pcm);
-    intro_samples = 0;
-    loop_samples = 0;
-    once_samples = 0;
     memset(&intro_wave, 0, sizeof(intro_wave));
     memset(&loop_wave, 0, sizeof(loop_wave));
     memset(&once_wave, 0, sizeof(once_wave));
+    memset(&closer_wave, 0, sizeof(closer_wave));
 }
 
 static void queue_slide(void)
@@ -156,6 +155,7 @@ static void queue_slide(void)
         loop_wave.status = NDSP_WBUF_FREE;
         ndspChnWaveBufAdd(0, &loop_wave);
         slide_queued = 1;
+        channel_queued = 1;
         return;
     }
     if (voice.slide_ready == SFX_SLIDE_ONCE && once_pcm) {
@@ -166,6 +166,7 @@ static void queue_slide(void)
         once_wave.status = NDSP_WBUF_FREE;
         ndspChnWaveBufAdd(0, &once_wave);
         slide_queued = 1;
+        channel_queued = 1;
     }
 }
 
@@ -183,16 +184,14 @@ static void queue_closer(void)
     closer_wave.looping = false;
     closer_wave.status = NDSP_WBUF_FREE;
     ndspChnWaveBufAdd(0, &closer_wave);
+    channel_queued = 1;
 }
 
 static void finish_closer(void)
 {
     if (voice.phase != SFX_VOICE_CLOSER || !closer_pcm || closer_wave.status != NDSP_WBUF_DONE)
         return;
-    ndspChnWaveBufClear(0);
-    free_pcm(&closer_pcm);
-    closer_samples = 0;
-    memset(&closer_wave, 0, sizeof(closer_wave));
+    clear_channel();
     sfxVoiceComplete(&voice);
 }
 
@@ -217,6 +216,7 @@ void sfxProbe3dsInit(void)
     once_samples = 0;
     closer_samples = 0;
     slide_queued = 0;
+    channel_queued = 0;
     ndsp_up = 0;
     memset(&intro_wave, 0, sizeof(intro_wave));
     memset(&loop_wave, 0, sizeof(loop_wave));
@@ -275,29 +275,31 @@ void sfxProbe3dsInit(void)
     sfxVoiceBind(&voice, ndsp_ready, mode, closer_ready, SFX_PROBE_RATE, SFX_PROBE_SLIDE_MS);
 }
 
-void sfxProbe3dsFrame(void)
+void sfxProbe3dsFrame(int sustain)
 {
-    /* osGetTime is milliseconds since 1900. The voice subtracts the low 32 bits unsigned. */
-    int now_ms;
     int action;
+    int once_done;
 
     if (!voice.armed || !ndsp_up)
         return;
-    now_ms = (int)osGetTime();
-    if (voice.phase == SFX_VOICE_SLIDE && voice.slide_ready == SFX_SLIDE_ONCE
-        && slide_queued && once_wave.status == NDSP_WBUF_DONE)
-        action = sfxVoiceSlideFinished(&voice, now_ms);
+    once_done = voice.phase == SFX_VOICE_SLIDE && voice.slide_ready == SFX_SLIDE_ONCE
+        && slide_queued && once_wave.status == NDSP_WBUF_DONE;
+    if (once_done && sustain)
+        action = 0;
+    else if (once_done)
+        action = sfxVoiceSlideFinished(&voice, 0);
     else
-        action = sfxVoicePoll(&voice, now_ms);
+        action = sfxVoiceSustain(&voice, sustain);
     if (action & SFX_VOICE_STOP_SLIDE)
-        stop_slide();
+        clear_channel();
     if (action & SFX_VOICE_QUEUE_SLIDE)
         queue_slide();
     if (action & SFX_VOICE_QUEUE_CLOSER)
         queue_closer();
     else if (action & SFX_VOICE_SET_RATE)
         ndspChnSetRate(0, sfxVoiceRate(&voice));
-    finish_closer();
+    if (!sustain)
+        finish_closer();
 }
 
 void sfxProbe3dsExit(void)
@@ -312,6 +314,7 @@ void sfxProbe3dsExit(void)
     memset(&once_wave, 0, sizeof(once_wave));
     memset(&closer_wave, 0, sizeof(closer_wave));
     slide_queued = 0;
+    channel_queued = 0;
     if (ndsp_up) {
         ndspExit();
         ndsp_up = 0;

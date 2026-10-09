@@ -14,6 +14,8 @@ void playerCrouchSetAbilities(uint32_t mask);
 void playerCrouchReset(float yaw);
 void playerCrouchFrame(PlayerRuntime *s, uint32_t logical_held, int fp_blocked);
 bool playerCrouchActive(void);
+/* 1 when this frame's crouch enter or step raised sfx_count. Otherwise 0. */
+int playerCrouchSlideSfx(void);
 int playerCrouchRequested(void);
 int playerCrouchState(void);
 void playerCrouchCopy(CrouchView *out);

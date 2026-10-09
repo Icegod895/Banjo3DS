@@ -24,6 +24,20 @@ static int begin_closer(SfxVoice *voice)
     return SFX_VOICE_STOP_SLIDE;
 }
 
+static int begin_slide(SfxVoice *voice, int stop_current)
+{
+    int action;
+
+    voice->pitch = sfxSlidePitchStep(voice->pitch, pitch_unit(&voice->rng));
+    voice->pitch_steps += 1;
+    voice->phase = SFX_VOICE_SLIDE;
+    voice->queue_slide_count += 1;
+    action = SFX_VOICE_QUEUE_SLIDE | SFX_VOICE_SET_RATE;
+    if (stop_current)
+        action |= SFX_VOICE_STOP_SLIDE;
+    return action;
+}
+
 void sfxVoiceReset(SfxVoice *voice)
 {
     if (!voice)
@@ -130,6 +144,29 @@ int sfxVoicePoll(SfxVoice *voice, int now_ms)
     return 0;
 }
 
+int sfxVoiceSustain(SfxVoice *voice, int sustain)
+{
+    if (!voice || !voice->armed || voice->phase == SFX_VOICE_SKIPPED)
+        return 0;
+    if (voice->phase == SFX_VOICE_CLOSER) {
+        if (!sustain)
+            return 0;
+        return begin_slide(voice, 1);
+    }
+    if (voice->phase == SFX_VOICE_SLIDE) {
+        if (!sustain)
+            return begin_closer(voice);
+        voice->pitch = sfxSlidePitchStep(voice->pitch, pitch_unit(&voice->rng));
+        voice->pitch_steps += 1;
+        return SFX_VOICE_SET_RATE;
+    }
+    if (!sustain)
+        return 0;
+    if (voice->phase == SFX_VOICE_IDLE || voice->phase == SFX_VOICE_DONE)
+        return begin_slide(voice, 0);
+    return 0;
+}
+
 int sfxVoiceSlideFinished(SfxVoice *voice, int now_ms)
 {
     (void)now_ms;
@@ -151,11 +188,13 @@ int sfxVoiceShutdown(SfxVoice *voice)
         return 0;
     if (voice->phase == SFX_VOICE_SLIDE) {
         voice->phase = SFX_VOICE_DONE;
+        voice->armed = 0;
         voice->release_count += 1;
         return 1;
     }
     if (voice->phase == SFX_VOICE_CLOSER) {
         voice->phase = SFX_VOICE_DONE;
+        voice->armed = 0;
         voice->release_count += 1;
         return 2;
     }
