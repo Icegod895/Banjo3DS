@@ -85,3 +85,6 @@ tmp/*
 
 # Banjo3DS generated model data
 /platform/3ds/source/generated_model.h
+
+# Decoded SFX PCM. Rare sample data stays out of Git.
+*.pcm16
