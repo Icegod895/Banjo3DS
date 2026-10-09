@@ -38,6 +38,14 @@ Skeleton/binding including factor is 10918 bytes. Animation has 47 channels,
 234 keys and frame range 0..120. The exporter does not generate a second
 copy of channels or matrices in the packet.
 
+Later versions append raw animation bytes and change the version word.
+v2 adds 006F, v3 adds 0002 and 000C, and v4 adds 0008 (28022 bytes).
+v5 appends crouch clips 0001, 010C and 0116 after the unchanged v4 bytes
+and is 36994 bytes. Indices 0..4 remain walk, idle, creep, run and jump.
+Indices 5..7 are crouch enter, turn/recovery and no-input. The viewer
+export stays on v4; `export_crouch_packet` is the opt-in v5 generator.
+Sampling still uses the same channel, quaternion and skeleton path.
+
 Caller-owned `BanjoPose` is 16876 bytes: 4360 bone transforms, 3840 matrices,
 8676 posed XYZ. No heap allocations, static mutable state, or global scratch.
 The matrices and transforms remain exposed to allow independent validation.

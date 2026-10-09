@@ -177,6 +177,29 @@ def export_jump_packet(model_path, walk_path, idle_path, creep_path, run_path, j
     return bytes(packet) + animation
 
 
+def export_crouch_packet(model_path, walk_path, idle_path, creep_path, run_path, jump_path,
+                         enter_path, turn_path, noinput_path):
+    """B3P3 v5: unchanged v4 bytes plus raw 0001, 010C, 0116.
+
+    Opt-in pose packet. 36994 bytes. The viewer export stays on v4.
+    Clip order is enter, turn/recovery, no-input. No new binding.
+    """
+    clips = []
+    for path, sha in (
+        (enter_path, 'e87528e23c123f01ff6c22a4001c557667129831caebbfdf677e7e426c252416'),
+        (turn_path, '0ade73c41f67baabffc3e529e7f2100659867146355f091752c6f8cea248943a'),
+        (noinput_path, 'efeda4d5cd1cc63d4796c3b7d6b50c63fbf3baede351e924d374e358d44b7832'),
+    ):
+        data = Path(path).read_bytes()
+        if hashlib.sha256(data).hexdigest() != sha:
+            raise ValueError('Expected canonical crouch animation')
+        clips.append(data)
+    packet = bytearray(export_jump_packet(
+        model_path, walk_path, idle_path, creep_path, run_path, jump_path))
+    struct.pack_into('>I', packet, 4, 5)
+    return bytes(packet) + b''.join(clips)
+
+
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(description=__doc__)
