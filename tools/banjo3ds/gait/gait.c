@@ -49,7 +49,7 @@ bool banjo_gait_update(BanjoGaitState *s,const uint8_t *packet,size_t size,
 }
 bool banjo_gait_update_selected(BanjoGaitState *s,const uint8_t *packet,size_t size,
                                BanjoGait next,float duration,float dt) {
-    if(!s || !isfinite(dt) || dt<0 || (size!=26234 && size!=28022) || !packet)return false;
+    if(!s || !isfinite(dt) || dt<0 || (size!=26234 && size!=28022 && size!=36994) || !packet)return false;
     if((unsigned)next>BANJO_GAIT_FAST || !isfinite(duration) || duration<=0)return false;
     if(!s->initialized) {
         if(!banjo_pose_sample(packet,size,BANJO_CLIP_IDLE,0,s->pose.bones))return false;

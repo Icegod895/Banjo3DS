@@ -15,10 +15,23 @@ static void remember(BanjoJumpMotion *m) {
     m->lastSafeGroundPosition[0]=m->actor.x;m->lastSafeGroundPosition[1]=m->actor.y;
     m->lastSafeGroundPosition[2]=m->actor.z;m->hasSafeGround=true;
 }
+static void crouch_hook_none(BanjoJumpMotion *m,BanjoHorizontal *h,float dt,bool *jump,
+    int should_fall,int *lock_mode,float *facing,int *use_facing) {
+    (void)m;(void)h;(void)dt;(void)jump;(void)should_fall;(void)lock_mode;(void)facing;(void)use_facing;
+}
+static PlayerGroundCrouchHook crouch_hook=crouch_hook_none;
+void playerGroundSetCrouchHook(PlayerGroundCrouchHook hook){crouch_hook=hook?hook:crouch_hook_none;}
 unsigned playerGroundStep(void *context,BanjoJumpMotion *m,BanjoHorizontal *h,
                          float dt,bool jump,bool camera_mode) {
     PlayerGroundContext *c=context;PlayerGroundState *s=c->state;
     float support;
+    int lock_mode=-1,use_facing=0;
+    float facing=0.0f;
+    bool jump_edge=jump;
+    /* Same predicate as bg_state_update, using the previous resolved floor. */
+    int should_fall=60.0f < (m->actor.y-s->phase.floor_height);
+    crouch_hook(m,h,dt,&jump_edge,should_fall,&lock_mode,&facing,&use_facing);
+    jump=jump_edge;
     bool takeoff=m->grounded && jump && !camera_mode &&
         movementFloorOverlay(c->vertices,c->triangles,c->count,m->actor.x,m->actor.z,m->actor.y,&support,c->overlay) &&
         fabsf(support-m->actor.y)<=BANJO_JUMP_CONTACT_EPSILON;
@@ -46,7 +59,9 @@ unsigned playerGroundStep(void *context,BanjoJumpMotion *m,BanjoHorizontal *h,
     } else {
         if(next.grounded)next.falling=0; /* previous-frame landing handoff */
         s->fall_request=bg_state_update(&next);
-        banjo_horizontal_step(h,next.falling?BANJO_HORIZONTAL_AIR:BANJO_HORIZONTAL_GROUND,dt);
+        BanjoHorizontalMode mode=next.falling?BANJO_HORIZONTAL_AIR:BANJO_HORIZONTAL_GROUND;
+        if(!next.falling && lock_mode==BANJO_HORIZONTAL_LOCKED)mode=BANJO_HORIZONTAL_LOCKED;
+        banjo_horizontal_step(h,mode,dt);
         bg_candidate(&next,h->velocity,dt,&frame);
     }
     /* One genuine physics proposal; no pre-body floor query or sweep. */
@@ -59,7 +74,9 @@ unsigned playerGroundStep(void *context,BanjoJumpMotion *m,BanjoHorizontal *h,
     if(!m->grounded && next.grounded)events|=BANJO_JUMP_LANDED;
     if(next.position[0]!=m->actor.x || next.position[2]!=m->actor.z)events|=BANJO_JUMP_MOVED;
     m->actor.x=next.position[0];m->actor.y=next.position[1];m->actor.z=next.position[2];
-    m->actor.yaw=h->visible_yaw;m->verticalVelocity=next.vertical_velocity;m->grounded=next.grounded!=0;
+    if(use_facing && !flight && !next.falling)m->actor.yaw=facing;
+    else m->actor.yaw=h->visible_yaw;
+    m->verticalVelocity=next.vertical_velocity;m->grounded=next.grounded!=0;
     s->jump_flight=flight && !m->grounded;
     if(m->grounded)remember(m);
     else if(m->actor.y<BANJO_JUMP_VOID_Y && m->hasSafeGround) {

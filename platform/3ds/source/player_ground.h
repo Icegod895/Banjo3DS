@@ -27,4 +27,9 @@ typedef struct {
 } PlayerGroundContext;
 void playerGroundInit(PlayerGroundState *,const BanjoJumpMotion *);
 unsigned playerGroundStep(void *,BanjoJumpMotion *,BanjoHorizontal *,float,bool,bool);
+/* Default hook is a no-op. The crouch runtime installs its own. Existing
+ * traces never install one, so ground, jump and body results stay unchanged. */
+typedef void (*PlayerGroundCrouchHook)(BanjoJumpMotion *motion,BanjoHorizontal *horizontal,
+    float dt,bool *jump,int should_fall,int *lock_mode,float *facing,int *use_facing);
+void playerGroundSetCrouchHook(PlayerGroundCrouchHook hook);
 #endif

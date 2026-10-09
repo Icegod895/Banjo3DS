@@ -200,9 +200,39 @@ def export_crouch_packet(model_path, walk_path, idle_path, creep_path, run_path,
     return bytes(packet) + b''.join(clips)
 
 
+def write_crouch_clips_header(enter_path, turn_path, noinput_path):
+    """C arrays for the three raw clips. The v4 model header is not rewritten."""
+    names = ('banjo_crouch_enter_clip', 'banjo_crouch_turn_clip', 'banjo_crouch_noinput_clip')
+    expected = (
+        ('e87528e23c123f01ff6c22a4001c557667129831caebbfdf677e7e426c252416', 2176),
+        ('0ade73c41f67baabffc3e529e7f2100659867146355f091752c6f8cea248943a', 2576),
+        ('efeda4d5cd1cc63d4796c3b7d6b50c63fbf3baede351e924d374e358d44b7832', 4220),
+    )
+    parts = [
+        '/* Raw Rare crouch clips appended by the runtime to the frozen v4 packet. */\n',
+        '#ifndef BANJO_GENERATED_CROUCH_H\n#define BANJO_GENERATED_CROUCH_H\n',
+    ]
+    for name, path, (sha, size) in zip(names, (enter_path, turn_path, noinput_path), expected):
+        data = Path(path).read_bytes()
+        if hashlib.sha256(data).hexdigest() != sha or len(data) != size:
+            raise ValueError('Expected canonical crouch animation')
+        parts.append('static const unsigned char %s[] = {\n' % name)
+        for i in range(0, len(data), 16):
+            parts.append('    ' + ', '.join('0x%02x' % v for v in data[i:i + 16]) + ',\n')
+        parts.append('};\n')
+    parts.append('#endif\n')
+    return ''.join(parts)
+
+
 if __name__ == '__main__':
     import argparse
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('model'); parser.add_argument('animation'); parser.add_argument('output')
-    args = parser.parse_args()
-    Path(args.output).write_bytes(export_pose_packet(args.model,args.animation))
+    import sys
+    if len(sys.argv) >= 2 and sys.argv[1] == '--crouch-header':
+        if len(sys.argv) != 6:
+            raise SystemExit('usage: pose_binding --crouch-header OUT ENTER TURN NOINPUT')
+        Path(sys.argv[2]).write_text(write_crouch_clips_header(sys.argv[3], sys.argv[4], sys.argv[5]))
+    else:
+        parser = argparse.ArgumentParser(description=__doc__)
+        parser.add_argument('model'); parser.add_argument('animation'); parser.add_argument('output')
+        args = parser.parse_args()
+        Path(args.output).write_bytes(export_pose_packet(args.model, args.animation))

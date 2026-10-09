@@ -29,6 +29,10 @@ void playerRuntimeMoveObserved(PlayerRuntime *s, float x, float y, float cameraY
                        const FloorTriangle *triangles, size_t count,
                        BanjoCandidateObserver observe, void *context);
 bool playerRuntimeAnimate(PlayerRuntime *s, const uint8_t *packet, size_t size, float dt);
+/* Default returns false and the gait/jump animator runs. Crouch installs a
+ * sampler that returns true only while the crouch pose owns the grounded frame. */
+typedef bool (*PlayerCrouchAnimateFn)(PlayerRuntime *s, const uint8_t *packet, size_t size, float dt);
+void playerRuntimeSetCrouchAnimate(PlayerCrouchAnimateFn fn);
 void playerRuntimeMoveOverlay(PlayerRuntime *,float,float,float,float,bool,bool,
     const FloorVertex *,const FloorTriangle *,size_t,BanjoCandidateObserver,void *,
     const MovementOverlay *);

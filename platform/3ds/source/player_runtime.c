@@ -100,8 +100,14 @@ void playerRuntimeMove(PlayerRuntime *s,float x,float y,float yaw,float dt,
                        bool jumpPressed,bool cameraMode,const FloorVertex *v,const FloorTriangle *t,size_t n) {
     playerRuntimeMoveObserved(s,x,y,yaw,dt,jumpPressed,cameraMode,v,t,n,NULL,NULL);
 }
+static bool crouch_animate_none(PlayerRuntime *s,const uint8_t *packet,size_t size,float dt) {
+    (void)s;(void)packet;(void)size;(void)dt;return false;
+}
+static PlayerCrouchAnimateFn crouch_animate_fn=crouch_animate_none;
+void playerRuntimeSetCrouchAnimate(PlayerCrouchAnimateFn fn){crouch_animate_fn=fn?fn:crouch_animate_none;}
 bool playerRuntimeAnimate(PlayerRuntime *s,const uint8_t *packet,size_t size,float dt) {
     if(!s || !isfinite(dt) || dt<0)return false;
+    if(crouch_animate_fn(s,packet,size,dt))return true;
     if(!s->gait.initialized && !banjo_gait_update(&s->gait,packet,size,false,0,0))return false;
     if(!s->motion.grounded) {
         if(!s->jumpActive) {

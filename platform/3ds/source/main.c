@@ -7,7 +7,9 @@
 #include "movement.h"
 #include "player_runtime.h"
 #include "player_input.h"
+#include "player_crouch.h"
 #include "generated_model.h"
+#include "generated_crouch.h"
 #include "renderer_culling.h"
 #include "camera_runtime.h"
 #include "generated_camera.h"
@@ -46,6 +48,9 @@ static PlayerInputState playerInput;
 static volatile int cameraRuntimeStatus;
 static void *vbo_data;
 static PlayerRuntime player = {.motion = {.actor = {0.0f, 1800.0f, 0.0f, 0.0f}, .grounded = true}};
+static uint8_t banjo_crouch_packet[36994];
+static const uint8_t *banjo_runtime_pose = banjo_pose_packet;
+static size_t banjo_runtime_pose_size = BANJO_POSE_PACKET_SIZE;
 /* Debugger-visible CPU measurements: evaluator + corner XYZ propagation,
  * excluding GPU wait/cache flush. No console work in the measured interval. */
 volatile float banjoPoseLastUs, banjoPoseMaxUs;
@@ -775,6 +780,23 @@ int main(void)
     }
 
     cameraRuntimeSetLearnedAbilities(&rareCamera, BANJO_LEARNED_ABILITIES);
+    playerCrouchInstall();
+    playerCrouchSetAbilities(BANJO_LEARNED_ABILITIES);
+    _Static_assert(BANJO_POSE_PACKET_SIZE == 28022, "crouch prefix is the frozen v4 packet");
+    _Static_assert(sizeof banjo_crouch_enter_clip == 2176
+        && sizeof banjo_crouch_turn_clip == 2576
+        && sizeof banjo_crouch_noinput_clip == 4220, "raw crouch clips");
+    {
+        size_t assembled = playerCrouchActivate(banjo_crouch_packet, sizeof banjo_crouch_packet,
+            banjo_pose_packet, BANJO_POSE_PACKET_SIZE,
+            banjo_crouch_enter_clip, sizeof banjo_crouch_enter_clip,
+            banjo_crouch_turn_clip, sizeof banjo_crouch_turn_clip,
+            banjo_crouch_noinput_clip, sizeof banjo_crouch_noinput_clip);
+        if (assembled == 36994) {
+            banjo_runtime_pose = banjo_crouch_packet;
+            banjo_runtime_pose_size = assembled;
+        }
+    }
 
     u64 previousFrameMs = osGetTime();
     u32 previousVi = C3D_FrameCounter(0);
@@ -803,12 +825,24 @@ int main(void)
         hidCstickRead(&cstick);
         PlayerInputFrame controls = playerInputUpdate(&playerInput, held, cstick.dx, cstick.dy);
         cameraRuntimeManualInput(&rareCamera, BANJO_DEBUG_CAMERA ? 0 : controls.manual, 0x23);
+        /* Previous-frame crouch hides C-up from fp_select. Idle Z+C-up still
+         * reaches fp_select, because crouch is not active yet. The held bit is
+         * recorded so the release frame's C-up is not a new press afterwards.
+         * Debug builds keep L as camera zoom and do not feed crouch. */
+        uint32_t fp_buttons = firstPersonButtons(controls.held);
+        const int crouch_masks_look = !BANJO_DEBUG_CAMERA && playerCrouchActive();
+        if (crouch_masks_look)
+            fp_buttons &= ~(uint32_t)FP_CUP;
         if (!BANJO_DEBUG_CAMERA)
             cameraRuntimeFirstPersonInput(&rareCamera, &player,
-                firstPersonButtons(controls.held), cameraPadAxis(pad.dx), cameraPadAxis(pad.dy), dt, viFrames);
+                fp_buttons, cameraPadAxis(pad.dx), cameraPadAxis(pad.dy), dt, viFrames);
         else
             player.first_person_blocks=false;
+        if (crouch_masks_look && (controls.held & PI_N64_CUP))
+            player.first_person.buttons |= FP_CUP;
         const bool firstPersonBlocks=playerRuntimeFirstPersonBlocks(&player);
+        if (!BANJO_DEBUG_CAMERA)
+            playerCrouchFrame(&player, controls.held, firstPersonBlocks);
         cameraRuntimeMovementInput(&rareCamera, BANJO_DEBUG_CAMERA, camera.yawDegrees,
             pad.dx, pad.dy, movementInput);
         cameraRuntimeStatus = cameraRuntimeMove(&rareCamera, &player,
@@ -821,13 +855,13 @@ int main(void)
 
         u64 poseStart = svcGetSystemTick();
         bool evaluated = playerRuntimeAnimate(&player,
-            banjo_pose_packet, BANJO_POSE_PACKET_SIZE, dt);
+            banjo_runtime_pose, banjo_runtime_pose_size, dt);
         u64 poseTicks = svcGetSystemTick() - poseStart;
         if (!C3D_FrameBegin(C3D_FRAME_SYNCDRAW)) continue;
         /* CPU pose evaluation is independent of the GPU. VBO writes wait for
          * the previous submission; failed render frames cannot lose events. */
         u64 scatterStart = svcGetSystemTick();
-        bool changed = evaluated && playerRuntimeWriteVertices(&player, banjo_pose_packet,
+        bool changed = evaluated && playerRuntimeWriteVertices(&player, banjo_runtime_pose,
             vbo_data, BANJO_VERTEX_COUNT,
             BANJO_ACTOR_FIRST_VERTEX, BANJO_ACTOR_VERTEX_COUNT, sizeof(Banjo3DSVertex));
         if (changed) {

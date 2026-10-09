@@ -44,6 +44,8 @@ v5 appends crouch clips 0001, 010C and 0116 after the unchanged v4 bytes
 and is 36994 bytes. Indices 0..4 remain walk, idle, creep, run and jump.
 Indices 5..7 are crouch enter, turn/recovery and no-input. The viewer
 export stays on v4; `export_crouch_packet` is the opt-in v5 generator.
+The frozen model header stays that v4 export. The native runtime assembles
+the 36994-byte v5 packet from the v4 prefix plus raw 0001, 010C and 0116.
 Sampling still uses the same channel, quaternion and skeleton path.
 
 Caller-owned `BanjoPose` is 16876 bytes: 4360 bone transforms, 3840 matrices,

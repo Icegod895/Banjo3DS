@@ -1,8 +1,9 @@
 # M4.11-B crouch host reference
 
 Isolated transcription of original crouch selection, coast, yaw, and animation
-control. `crouch.c` is not linked into the 3DS runtime. Attacks, flap flip,
-beak barge, and Talon Trot are request ids only.
+control. The 3DS runtime calls this module for crouch. `crouch.c` still does
+not sample bones or play attacks. Attacks, flap flip, beak barge, and Talon
+Trot remain request ids only.
 
 `python3 -B -m unittest discover -s tools/banjo3ds/tests -p test_crouch.py -v`
 

@@ -16,7 +16,8 @@ float banjo_gait_duration(BanjoGait gait, float actualSpeed);
 BanjoClip banjo_gait_clip(BanjoGait gait);
 float banjo_gait_start_phase(BanjoGait oldGait, BanjoGait newGait, float phase);
 /* Zero-initialize state. Only pose/controller state changes; no VBO access.
- * Packet must be the validated immutable canonical B3P3 v3/v4 export. */
+ * Packet must be the validated canonical B3P3 v3/v4 export, or v5 (36994),
+ * which is that v4 payload plus the appended crouch clips. Clips 0-4 are unchanged. */
 bool banjo_gait_update(BanjoGaitState *state, const uint8_t *packet, size_t size,
                        bool accepted, float actualSpeed, float dt);
 /* Same proven pose/phase/blend path, driven by an explicit gameplay decision.
