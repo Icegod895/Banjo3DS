@@ -6,6 +6,7 @@
 #include "vshader_shbin.h"
 #include "movement.h"
 #include "player_runtime.h"
+#include "player_input.h"
 #include "generated_model.h"
 #include "renderer_culling.h"
 #include "camera_runtime.h"
@@ -40,6 +41,7 @@ static int uLoc_projection, uLoc_modelView;
 static C3D_Mtx projection, modelView;
 static RendererWindingParity viewWindingParity = RENDERER_WINDING_NORMAL;
 static CameraRuntime rareCamera;
+static PlayerInputState playerInput;
 /* Explicit debugger-visible failure, never a query-miss debug fallback. */
 static volatile int cameraRuntimeStatus;
 static void *vbo_data;
@@ -784,13 +786,18 @@ int main(void)
         if (BANJO_DEBUG_CAMERA)
             cameraUpdate(down, held, &pad, dt);
         float movementInput[3];
-        /* D-C: explicit neutral logical N64 camera input. No 3DS mapping yet. */
-        cameraRuntimeManualInput(&rareCamera, 0, 0x23);
+        /* hidScanInput already scans IRRST; no second scan/init or key-repeat.
+         * Debug builds retain their original controls and neutral manual input. */
+        circlePosition cstick = {0};
+        hidCstickRead(&cstick);
+        PlayerInputFrame controls = playerInputUpdate(&playerInput, held, cstick.dx, cstick.dy);
+        cameraRuntimeManualInput(&rareCamera, BANJO_DEBUG_CAMERA ? 0 : controls.manual, 0x23);
         cameraRuntimeMovementInput(&rareCamera, BANJO_DEBUG_CAMERA, camera.yawDegrees,
             pad.dx, pad.dy, movementInput);
         cameraRuntimeStatus = cameraRuntimeMove(&rareCamera, &player,
             movementInput[0], movementInput[1], movementInput[2], dt, viFrames,
-            (down & KEY_A) != 0, (held & KEY_Y) != 0,
+            BANJO_DEBUG_CAMERA ? (down & KEY_A) != 0 : controls.jump_pressed,
+            BANJO_DEBUG_CAMERA ? (held & KEY_Y) != 0 : controls.suppress_movement,
             banjo_floor_vertices, banjo_floor_triangles, BANJO_FLOOR_TRIANGLE_COUNT);
         if (!BANJO_DEBUG_CAMERA && rareCamera.view_ready)
             cameraApplyRareView();

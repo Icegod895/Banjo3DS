@@ -1,7 +1,8 @@
 # M4.10D-B: normal manual camera, host only
 
 This records the D-B checkpoint. The subsequent authorized D-C neutral-input
-runtime integration is documented in [RUNTIME.md](RUNTIME.md).
+runtime integration is documented in [RUNTIME.md](RUNTIME.md). The subsequent
+D-D physical mapping and input policy are documented in [CONTROLS.md](CONTROLS.md).
 
 No file in the accepted viewer/runtime, camera, zones, contact, player, bridge,
 exporter or generated-data path was changed. `camera_manual` is **not** in the

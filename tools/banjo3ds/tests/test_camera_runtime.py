@@ -106,7 +106,7 @@ const void *packet(int n){return n?camera_xlu_packet:camera_opa_packet;}
 size_t packet_size(int n){return n?sizeof(camera_xlu_packet):sizeof(camera_opa_packet);}
 int runtime_cull(const CameraRuntime *s,unsigned cull){return rendererCullMode(cull,s->parity);}
 ''')
-        sources=['platform/3ds/source/'+s for s in ('camera_runtime.c','player_runtime.c','player_ground.c','movement.c')]
+        sources=['platform/3ds/source/'+s for s in ('camera_runtime.c','player_runtime.c','player_ground.c','movement.c','player_input.c')]
         sources += ['tools/banjo3ds/'+s for s in ('pose/pose.c','gait/gait.c','gait/gait_motion.c',
             'horizontal/horizontal.c','body/body.c','body/frame.c','ground/ground.c','jump/jump.c','jump/jump_animation.c','camera/camera.c',
             'camera_contact/contact.c','camera_contact/free_b.c','camera_zones/zones.c',

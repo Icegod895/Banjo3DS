@@ -59,13 +59,17 @@ class ManualRuntimeTests(unittest.TestCase):
             ref.ref_load(1,C.create_string_buffer(native))
         protected=(bytes(player),bytes(s.bridge),bytes(s.body),bytes(s.player_ground),bytes(s.world_bridge))
         stream=[];different=0
+        adapter=getattr(self,'physical_adapter',None)
+        if adapter is not None:adapter.reset()
         for index,c in enumerate(spec['commands']):
             before=bytes(s.manual);old_yaw=s.manual.viewport_rotation[1]
             adapted=(F*3)();lib.cameraRuntimeMovementInput(C.byref(s),False,0,156,0,adapted)
             self.assertEqual(bytes(adapted),struct.pack('=3f',-156,0,F(180-old_yaw).value))
             self.assertEqual(bytes(s.manual),before)
             want=corpus.step(ref,c)
-            lib.cameraRuntimeManualInput(C.byref(s),c['buttons'],c['enabled'])
+            buttons=c['buttons'] if adapter is None else adapter.translate(lib,c['buttons'])
+            self.assertEqual(buttons,c['buttons'])
+            lib.cameraRuntimeManualInput(C.byref(s),buttons,c['enabled'])
             target=c.get('target',[c['player'][0],c['player'][1]+80,c['player'][2]])
             self.assertEqual(lib.cameraRuntimeUpdateView(C.byref(s),C.byref(camera.make_input(c)),(F*3)(*target)),1,(spec['name'],index))
             trace=Trace();lib.runtime_manual_trace(C.byref(trace))
@@ -180,12 +184,12 @@ class ManualRuntimeTests(unittest.TestCase):
             lib.cameraRuntimeMovementInput(C.byref(s),True,33,156,0,out)
             self.assertEqual(list(out),[156,0,33]);self.assertEqual(bytes(s.manual),before)
         main=(ROOT/'platform/3ds/source/main.c').read_text()
-        self.assertIn('cameraRuntimeManualInput(&rareCamera, 0, 0x23)',main)
+        self.assertIn('cameraRuntimeManualInput(&rareCamera, BANJO_DEBUG_CAMERA ? 0 : controls.manual, 0x23)',main)
         self.assertLess(main.index('cameraRuntimeMovementInput(&rareCamera'),main.index('cameraRuntimeMove(&rareCamera'))
         self.assertIn('rareCamera.manual.viewport_position[0]',main)
         self.assertNotIn('rareCamera.camera',main)
-        # Physical R/L/X/Y handling remains the accepted viewer's debug/player
-        # handling. The manual logical setter has exactly one neutral call.
+        # D-D supplies translated normal input; debug still supplies neutral.
+        # There remains exactly one controller-input submission per frame.
         self.assertEqual(main.count('cameraRuntimeManualInput('),1)
 
     def test_invalid_manual_update_preserves_committed_view_and_state(self):
