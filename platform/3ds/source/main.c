@@ -14,6 +14,7 @@
 #include "camera_runtime.h"
 #include "generated_camera.h"
 #include "generated_bridge.h"
+#include "sfx_probe_3ds.h"
 #include "../../../tools/banjo3ds/bridge_state/render.h"
 
 /* Temporary diagnostic build choice, not an N64 camera-button mapping. */
@@ -798,6 +799,9 @@ int main(void)
         }
     }
 
+    /* After the first presented frame the probe plays SFX_19 once, waits 400 ms, then plays unlooped SFX_18 once. No new button, and this call does not enter crouch, gait, input, physics, or camera. */
+    sfxProbe3dsInit();
+
     u64 previousFrameMs = osGetTime();
     u32 previousVi = C3D_FrameCounter(0);
     while (aptMainLoop()) {
@@ -894,9 +898,12 @@ int main(void)
         if (BANJO_DEBUG_CAMERA || rareCamera.view_ready)
             sceneRender();
         C3D_FrameEnd(0);
+        /* First presented frame starts SFX_19, then 400 ms of silence, then unlooped SFX_18. */
+        sfxProbe3dsFrame();
     }
 
     sceneExit();
+    sfxProbe3dsExit();
 
     C3D_Fini();
     gfxExit();

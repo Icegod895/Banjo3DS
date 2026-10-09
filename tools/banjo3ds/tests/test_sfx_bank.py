@@ -9,6 +9,7 @@ from tools.banjo3ds.sfx_bank import (
     BUILD_DIR,
     SOUND_FONT_1_RANGES,
     SfxBankError,
+    _parse_instrument,
     decode_raw16,
     decode_vadpcm,
     extract_sfx,
@@ -185,7 +186,8 @@ class BankTests(unittest.TestCase):
         frame = _frame(0, 0, [1, 0] + [0] * 14)
         ctl, tbl = _synthetic_bank(frame, 0, book)
         info, pcm = extract_sfx(ctl, tbl, 0x18)
-        self.assertEqual(info.sound_index, 0x19)
+        self.assertEqual(info.sfx_id, 0x18)
+        self.assertEqual(info.sound_index, 0x18)
         self.assertEqual(info.wave_type, "ADPCM")
         self.assertEqual(info.wave_bytes, 9)
         self.assertEqual(info.pcm_samples, 16)
@@ -216,7 +218,33 @@ class BankTests(unittest.TestCase):
         ctl, tbl = _synthetic_bank(b"\x00\x01", 1)
         with self.assertRaises(SfxBankError) as caught:
             extract_sfx(ctl, tbl, 0x1A)
-        self.assertIn("0x1b", str(caught.exception))
+        self.assertIn("0x1a", str(caught.exception))
+
+    def test_sfx_id_selects_the_same_sound_array_index(self):
+        ctl, tbl = _synthetic_bank(b"\x12\x34\xff\xfe", 1)
+        for sfx_id in (0x00, 0x18, 0x19):
+            info, pcm = extract_sfx(ctl, tbl, sfx_id)
+            self.assertEqual(info.sfx_id, sfx_id)
+            self.assertEqual(info.sound_index, sfx_id)
+            self.assertEqual(pcm, [0x1234, -2])
+
+    def test_neighboring_slots_are_independent(self):
+        ctl, tbl = _synthetic_bank(b"\x12\x34\xff\xfe", 1)
+        array_at = _parse_instrument(ctl).array_at
+        landing_cleared = bytearray(ctl)
+        struct.pack_into(">I", landing_cleared, array_at + 0x19 * 4, 0)
+        info, pcm = extract_sfx(bytes(landing_cleared), tbl, 0x18)
+        self.assertEqual(info.sound_index, 0x18)
+        self.assertEqual(pcm, [0x1234, -2])
+        with self.assertRaises(SfxBankError):
+            extract_sfx(bytes(landing_cleared), tbl, 0x19)
+        slide_cleared = bytearray(ctl)
+        struct.pack_into(">I", slide_cleared, array_at + 0x18 * 4, 0)
+        info, pcm = extract_sfx(bytes(slide_cleared), tbl, 0x19)
+        self.assertEqual(info.sound_index, 0x19)
+        self.assertEqual(pcm, [0x1234, -2])
+        with self.assertRaises(SfxBankError):
+            extract_sfx(bytes(slide_cleared), tbl, 0x18)
 
     def test_wave_past_the_table_fails(self):
         ctl, tbl = _synthetic_bank(b"\x00\x01", 1)

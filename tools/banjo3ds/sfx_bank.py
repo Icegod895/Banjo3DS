@@ -37,7 +37,11 @@ SOUND_FONT_1_RANGES = {
     "pal": (0xDA8DF0, 0xDB9BE0, 0xEC85E0),
 }
 
+# The runtime id is the soundArray index. sfxInstruments_func_8033531C passes
+# sfx_id + 1 to func_80244608, which reads soundArray[arg1 - 1]
+# (code_AE290.c:40, code_5650.c:593).
 SFX_18_BIGBUTT_SLIDE = 0x18
+SFX_19_BANJO_LANDING_08 = 0x19
 
 
 class SfxBankError(Exception):
@@ -157,7 +161,7 @@ def extract_sfx(ctl: bytes, tbl: bytes, sfx_id: int) -> tuple[SfxInfo, list[int]
     """Decode one SFX from a raw soundfont1 ctl/tbl pair."""
     if sfx_id < 0 or sfx_id > 0x7FFF:
         raise SfxBankError(f"SFX id {sfx_id} is outside the signed 16-bit id range")
-    sound_index = sfx_id + 1
+    sound_index = sfx_id
     bank = _parse_bank(ctl)
     instrument = _parse_instrument(ctl)
     if sound_index >= instrument.sound_count:
@@ -412,8 +416,8 @@ def _parse_instrument(ctl: bytes) -> _Instrument:
         raise SfxBankError("soundfont instrument has no sounds")
     array_at = instrument_offset + 16
     _need(ctl, array_at, sound_count * 4, "sound array")
-    for index in range(sound_count):
-        _read_u32(ctl, array_at + index * 4, f"sound pointer {index}")
+    # Only the selected slot is read, matching func_80244608. A zero pointer
+    # in another slot must not reject SFX_18 or SFX_19.
     return _Instrument(sound_count=sound_count, array_at=array_at)
 
 
