@@ -1,0 +1,232 @@
+{
+  "packing": "big endian: 19f (six camera vectors + timer), 2i (state/visible), 6f viewport, i visibility event, 6f look values, 30i look IDs/events; 256 bytes/frame",
+  "histories": {
+    "camera-default-vi1": {
+      "frames": 240,
+      "sha256": "39bfae0ea0d052e46c1123a1a498b13042548d078844551b28153575bb61426f"
+    },
+    "camera-default-vi2": {
+      "frames": 240,
+      "sha256": "7a925ad8aef5e5e8981743bbb2d06d6b870c2c4f1ac4e0dfc5843e0b89f3e211"
+    },
+    "camera-default-vi3": {
+      "frames": 240,
+      "sha256": "6e07345285bf0aff8860bf32bf221369d695147d36f8d538084b780d29b8f2fb"
+    },
+    "camera-default-vi15": {
+      "frames": 240,
+      "sha256": "06a48441f7750d7b41593cb9d743d90653e3295a2f077cd62b942368bda8896c"
+    },
+    "camera-apparent-arguments-vi1": {
+      "frames": 240,
+      "sha256": "7142f946a89ae99f852b23de5230f97e90045a66a9275063041a272cc4c48562"
+    },
+    "camera-apparent-arguments-vi2": {
+      "frames": 240,
+      "sha256": "dd089a61976728dd2bc4260fa61b38f3bf268f7d2ef4ad7e7e895c5100cd2739"
+    },
+    "camera-apparent-arguments-vi3": {
+      "frames": 240,
+      "sha256": "6d90d91876c2a946bed9a470e5dffea02da6086c796e25ea2cdc2a34d551b21d"
+    },
+    "camera-apparent-arguments-vi15": {
+      "frames": 240,
+      "sha256": "82b7870b377302483a2835aad867c0c0b12dc8f836c96a7c57f2c5a2057fb5d0"
+    },
+    "camera-inherited-vi1": {
+      "frames": 240,
+      "sha256": "bff3afe150e84e2f8b336711697e837b02942d6ff548fc3bcd11aa868a4fa5f1"
+    },
+    "camera-inherited-vi2": {
+      "frames": 240,
+      "sha256": "a6252b0c2809b2127c55ab25f2e07590301515aaf5501e78226a5dfb22746eb4"
+    },
+    "camera-inherited-vi3": {
+      "frames": 240,
+      "sha256": "32d02741b8cde571700b1607c57f023d9780e6a4810c813ae62024258688b73d"
+    },
+    "camera-inherited-vi15": {
+      "frames": 240,
+      "sha256": "4d63d54cdfaf7444f40057eba53f1f4a06314b1d4f07069a046d9c2bbb0952d4"
+    },
+    "camera-zero-vi1": {
+      "frames": 240,
+      "sha256": "977656f5ab64ed8f65f981a2a32c9b9620fcfe83f98f2d14bdabc1a28afc341d"
+    },
+    "camera-zero-vi2": {
+      "frames": 240,
+      "sha256": "977656f5ab64ed8f65f981a2a32c9b9620fcfe83f98f2d14bdabc1a28afc341d"
+    },
+    "camera-zero-vi3": {
+      "frames": 240,
+      "sha256": "977656f5ab64ed8f65f981a2a32c9b9620fcfe83f98f2d14bdabc1a28afc341d"
+    },
+    "camera-zero-vi15": {
+      "frames": 240,
+      "sha256": "977656f5ab64ed8f65f981a2a32c9b9620fcfe83f98f2d14bdabc1a28afc341d"
+    },
+    "plus180": {
+      "frames": 80,
+      "sha256": "6d9cd2d32bf5d6409370e1809e10461b66ad1ca2f15bd805a57bac36d6ad3d74"
+    },
+    "minus180": {
+      "frames": 80,
+      "sha256": "5f113eb3ea461cf691cfbca1ceb087d9377477fac16123edcf71f02c60c30115"
+    },
+    "wrap": {
+      "frames": 80,
+      "sha256": "1072337ee3448e05848491401f4d13a68d1ceceb4c6be845b001f593495c0aec"
+    },
+    "negative": {
+      "frames": 80,
+      "sha256": "1178c0c684978e71ac659166d4a9e56913053714c1b56983737c91103c45d575"
+    },
+    "visibility-1-39.999996185302734": {
+      "frames": 1,
+      "sha256": "7e327fc68947f3a0b226d6b31e22817c50caf1a150b14181d8b2a7de35fcb01c"
+    },
+    "visibility-3-39.999996185302734": {
+      "frames": 1,
+      "sha256": "05269d02f73ec2e1a5ac626db76bc6983404b3ac5406a881a9751d3577101109"
+    },
+    "visibility-1-40": {
+      "frames": 1,
+      "sha256": "9bec83714fd08211f66f1daeb419b9be908ec0f1357e1ad02864b9ba35634a4c"
+    },
+    "visibility-3-40": {
+      "frames": 1,
+      "sha256": "8a3367ec7219155af4f9f4e3a1eb99620e971e6a665a649a349b2dbce44e7fab"
+    },
+    "visibility-1-40.000003814697266": {
+      "frames": 1,
+      "sha256": "e1d3755b317d38d2db16e8cbf77d51ea2c459866d2b27ff85e342a89a6362422"
+    },
+    "visibility-3-40.000003814697266": {
+      "frames": 1,
+      "sha256": "9777eec0fb1033494c0f2b2c92d4563ee4e4fdff0678808e47c44525ed4bfd9f"
+    },
+    "reenter-reset-pass": {
+      "frames": 160,
+      "sha256": "49d644cb4e8c7654095bc9b8fedd2299afc92e0c98791c9285ed7e547af7ef8d"
+    },
+    "timer-exact": {
+      "frames": 128,
+      "sha256": "942eb8959ea13a807b6afcc8a7a89b5ef4cf56fb0d77f8b70026a3d94412f566"
+    },
+    "never-enter-pass": {
+      "frames": 16,
+      "sha256": "a84a89f1988e4c90824c5777dc3484b7ee332c19f759b58e9db7cbe0a5169e36"
+    },
+    "look-context1-exit1": {
+      "frames": 240,
+      "sha256": "a8d33974ab618f8799703097449068dd3755b588040488852d55fbec51cb92c9"
+    },
+    "look-context31-exit1": {
+      "frames": 240,
+      "sha256": "a8d33974ab618f8799703097449068dd3755b588040488852d55fbec51cb92c9"
+    },
+    "look-context2-exit1": {
+      "frames": 240,
+      "sha256": "a8d33974ab618f8799703097449068dd3755b588040488852d55fbec51cb92c9"
+    },
+    "look-context3-exit1": {
+      "frames": 240,
+      "sha256": "621f10fddb422fab8eb7095ca3c64bba4d063983cf38bbca92397e7af785363f"
+    },
+    "look-context4-exit1": {
+      "frames": 240,
+      "sha256": "a8d33974ab618f8799703097449068dd3755b588040488852d55fbec51cb92c9"
+    },
+    "look-context1-exit2": {
+      "frames": 240,
+      "sha256": "2ba179818cec4626645cd651084d406f5aac1df11ac12f3840bbb7d255252e95"
+    },
+    "look-context31-exit2": {
+      "frames": 240,
+      "sha256": "2ba179818cec4626645cd651084d406f5aac1df11ac12f3840bbb7d255252e95"
+    },
+    "look-context2-exit2": {
+      "frames": 240,
+      "sha256": "2ba179818cec4626645cd651084d406f5aac1df11ac12f3840bbb7d255252e95"
+    },
+    "look-context3-exit2": {
+      "frames": 240,
+      "sha256": "bee1a67591d5146aae028b7d71c90b307df78047a2b3480312f8e260523310c8"
+    },
+    "look-context4-exit2": {
+      "frames": 240,
+      "sha256": "2ba179818cec4626645cd651084d406f5aac1df11ac12f3840bbb7d255252e95"
+    },
+    "look-context1-exit4": {
+      "frames": 240,
+      "sha256": "d34781e7f4af964d0f38eef3a50109d434e08954bee1a625e793a21f7db45866"
+    },
+    "look-context31-exit4": {
+      "frames": 240,
+      "sha256": "d34781e7f4af964d0f38eef3a50109d434e08954bee1a625e793a21f7db45866"
+    },
+    "look-context2-exit4": {
+      "frames": 240,
+      "sha256": "d34781e7f4af964d0f38eef3a50109d434e08954bee1a625e793a21f7db45866"
+    },
+    "look-context3-exit4": {
+      "frames": 240,
+      "sha256": "4601459589b8c3a7aeb0d03333de5c1181d886ac0c5ca9ae5f44bdfe165ee9a8"
+    },
+    "look-context4-exit4": {
+      "frames": 240,
+      "sha256": "d34781e7f4af964d0f38eef3a50109d434e08954bee1a625e793a21f7db45866"
+    },
+    "entry-held-A": {
+      "frames": 260,
+      "sha256": "8ae4a8cb9c4c475dfb2745186be29b974bd63cbd7bf436b47f439b418a4f4d32"
+    },
+    "entry-held-Cup": {
+      "frames": 260,
+      "sha256": "b98d0b5221a5e7b5e06a8bd6f6ac4c3d81307434d9ffbeeae52046a10eb667ae"
+    },
+    "loss-24": {
+      "frames": 260,
+      "sha256": "7718a9e3880ab0897dbc483f245fc97337a2b83020fb0bff9ad6b9b620c97670"
+    },
+    "loss-25": {
+      "frames": 260,
+      "sha256": "9f0bc87bc00f9b386eb171871d8c4a032d60f04b683da052b4bf3cc6f4c063eb"
+    },
+    "loss-26": {
+      "frames": 260,
+      "sha256": "9f0bc87bc00f9b386eb171871d8c4a032d60f04b683da052b4bf3cc6f4c063eb"
+    },
+    "positive-vy": {
+      "frames": 260,
+      "sha256": "9f0bc87bc00f9b386eb171871d8c4a032d60f04b683da052b4bf3cc6f4c063eb"
+    },
+    "reenter-exit-denied": {
+      "frames": 260,
+      "sha256": "074996e02106439fe5e4b8a95d2bd81294cc2bcd8deebb1bf44aba6777b01032"
+    },
+    "fast-zone4": {
+      "frames": 260,
+      "sha256": "245bd9567597842d9a9f2f74c89e76f5464429466b4137e2484c39670e5fa754"
+    },
+    "pitch-limits": {
+      "frames": 260,
+      "sha256": "be15e2193975ab553395c8457fd9a9a6c11f8af99a381a2c033b41341cb839ac"
+    }
+  },
+  "original_sources": {
+    "src/core2/nc/ba/1p.c": "2d043e2d760aee61869acff8957e357b5aa43632333c9139ad5b15fe01cbdd2c",
+    "src/core2/bs/dronelook.c": "59c84e599e36d79ea68e4c84c22db2f8272e3e0104d5cbd094a9c1fee0a3c2b6",
+    "src/core2/nc/dynamicCamera.c": "061d18826e675ca90d4c24592241f80787ff80d7036c3dd8372287d1d2d00d6a",
+    "src/core1/ml.c": "6c69625c7ca05f3fa61c87538289c692f46cdabe3e66718b5141ef707e594b99",
+    "src/core2/bainput.c": "5363e74577caff6f2a96424e9fcc48e0d61c4e77f8e36f188422fc6b8029fb2f",
+    "src/core2/playerutils.c": "20ccaea399312d92345fef70f22e87d92d7fc82e8505855ef9a6ffa187705f86",
+    "src/core2/bs/stand.c": "d7dcd3d910dcf30cdd5bdfaf68175b9a3e8c0cc62e984e709219324d8da5cc78",
+    "src/core2/bs/walk.c": "6c7c16270e29892f151c120fe02654385203bc7972e4fae004b29ebcd1e4ce99",
+    "src/core2/code_14420.c": "2fb54b34e85dfeacc3a934e47e0e596b9c8d2c19648d723746037c670e905787",
+    "src/core2/code_7060.c": "fd04ac99654fdb2b625ae0bcd5230fbcc2a37a2570971466a84d3d174c7cd16f",
+    "lib/ultralib/src/gu/sinf.c": "bfdf8d17facc510edfc46dab2e9dd607cebbb462317de4d74a1e568e579645f2",
+    "include/enums.h": "cc99c72d8ac68b177d572d65002ac43b0ba99b0e520d2b189478e22d474575ee",
+    "src/core2/bakey.c": "552d2e847a14995acc2dfbfe528a25469095896e72fdcb268e84dcafd8888f70"
+  }
+}
