@@ -186,7 +186,7 @@ class ManualRuntimeTests(unittest.TestCase):
         main=(ROOT/'platform/3ds/source/main.c').read_text()
         self.assertIn('cameraRuntimeManualInput(&rareCamera, BANJO_DEBUG_CAMERA ? 0 : controls.manual, 0x23)',main)
         self.assertLess(main.index('cameraRuntimeMovementInput(&rareCamera'),main.index('cameraRuntimeMove(&rareCamera'))
-        self.assertIn('rareCamera.manual.viewport_position[0]',main)
+        self.assertIn('rareCamera.visible_position[0]',main)
         self.assertNotIn('rareCamera.camera',main)
         # D-D supplies translated normal input; debug still supplies neutral.
         # There remains exactly one controller-input submission per frame.

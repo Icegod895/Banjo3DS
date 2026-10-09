@@ -7,6 +7,7 @@
 #include "floor_bridge.h"
 #include "renderer_culling.h"
 #include "../../../tools/banjo3ds/bridge_state/queries.h"
+#include "../../../tools/banjo3ds/camera_first_person/first_person.h"
 
 enum { CAMERA_RUNTIME_OK=1, CAMERA_RUNTIME_WAIT=0,
        CAMERA_RUNTIME_QUERY_FAILED=-1, CAMERA_RUNTIME_UNSUPPORTED=-2,
@@ -30,6 +31,10 @@ typedef struct {
     BpState body; /* 16-byte player history, separate from camera contact state. */
     BpSharedScratch query_scratch; /* Sequential player -> camera lease.
                                    * No separate persistent observer/trace copy. */
+    FpCamera first_person;
+    float first_person_gains[4];
+    int32_t model_visible;
+    float visible_position[3], visible_rotation[3];
 } CameraRuntime;
 
 /* Deterministic B.9 viewport seed; first real update selects the actual zone.
@@ -47,6 +52,11 @@ int cameraRuntimeMove(CameraRuntime *s,PlayerRuntime *player,
 /* Held logical BM_* inputs; enabled is the original bainput mask (bits 0,1,5).
  * Viewer supplies zero buttons. Repeated updates derive edges in bm_update. */
 void cameraRuntimeManualInput(CameraRuntime *s,uint32_t buttons,uint32_t enabled);
+/* Update DroneLook before physics, using the previous internal camera. */
+void cameraRuntimeFirstPersonInput(CameraRuntime *,PlayerRuntime *,uint32_t,
+    float stick_x,float stick_y,float dt,int vi_frames);
+bool cameraRuntimeFirstPersonActive(const CameraRuntime *);
+bool cameraRuntimeModelVisible(const CameraRuntime *);
 /* Read BEFORE the player/camera update: movement follows the previous visible
  * viewport yaw even while the internal R camera has already moved. */
 void cameraRuntimeMovementInput(const CameraRuntime *s,bool debug,float debug_yaw,

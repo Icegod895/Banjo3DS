@@ -2,6 +2,44 @@
 #include <math.h>
 #include <string.h>
 
+static void firstPersonZeroVelocity(PlayerRuntime *s) {
+    memset(s->horizontal.velocity,0,sizeof(s->horizontal.velocity));
+    memset(s->horizontal.target,0,sizeof(s->horizontal.target));
+    s->horizontal.target_speed=0.0f;
+}
+
+void playerRuntimeFirstPersonUpdate(PlayerRuntime *s,FpCamera *camera,const FpClock *clock,
+    const FpLookInput *input,const float internal_position[3],const float internal_rotation[3]) {
+    if(!s || !camera || !clock || !input || !internal_position || !internal_rotation)return;
+    const bool was=s->first_person.active!=0;
+    const bool update_yaw=was && camera->state==FP_IDLE;
+    fp_look_update(&s->first_person,camera,clock,input,internal_position,internal_rotation);
+    if(update_yaw) {
+        s->motion.actor.yaw=s->first_person.ideal_yaw;
+        s->horizontal.ideal_yaw=s->first_person.ideal_yaw;
+        s->horizontal.visible_yaw=s->first_person.ideal_yaw;
+        s->horizontal.heading=s->first_person.ideal_yaw;
+    }
+    if(s->first_person.requested==152) {
+        /* bsDroneLook_init requests the normal 006F loop and resets the
+         * existing gait pose; the packet/evaluator remains the shared path. */
+        s->locomotion.gait=BANJO_GAIT_IDLE;
+        s->gait.initialized=false;
+    }
+    /* Entry, active frames, and the exit edge all consume movement/jump for
+     * this frame.  The original DroneLook init also clears velocity. */
+    s->first_person_blocks=was || s->first_person.active ||
+        s->first_person.requested==152 || s->first_person.requested==1;
+    if(s->first_person_blocks)firstPersonZeroVelocity(s);
+}
+
+bool playerRuntimeFirstPersonActive(const PlayerRuntime *s) {
+    return s && s->first_person.active!=0;
+}
+bool playerRuntimeFirstPersonBlocks(const PlayerRuntime *s) {
+    return s && s->first_person_blocks;
+}
+
 void playerRuntimeMoveStepped(PlayerRuntime *s,float x,float y,float yaw,float dt,
                        bool jumpPressed,bool cameraMode,const FloorVertex *v,const FloorTriangle *t,size_t n,
                        BanjoCandidateObserver observe,void *context,const MovementOverlay *overlay,

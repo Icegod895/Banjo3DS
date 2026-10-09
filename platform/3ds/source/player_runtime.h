@@ -3,6 +3,7 @@
 #include "jump.h"
 #include "jump_animation.h"
 #include "gait_motion.h"
+#include "../../../tools/banjo3ds/camera_first_person/first_person.h"
 /* Thin integration of the proven movement/gait/jump modules, no new physics.
  * Separate controller storage makes both handoffs explicit, without aliasing. */
 typedef struct {
@@ -16,6 +17,8 @@ typedef struct {
     BanjoHorizontalMetrics metrics;
     BanjoGaitMotion locomotion;
     bool horizontalInitialized;
+    FpLook first_person;
+    bool first_person_blocks;
 } PlayerRuntime;
 /* Initialize motion.actor and motion.grounded; zero all remaining fields. */
 void playerRuntimeMove(PlayerRuntime *s, float x, float y, float cameraYaw, float dt,
@@ -35,6 +38,12 @@ typedef unsigned (*PlayerMotionStep)(void *,BanjoJumpMotion *,BanjoHorizontal *,
 void playerRuntimeMoveStepped(PlayerRuntime *,float,float,float,float,bool,bool,
     const FloorVertex *,const FloorTriangle *,size_t,BanjoCandidateObserver,void *,
     const MovementOverlay *,PlayerMotionStep,void *);
+/* DroneLook is a gameplay-state boundary.  It consumes logical N64 camera
+ * input and updates only first-person state; the caller still owns physics. */
+void playerRuntimeFirstPersonUpdate(PlayerRuntime *,FpCamera *,const FpClock *,
+    const FpLookInput *,const float internal_position[3],const float internal_rotation[3]);
+bool playerRuntimeFirstPersonActive(const PlayerRuntime *);
+bool playerRuntimeFirstPersonBlocks(const PlayerRuntime *);
 /* Caller waits for GPU completion, then flushes the actor range afterwards. */
 bool playerRuntimeWriteVertices(const PlayerRuntime *s, const uint8_t *packet, void *vertices,
                                 size_t total, size_t first, size_t count, size_t stride);

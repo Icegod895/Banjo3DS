@@ -1,6 +1,7 @@
-# M4.10E-B: host-only first-person correctness boundary
+# M4.10E: first-person correctness boundary and native runtime integration
 
-No viewer linkage or existing camera changes. `first_person.c` uses no heap,
+`first_person.c` is the shared proven host/native component. The 3DS runtime
+links it without a second camera algorithm; it uses no heap,
 collision data, camera singleton or production reference helper. Callers supply
 finite original-domain values. This is not a replacement player controller.
 
@@ -14,9 +15,9 @@ finite original-domain values. This is not a replacement player controller.
   explicit `FpClock` (24 bytes). It changes only its own state, output viewport
   and external model-visible flag. Underlying internal camera remains untouched.
 * `FpLook` (144 bytes, including 64 event bytes) observes normal DroneLook's
-  service requests/held history. Animation playback, velocity integration and
-  destination-state initialization remain caller-owned. It is intentionally an
-  isolated orchestration boundary, not a live PlayerRuntime allocation plan.
+  service requests/held history. The native PlayerRuntime consumes the entry
+  006F reset through the shared gait packet; velocity integration and
+  destination-state initialization remain caller-owned.
 * `fp_look_update` runs BEFORE external physics. It samples input XYZ+100, sets
   look targets, and requests entry/exit. A/B/C-up during IDLE request normal idle;
   they do not forward a jump/attack. The caller may resume gameplay while camera
@@ -104,14 +105,16 @@ Full suite: `python3 -B -m unittest discover -s tools/banjo3ds/tests -q`
 
 No water/forms, scripted look-at/interrupts, camera shake or other viewport
 effects; no eggs/crouch implementation, skid or complete gait/physics solver.
-No new 3DS mapping, raw-stick normalization, rendering visibility integration,
-projection/culling changes or camera collision. Stick axes are explicit normalized
+No new physical mapping, projection/culling changes or camera collision. Stick axes are explicit normalized
 original-domain inputs, not a claim that the port radial movement deadzone is the
 N64 per-axis normalization. The existing 006F evaluator is not modified/tested
 as part of the animation-event boundary.
 
-The next layer would need to consume these gameplay events at the proven
-pre-physics boundary, then apply the FP viewport layer AFTER the accepted manual
-camera transition, with shared visible viewport for view/SORT/movement heading.
-C-down's original LOOK suppression is an orchestration dependency; do not disable
-all manual/zone updates. That integration is deliberately NOT performed here.
+The native runtime consumes the events at the proven pre-physics boundary and
+applies the FP viewport layer AFTER the accepted manual/zone camera update.
+The underlying internal camera remains the owner of zones, contact, smoothing
+and history; the renderer receives the overlaid visible viewport. `FpCamera`
+and `FpLook` add 80 and 144 persistent bytes respectively, plus four gain
+floats and one visibility flag. The runtime reuses the existing VBO and does
+not copy collision/model packets. Physical mapping remains in the existing
+input translator; no new button mapping is introduced here.

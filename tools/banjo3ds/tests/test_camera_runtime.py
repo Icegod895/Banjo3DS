@@ -28,12 +28,15 @@ from test_bridge_state import State as BridgeState
 from body_corpus import History as BodyHistory
 from test_camera_zones import Data as ZoneData, Selection as ZoneSelection
 from test_body import Scratch as BodyScratch
+F=C.c_float
+class FirstPersonCamera(C.Structure):
+    _fields_=[('position',F*3),('rotation',F*3),('eye',F*3),('look',F*3),
+              ('source',F*3),('source_rotation',F*3),('timer',F),('state',C.c_int32)]
 
 class RuntimeModel(Model):
     _fields_=[("bridge_state",C.POINTER(BridgeState))]
 
 ROOT=reference.ROOT
-F=C.c_float
 from ground_corpus import State as GroundPhase
 class GroundRuntime(C.Structure):
     _fields_=[('phase',GroundPhase),('fall_request',C.c_uint32),('jump_flight',C.c_bool)]
@@ -44,6 +47,8 @@ class Runtime(C.Structure):
         ('view',(F*4)*4),('pre',F*3),('calls',C.c_uint),('status',C.c_int),('parity',C.c_int),
         ('initialized',C.c_bool),('floor_ready',C.c_bool),('view_ready',C.c_bool),
         ('world_bridge',BridgeState),('learned_abilities',C.c_uint32),('player_ground',GroundRuntime),('body',BodyHistory),('scratch',BodyScratch)]
+    _fields_ += [('first_person',FirstPersonCamera),('first_person_gains',F*4),('model_visible',C.c_int32),
+                  ('visible_position',F*3),('visible_rotation',F*3)]
 
     @property
     def camera(self):return self.manual.camera
@@ -107,6 +112,7 @@ size_t packet_size(int n){return n?sizeof(camera_xlu_packet):sizeof(camera_opa_p
 int runtime_cull(const CameraRuntime *s,unsigned cull){return rendererCullMode(cull,s->parity);}
 ''')
         sources=['platform/3ds/source/'+s for s in ('camera_runtime.c','player_runtime.c','player_ground.c','movement.c','player_input.c')]
+        sources += ['tools/banjo3ds/camera_first_person/first_person.c']
         sources += ['tools/banjo3ds/'+s for s in ('pose/pose.c','gait/gait.c','gait/gait_motion.c',
             'horizontal/horizontal.c','body/body.c','body/frame.c','ground/ground.c','jump/jump.c','jump/jump_animation.c','camera/camera.c',
             'camera_contact/contact.c','camera_contact/free_b.c','camera_zones/zones.c',
@@ -135,6 +141,9 @@ int runtime_cull(const CameraRuntime *s,unsigned cull){return rendererCullMode(c
             lib=C.CDLL(str(out));cls.libs.append(lib)
             lib.runtime_size.restype=C.c_size_t
             lib.cameraRuntimeManualInput.argtypes=[C.POINTER(Runtime),C.c_uint32,C.c_uint32]
+            lib.cameraRuntimeFirstPersonInput.argtypes=[C.POINTER(Runtime),C.POINTER(Player),C.c_uint32,F,F,F,C.c_int]
+            lib.cameraRuntimeFirstPersonActive.argtypes=[C.POINTER(Runtime)];lib.cameraRuntimeFirstPersonActive.restype=C.c_bool
+            lib.cameraRuntimeModelVisible.argtypes=[C.POINTER(Runtime)];lib.cameraRuntimeModelVisible.restype=C.c_bool
             lib.cameraRuntimeMovementInput.argtypes=[C.POINTER(Runtime),C.c_bool,F,F,F,C.POINTER(F)]
             lib.cameraRuntimeSetLearnedAbilities.argtypes=[C.POINTER(Runtime),C.c_uint32]
             lib.cameraRuntimeUpdateView.argtypes=[C.POINTER(Runtime),C.POINTER(cam.Input),C.POINTER(F)]
@@ -183,6 +192,27 @@ int runtime_cull(const CameraRuntime *s,unsigned cull){return rendererCullMode(c
                 self.assertEqual(actual,expected)
                 self.assertEqual(model.vertices,address+64)
                 self.assertEqual(model.collision,address+64+struct.unpack_from('>I',actual,24)[0])
+
+    def test_first_person_entry_exit_consumption_and_underlying_camera_preserved(self):
+        for lib in self.libs:
+            s,p=self.start(lib);p.motion.vy=-1.0
+            lib.cameraRuntimeFirstPersonInput(C.byref(s),C.byref(p),4,F(0),F(0),F(.05),1)
+            self.assertTrue(lib.cameraRuntimeFirstPersonActive(C.byref(s)))
+            self.assertTrue(bool(p.first_person_blocks))
+            self.assertEqual((p.events,p.motion.actor.x,p.motion.actor.z),(0,0,0))
+            self.assertEqual(self.move(lib,s,p,dt=.05,orbit=True),1)
+            # DroneLook overlays only the visible viewport; internal B/zone state
+            # remains the owner of contact, smoothing and history.
+            self.assertTrue(all(math.isfinite(v) for v in s.manual.camera.position))
+            for _ in range(40):
+                lib.cameraRuntimeFirstPersonInput(C.byref(s),C.byref(p),0,F(.25),F(-.25),F(.05),1)
+                self.assertTrue(self.move(lib,s,p,dt=.05,orbit=True) in (0,1))
+            self.assertTrue(lib.cameraRuntimeFirstPersonActive(C.byref(s)))
+            self.assertNotEqual(p.motion.actor.yaw,0.0)
+            lib.cameraRuntimeFirstPersonInput(C.byref(s),C.byref(p),1,F(0),F(0),F(.05),1)
+            self.assertTrue(bool(p.first_person_blocks))
+            self.assertFalse(p.first_person.active)
+            self.assertTrue(self.move(lib,s,p,dt=.05,orbit=True) in (0,1))
 
     def test_historical_B9_candidate_goldens_remain_unchanged_O0_O2(self):
         # E.1B intentionally replaces the old player's fail-closed trajectories.

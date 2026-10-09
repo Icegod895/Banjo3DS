@@ -95,6 +95,16 @@ static float cameraPadAxis(s16 value)
     return 0.0f;
 }
 
+static uint32_t firstPersonButtons(uint32_t logical)
+{
+    uint32_t out=0;
+    if(logical&PI_N64_A)out|=FP_A;
+    if(logical&PI_N64_B)out|=FP_B;
+    if(logical&PI_N64_CUP)out|=FP_CUP;
+    if(logical&PI_N64_Z)out|=FP_Z;
+    return out;
+}
+
 static void cameraReset(void)
 {
     camera.yawDegrees = 145.0f;
@@ -624,8 +634,8 @@ static void sceneDrawRange(unsigned int first, unsigned int count,
 static C3D_FVec cameraSortProxyEye(void)
 {
     if (!BANJO_DEBUG_CAMERA)
-        return FVec4_New(rareCamera.manual.viewport_position[0], rareCamera.manual.viewport_position[1],
-            rareCamera.manual.viewport_position[2], 1.0f);
+        return FVec4_New(rareCamera.visible_position[0], rareCamera.visible_position[1],
+            rareCamera.visible_position[2], 1.0f);
     return FVec4_New(
         camera.focusX - camera.eyeDistance * modelView.r[2].x,
         camera.focusY - camera.eyeDistance * modelView.r[2].y,
@@ -698,7 +708,8 @@ static void sceneRender(void)
     // Keep camera modelView intact, including the SORT proxy-eye calculation.
     Mtx_Multiply(&actorModelView, &modelView, &world);
     C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, uLoc_modelView, &actorModelView);
-    sceneDrawRange(BANJO_ACTOR_FIRST_DRAW, BANJO_ACTOR_DRAW_COUNT, &render_state);
+    if (cameraRuntimeModelVisible(&rareCamera))
+        sceneDrawRange(BANJO_ACTOR_FIRST_DRAW, BANJO_ACTOR_DRAW_COUNT, &render_state);
     C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, uLoc_modelView, &modelView);
     xlu_first_draw += BANJO_ACTOR_DRAW_COUNT;
 #endif
@@ -792,12 +803,18 @@ int main(void)
         hidCstickRead(&cstick);
         PlayerInputFrame controls = playerInputUpdate(&playerInput, held, cstick.dx, cstick.dy);
         cameraRuntimeManualInput(&rareCamera, BANJO_DEBUG_CAMERA ? 0 : controls.manual, 0x23);
+        if (!BANJO_DEBUG_CAMERA)
+            cameraRuntimeFirstPersonInput(&rareCamera, &player,
+                firstPersonButtons(controls.held), cameraPadAxis(pad.dx), cameraPadAxis(pad.dy), dt, viFrames);
+        else
+            player.first_person_blocks=false;
+        const bool firstPersonBlocks=playerRuntimeFirstPersonBlocks(&player);
         cameraRuntimeMovementInput(&rareCamera, BANJO_DEBUG_CAMERA, camera.yawDegrees,
             pad.dx, pad.dy, movementInput);
         cameraRuntimeStatus = cameraRuntimeMove(&rareCamera, &player,
             movementInput[0], movementInput[1], movementInput[2], dt, viFrames,
-            BANJO_DEBUG_CAMERA ? (down & KEY_A) != 0 : controls.jump_pressed,
-            BANJO_DEBUG_CAMERA ? (held & KEY_Y) != 0 : controls.suppress_movement,
+            BANJO_DEBUG_CAMERA ? (down & KEY_A) != 0 : (controls.jump_pressed && !firstPersonBlocks),
+            BANJO_DEBUG_CAMERA ? (held & KEY_Y) != 0 : (controls.suppress_movement || firstPersonBlocks),
             banjo_floor_vertices, banjo_floor_triangles, BANJO_FLOOR_TRIANGLE_COUNT);
         if (!BANJO_DEBUG_CAMERA && rareCamera.view_ready)
             cameraApplyRareView();

@@ -34,6 +34,7 @@ def player_library(opt):
         'memcpy(floor_test_candidate,end,12);\n    float hit[3];\n    if(banjo_jump_sweep')
     (p/'jump.c').write_text(source)
     sources=['platform/3ds/source/player_runtime.c','platform/3ds/source/movement.c',
+        'tools/banjo3ds/camera_first_person/first_person.c',
         'tools/banjo3ds/pose/pose.c','tools/banjo3ds/gait/gait.c','tools/banjo3ds/gait/gait_motion.c',
         'tools/banjo3ds/horizontal/horizontal.c','tools/banjo3ds/jump/jump_animation.c']
     subprocess.run(['cc',*FLAGS,opt,'-Wall','-Wextra','-Werror','-shared','-fPIC',

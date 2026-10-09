@@ -40,6 +40,10 @@ bool cameraRuntimeInit(CameraRuntime *s,const PlayerRuntime *player,
     if(!s || !player || !zones || !zones->triggers || !zones->groups || !zones->nodes
        || zones->group_count!=27 || zones->node_count!=43)return false;
     memset(s,0,sizeof(*s));s->status=CAMERA_RUNTIME_INVALID;
+    fp_reset(&s->first_person);
+    s->first_person_gains[0]=10.0f;s->first_person_gains[1]=10.0f;
+    s->first_person_gains[2]=120.0f;s->first_person_gains[3]=120.0f;
+    s->model_visible=1;
     bridge_init(&s->world_bridge);
     playerGroundInit(&s->player_ground,&player->motion);
     if(bridge_model_open(&s->opa,opa,opa_size,&s->world_bridge)!=1 ||
@@ -53,6 +57,8 @@ bool cameraRuntimeInit(CameraRuntime *s,const PlayerRuntime *player,
     const float eye[3]={a->x,a->y+375,a->z-850},rotation[3]={340,180,0};
     /* Explicit B.9 bootstrap seed, not a published floor_getXPosition result. */
     bm_init(&s->manual,&s->math,&in,eye,rotation);
+    memcpy(s->visible_position,s->manual.viewport_position,sizeof(s->visible_position));
+    memcpy(s->visible_rotation,s->manual.viewport_rotation,sizeof(s->visible_rotation));
     if(!cameraRareView(&s->manual.camera,s->view,&s->parity))return false;
     s->initialized=true;s->status=CAMERA_RUNTIME_WAIT;return true;
 }
@@ -117,6 +123,48 @@ static int cameraRuntimeMoveQueries(CameraRuntime *s,PlayerRuntime *player,
 void cameraRuntimeSetLearnedAbilities(CameraRuntime *s,uint32_t bits) {
     if(s)s->learned_abilities=bits;
 }
+
+static int firstPersonZone(float x,float y) {
+    float m=sqrtf(x*x+y*y);
+    if(m<=.12f)return 0;
+    if(m<=.20f)return 1;
+    if(m<=.50f)return 2;
+    if(m<=.75f)return 3;
+    return 4;
+}
+static int firstPersonContext(const PlayerRuntime *player) {
+    switch((BanjoGait)player->locomotion.gait) {
+        case BANJO_GAIT_CREEP:return 31;
+        case BANJO_GAIT_SLOW:return 2;
+        case BANJO_GAIT_WALK:return 3;
+        case BANJO_GAIT_FAST:return 4;
+        default:return 1;
+    }
+}
+
+void cameraRuntimeFirstPersonInput(CameraRuntime *s,PlayerRuntime *player,uint32_t buttons,
+    float stick_x,float stick_y,float dt,int vi_frames) {
+    if(!s || !player || !s->initialized || !isfinite(dt) || dt<0 || dt>.05f || vi_frames<1 || vi_frames>15)return;
+    const MovementActor *a=&player->motion.actor;
+    FpLookInput in={0};
+    in.player[0]=a->x;in.player[1]=a->y;in.player[2]=a->z;
+    in.yaw=a->yaw;in.floor=s->player_ground.phase.floor_height;
+    in.vy=player->motion.verticalVelocity;in.speed=player->metrics.physics_speed;
+    in.target_speed=player->metrics.target_speed;in.stick_x=stick_x;in.stick_y=stick_y;
+    in.buttons=buttons;in.stable_flag=player->motion.grounded?1:0;
+    in.zone=firstPersonZone(stick_x,stick_y);in.context=firstPersonContext(player);
+    FpClock clock={dt,{s->first_person_gains[0],s->first_person_gains[1],
+                       s->first_person_gains[2],s->first_person_gains[3]},vi_frames};
+    playerRuntimeFirstPersonUpdate(player,&s->first_person,&clock,&in,
+        s->manual.camera.position,s->manual.camera.rotation);
+}
+
+bool cameraRuntimeFirstPersonActive(const CameraRuntime *s) {
+    return s && s->first_person.state!=0 && s->first_person.state!=FP_DONE;
+}
+bool cameraRuntimeModelVisible(const CameraRuntime *s) {
+    return !s || s->model_visible!=0;
+}
 int cameraRuntimeMove(CameraRuntime *s,PlayerRuntime *player,
     float x,float y,float yaw,float dt,int vi,bool jump,bool camera_mode,
     const FloorVertex *vertices,const FloorTriangle *triangles,size_t count) {
@@ -156,6 +204,17 @@ int cameraRuntimeUpdateView(CameraRuntime *s,const BanjoCameraInput *in,const fl
     BanjoCamera visible=next.camera;
     memcpy(visible.position,next.viewport_position,sizeof(visible.position));
     memcpy(visible.rotation,next.viewport_rotation,sizeof(visible.rotation));
+    if(s->first_person.state==FP_ENTER || s->first_person.state==FP_IDLE || s->first_person.state==FP_EXIT) {
+        FpClock clock={in->dt,{s->first_person_gains[0],s->first_person_gains[1],
+                               s->first_person_gains[2],s->first_person_gains[3]},in->vi_frames};
+        float position[3],rotation[3];
+        memcpy(position,visible.position,sizeof(position));memcpy(rotation,visible.rotation,sizeof(rotation));
+        int event=fp_view(&s->first_person,&clock,position,rotation,&s->model_visible);
+        (void)event;
+        memcpy(visible.position,position,sizeof(position));memcpy(visible.rotation,rotation,sizeof(rotation));
+    }
+    memcpy(s->visible_position,visible.position,sizeof(s->visible_position));
+    memcpy(s->visible_rotation,visible.rotation,sizeof(s->visible_rotation));
     if(!cameraRareView(&visible,view,&parity))return s->status=CAMERA_RUNTIME_INVALID;
     s->manual=next;memcpy(s->view,view,sizeof(view));s->parity=parity;
     s->view_ready=true;return s->status=CAMERA_RUNTIME_OK;
@@ -167,6 +226,12 @@ void cameraRuntimeManualInput(CameraRuntime *s,uint32_t buttons,uint32_t enabled
 void cameraRuntimeMovementInput(const CameraRuntime *s,bool debug,float debug_yaw,
     float pad_x,float pad_y,float input[3]) {
     BanjoCamera visible={0};
-    memcpy(visible.rotation,s->manual.viewport_rotation,sizeof(visible.rotation));
+    /* This is the viewport that was actually rendered last frame.  It equals
+     * the ordinary manual viewport outside DroneLook and also preserves the
+     * first-person overlay during its transition. */
+    if(s->first_person.state==FP_ENTER || s->first_person.state==FP_IDLE || s->first_person.state==FP_EXIT)
+        memcpy(visible.rotation,s->visible_rotation,sizeof(visible.rotation));
+    else
+        memcpy(visible.rotation,s->manual.viewport_rotation,sizeof(visible.rotation));
     cameraMovementInput(&visible,debug,debug_yaw,pad_x,pad_y,input);
 }

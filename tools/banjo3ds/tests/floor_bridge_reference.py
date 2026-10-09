@@ -32,7 +32,7 @@ def observer(opt):
     player=(ROOT/'platform/3ds/source/player_runtime.c').read_text().replace('#include <string.h>','#include <string.h>\nextern unsigned floor_test_count;')
     player=player.replace('if(!s || !isfinite(dt)', 'floor_test_count=0;\n    if(!s || !isfinite(dt)',1)
     (p/'player_runtime.c').write_text(player)
-    sources=['platform/3ds/source/movement.c','tools/banjo3ds/pose/pose.c','tools/banjo3ds/gait/gait.c',
+    sources=['platform/3ds/source/movement.c','tools/banjo3ds/camera_first_person/first_person.c','tools/banjo3ds/pose/pose.c','tools/banjo3ds/gait/gait.c',
         'tools/banjo3ds/gait/gait_motion.c','tools/banjo3ds/horizontal/horizontal.c','tools/banjo3ds/jump/jump_animation.c']
     subprocess.run(['cc',*FLAGS,opt,'-Wall','-Wextra','-Werror','-shared','-fPIC',
        *['-I'+str(ROOT/d) for d in ('platform/3ds/source','tools/banjo3ds/jump','tools/banjo3ds/pose','tools/banjo3ds/gait')],

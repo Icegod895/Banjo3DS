@@ -22,11 +22,18 @@ from test_horizontal import State as Horizontal, Metrics
 F=C.c_float
 class GaitMotion(C.Structure):
     _fields_=[('timer',F),('gait',C.c_uint8)]
+class FirstPersonLook(C.Structure):
+    _fields_=[('velocity',F*3),('target_speed',F),('ideal_yaw',F),('animation_duration',F),
+              ('buttons',C.c_uint32),('active',C.c_int32),('flag',C.c_int32),('animation',C.c_int32),
+              ('animation_starts',C.c_int32),('entries',C.c_int32),('exits',C.c_int32),
+              ('update_types',C.c_int32*4),('sound',C.c_int32),('requested',C.c_int32),
+              ('event_count',C.c_int32),('events',C.c_int32*16)]
 class Player(C.Structure):
     _fields_=[('motion',Motion),('gait',GaitState),('jump',Animation),('events',C.c_uint),
               ('speed',F),('accepted',C.c_bool),('jumpActive',C.c_bool),
               ('horizontal',Horizontal),('metrics',Metrics),('locomotion',GaitMotion),
-              ('horizontalInitialized',C.c_bool)]
+              ('horizontalInitialized',C.c_bool),
+              ('first_person',FirstPersonLook),('first_person_blocks',C.c_bool)]
 
 class JumpRuntimeTests(unittest.TestCase):
     @classmethod
@@ -40,7 +47,8 @@ class JumpRuntimeTests(unittest.TestCase):
                 *['-I'+str(ROOT/p) for p in ('platform/3ds/source','tools/banjo3ds/pose','tools/banjo3ds/gait','tools/banjo3ds/jump')],
                 *[str(ROOT/p) for p in ('tools/banjo3ds/pose/pose.c','tools/banjo3ds/gait/gait.c','tools/banjo3ds/gait/gait_motion.c',
                   'tools/banjo3ds/horizontal/horizontal.c','tools/banjo3ds/jump/jump.c','tools/banjo3ds/jump/jump_animation.c',
-                  'platform/3ds/source/movement.c','platform/3ds/source/player_runtime.c')],'-lm','-o',str(output)],check=True)
+                  'platform/3ds/source/movement.c','platform/3ds/source/player_runtime.c',
+                  'tools/banjo3ds/camera_first_person/first_person.c')],'-lm','-o',str(output)],check=True)
             lib=C.CDLL(str(output))
             lib.playerRuntimeMove.argtypes=[C.POINTER(Player),F,F,F,F,C.c_bool,C.c_bool,
                 C.POINTER(FloorVertex),C.POINTER(Triangle),C.c_size_t]
@@ -169,7 +177,7 @@ class JumpRuntimeTests(unittest.TestCase):
         for name,n in [('VERTEX',12600),('TEXTURE',97),('MATERIAL',469),('DRAW',510),
                        ('OPA_DRAW',436),('ACTOR_DRAW',28),('XLU_DRAW',46),('GEO_NODE',36)]:
             self.assertIn(f'#define BANJO_{name}_COUNT {n}\n',new)
-        self.assertEqual(C.sizeof(Player),42644)
+        self.assertEqual(C.sizeof(Player),42792)
 
     def test_main_uses_press_edge_and_wait_before_vbo_write_then_flush(self):
         source=(ROOT/'platform/3ds/source/main.c').read_text()

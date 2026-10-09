@@ -41,6 +41,7 @@ class Context(C.Structure):
 def production(opt):
     tmp=tempfile.TemporaryDirectory(prefix='body-frame-runtime-');p=Path(tmp.name)/'frame.so'
     sources=['platform/3ds/source/'+s for s in ('player_runtime.c','movement.c')]
+    sources.append('tools/banjo3ds/camera_first_person/first_person.c')
     sources+=['tools/banjo3ds/'+s for s in (
       'body/body.c','body/frame.c','ground/ground.c','world_query/segment.c','world_query/floor_state.c',
       'world_query/floor_bridge.c','bridge_state/bridge.c','bridge_state/query_segment.c',
