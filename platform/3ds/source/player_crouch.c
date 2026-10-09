@@ -16,7 +16,7 @@ enum { V4_PACKET = 28022, ENTER_BYTES = 2176, TURN_BYTES = 2576, NOINPUT_BYTES =
 
 static int32_t button_count[14], release_count[14];
 static int buttons_ready, yaw_ready, blocked, frame_ready, frame_context;
-static int last_requested, block_reentry, seen_starts;
+static int last_requested, block_reentry, seen_starts, posed_crouch;
 static uint32_t learned;
 static PlayerRuntime *bound;
 static float blend_source[109][10];
@@ -156,7 +156,24 @@ static bool animate(PlayerRuntime *s, const uint8_t *packet, size_t size, float 
     CrouchView v;
     int clip;
     (void)dt;
-    if (!s || !playerCrouchActive() || s->jumpActive) return false;
+    if (!s) return false;
+    /* One grounded crouch-to-idle edge. Gait already calls this clip 006F, so
+     * the updater would keep the crouch phase. Seed the rendered pose here
+     * and let that updater advance phase by dt/5.5 and factor by dt/0.2. */
+    if (s->jumpActive || !playerCrouchActive()) {
+        if (!s->jumpActive && posed_crouch && s->motion.grounded) {
+            banjo_crouch_view(&v);
+            if (v.state == BANJO_CROUCH_IDLE) {
+                memcpy(s->gait.source, s->gait.pose.bones, sizeof s->gait.source);
+                s->gait.phase = 0.0f;
+                s->gait.factor = 0.0f;
+                s->gait.gait = BANJO_GAIT_IDLE;
+                s->gait.initialized = true;
+            }
+        }
+        posed_crouch = 0;
+        return false;
+    }
     banjo_crouch_view(&v);
     clip = clip_for(v.anim_index);
     if (clip < 0) return false;
@@ -179,6 +196,7 @@ static bool animate(PlayerRuntime *s, const uint8_t *packet, size_t size, float 
     s->gait.gait = BANJO_GAIT_IDLE;
     s->gait.phase = v.anim_timer;
     s->gait.factor = v.anim_blend;
+    posed_crouch = 1;
     return true;
 }
 
@@ -198,6 +216,7 @@ void playerCrouchReset(float yaw) {
     last_requested = 0;
     block_reentry = 0;
     seen_starts = 0;
+    posed_crouch = 0;
     memset(blend_source, 0, sizeof blend_source);
 }
 void playerCrouchFrame(PlayerRuntime *s, uint32_t logical_held, int fp_blocked) {

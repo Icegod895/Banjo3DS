@@ -427,6 +427,217 @@ class CrouchRuntimeTests(unittest.TestCase):
         self.assertNotIn('#ifdef BANJO_LEARNED_ABILITIES', crouch)
         self.assertIn('if (!BANJO_DEBUG_CAMERA)\n            playerCrouchFrame(', main)
 
+    def fadd(self, a, b):
+        return F(F(a).value + F(b).value).value
+
+    def fsub(self, a, b):
+        return F(F(a).value - F(b).value).value
+
+    def fmul(self, a, b):
+        return F(F(a).value * F(b).value).value
+
+    def fdiv(self, a, b):
+        return F(F(a).value / F(b).value).value
+
+    def idle_advance(self, phase, factor, dt=DT):
+        dt = min(F(dt).value, F(0.05).value)
+        phase = self.fadd(phase, self.fdiv(dt, 5.5))
+        if phase >= 1.0:
+            phase = self.fsub(phase, int(phase))
+        factor = self.fadd(factor, self.fdiv(dt, 0.2))
+        if factor > 1.0:
+            factor = F(1.0).value
+        return phase, factor
+
+    def animate(self, lib, player, dt=DT):
+        return lib.playerRuntimeAnimate(C.byref(player), self.v5, len(self.v5), dt)
+
+    def assert_idle_pose(self, lib, player):
+        dest, mixed = Bones(), Bones()
+        self.assertTrue(lib.banjo_pose_sample(
+            self.v5, len(self.v5), 1, player.gait.phase, dest))
+        lib.banjo_pose_blend(mixed, player.gait.source, dest, player.gait.factor)
+        self.assertEqual(bytes(player.gait.pose.bones), bytes(mixed))
+
+    def hold_crouch(self, lib, player, frames=40):
+        for _ in range(frames):
+            self.step(lib, player, Z)
+            self.assertTrue(lib.playerCrouchActive())
+            self.assertTrue(self.animate(lib, player))
+        return bytes(player.gait.pose.bones), player.gait.phase
+
+    def test_crouch_to_idle_blends_from_the_final_pose(self):
+        for lib in self.libs:
+            player = self.fresh(lib)
+            crouch_pose, crouch_phase = self.hold_crouch(lib, player)
+            self.step(lib, player, 0)
+            got = self.view(lib)
+            self.assertEqual((got.state, got.active), (1, 0))
+            self.assertFalse(lib.playerCrouchActive())
+            self.assertEqual(bytes(player.gait.pose.bones), crouch_pose)
+            self.assertTrue(self.animate(lib, player))
+            phase, factor = self.idle_advance(0.0, 0.0)
+            self.assertEqual(player.gait.gait, 0)
+            self.assertEqual(player.gait.phase, phase)
+            self.assertEqual(player.gait.factor, factor)
+            self.assertNotEqual(player.gait.phase, crouch_phase)
+            self.assertEqual(bytes(player.gait.source), crouch_pose)
+            self.assert_idle_pose(lib, player)
+            idle = Bones()
+            self.assertTrue(lib.banjo_pose_sample(self.v5, len(self.v5), 1, phase, idle))
+            self.assertNotEqual(bytes(player.gait.pose.bones), crouch_pose)
+            self.assertNotEqual(bytes(player.gait.pose.bones), bytes(idle))
+            source = bytes(player.gait.source)
+            frames = 1
+            while player.gait.factor < 1.0:
+                self.step(lib, player, 0)
+                self.assertEqual(self.view(lib).state, 1)
+                self.assertFalse(lib.playerCrouchActive())
+                self.assertTrue(self.animate(lib, player))
+                frames += 1
+                phase, factor = self.idle_advance(phase, factor)
+                self.assertEqual(player.gait.phase, phase)
+                self.assertEqual(player.gait.factor, factor)
+                self.assertEqual(bytes(player.gait.source), source)
+                self.assertNotEqual(player.gait.phase, self.idle_advance(0.0, 0.0)[0])
+                self.assertLess(frames, 12)
+            self.assertEqual(player.gait.factor, F(1.0).value)
+            self.assertEqual(frames, 6)
+            self.assertAlmostEqual(frames * DT, 0.2, delta=DT)
+            continued = player.gait.phase
+            self.step(lib, player, 0)
+            self.assertTrue(self.animate(lib, player))
+            phase, factor = self.idle_advance(continued, 1.0)
+            self.assertEqual(player.gait.phase, phase)
+            self.assertEqual(player.gait.factor, F(1.0).value)
+            self.assertEqual(bytes(player.gait.source), source)
+            self.assertGreater(player.gait.phase, continued)
+
+    def test_rapid_crouch_tap_blends_from_the_intermediate_pose(self):
+        for lib in self.libs:
+            player = self.fresh(lib)
+            self.step(lib, player, Z)
+            self.assertTrue(self.animate(lib, player))
+            last = None
+            for _ in range(20):
+                last = self.view(lib)
+                self.step(lib, player, 0)
+                if not lib.playerCrouchActive():
+                    break
+                self.assertTrue(self.animate(lib, player))
+            else:
+                self.fail('crouch tap did not return to idle')
+            self.assertEqual(self.view(lib).state, 1)
+            self.assertEqual(last.anim_index, 1)
+            self.assertGreater(last.anim_timer, 0.0)
+            self.assertLess(last.anim_timer, 1.0)
+            crouch_pose = bytes(player.gait.pose.bones)
+            settled = Bones()
+            self.assertTrue(lib.banjo_pose_sample(self.v5, len(self.v5), 5, 1.0, settled))
+            self.assertNotEqual(crouch_pose, bytes(settled))
+            self.assertTrue(self.animate(lib, player))
+            phase, factor = self.idle_advance(0.0, 0.0)
+            self.assertEqual(bytes(player.gait.source), crouch_pose)
+            self.assertEqual(player.gait.phase, phase)
+            self.assertEqual(player.gait.factor, factor)
+            self.assertNotEqual(player.gait.phase, last.anim_timer)
+            self.step(lib, player, 0)
+            self.assertTrue(self.animate(lib, player))
+            phase, factor = self.idle_advance(phase, factor)
+            self.assertEqual(player.gait.phase, phase)
+            self.assertEqual(bytes(player.gait.source), crouch_pose)
+
+    def test_stick_release_keeps_the_following_gait_blend(self):
+        for lib in self.libs:
+            player = self.fresh(lib)
+            self.hold_crouch(lib, player)
+            player.locomotion.gait = 3
+            self.step(lib, player, 0, magnitude=0.6, stick=10)
+            self.assertEqual(self.view(lib).state, 1)
+            self.assertEqual(player.locomotion.gait, 0)
+            self.assertTrue(self.animate(lib, player))
+            phase, factor = self.idle_advance(0.0, 0.0)
+            self.assertEqual(player.gait.gait, 0)
+            self.assertEqual(player.gait.phase, phase)
+            self.assertEqual(player.gait.factor, factor)
+            mixed = bytes(player.gait.pose.bones)
+            player.locomotion.gait = 3
+            player.metrics.physics_speed = 180
+            self.step(lib, player, 0, magnitude=0.6, stick=10)
+            self.assertEqual(player.locomotion.gait, 3)
+            self.assertFalse(lib.playerCrouchActive())
+            self.assertTrue(self.animate(lib, player))
+            duration = self.fadd(self.fmul(
+                self.fdiv(self.fsub(180.0, 150.0), self.fsub(225.0, 150.0)),
+                self.fsub(0.58, 0.92)), 0.92)
+            self.assertEqual(player.gait.gait, 3)
+            self.assertEqual(bytes(player.gait.source), mixed)
+            self.assertEqual(player.gait.factor, self.fdiv(DT, 0.2))
+            self.assertEqual(player.gait.phase, self.fdiv(DT, duration))
+            self.assertNotEqual(player.gait.phase, self.idle_advance(phase, factor)[0])
+
+    def test_jump_fall_and_first_person_skip_the_idle_handoff(self):
+        for lib in self.libs:
+            released = self.fresh(lib)
+            self.step(lib, released, Z)
+            self.assertTrue(self.animate(lib, released))
+            crouch_pose = bytes(released.gait.pose.bones)
+            crouch_phase = released.gait.phase
+            crouch_factor = released.gait.factor
+            source = bytes(released.gait.source)
+            events = self.step(lib, released, A, magnitude=1, stick=0, dt=0.05, jump=1)
+            self.assertEqual(self.view(lib).state, 5)
+            self.assertFalse(lib.playerCrouchActive())
+            self.assertTrue(events & 1)
+            self.assertFalse(released.motion.grounded)
+            self.assertTrue(self.animate(lib, released, 0.05))
+            self.assertTrue(released.jumpActive)
+            self.assertEqual(bytes(released.gait.pose.bones), crouch_pose)
+            self.assertEqual(released.gait.phase, crouch_phase)
+            self.assertEqual(released.gait.factor, crouch_factor)
+            self.assertEqual(bytes(released.gait.source), source)
+            self.assertNotEqual(released.gait.phase, self.idle_advance(0.0, 0.0, 0.05)[0])
+
+            falling = self.fresh(lib)
+            self.step(lib, falling, Z)
+            self.assertTrue(self.animate(lib, falling))
+            phase = falling.gait.phase
+            factor = falling.gait.factor
+            pose = bytes(falling.gait.pose.bones)
+            source = bytes(falling.gait.source)
+            lib.crouch_host_set_floor(1700)
+            self.step(lib, falling, Z, magnitude=1, stick=0)
+            fell = self.view(lib)
+            self.assertEqual((fell.state, fell.active), (0x2F, 0))
+            self.assertTrue(falling.motion.grounded)
+            self.assertTrue(self.animate(lib, falling))
+            expected_phase, expected_factor = self.idle_advance(phase, factor)
+            self.assertEqual(falling.gait.phase, expected_phase)
+            self.assertEqual(falling.gait.factor, expected_factor)
+            self.assertEqual(bytes(falling.gait.source), source)
+            self.assertNotEqual(bytes(falling.gait.source), pose)
+            self.assertNotEqual(falling.gait.phase, self.idle_advance(0.0, 0.0)[0])
+
+            looking = self.fresh(lib)
+            looking.gait.initialized = True
+            looking.gait.gait = 0
+            looking.gait.factor = 1
+            looking.gait.phase = F(0.37).value
+            lib.playerCrouchFrame(C.byref(looking), Z, 1)
+            lib.crouch_host_step(
+                C.byref(looking), 0, 0, DT, 0, self.floor_v, self.floor_t, len(self.floor_t))
+            self.assertFalse(lib.playerCrouchActive())
+            self.assertTrue(self.animate(lib, looking))
+            phase, factor = self.idle_advance(F(0.37).value, 1.0)
+            self.assertEqual(looking.gait.phase, phase)
+            self.assertEqual(looking.gait.factor, factor)
+            self.assertNotEqual(looking.gait.phase, self.idle_advance(0.0, 0.0)[0])
+            self.step(lib, looking, 0)
+            self.assertTrue(self.animate(lib, looking))
+            phase, factor = self.idle_advance(phase, factor)
+            self.assertEqual(looking.gait.phase, phase)
+            self.assertEqual(looking.gait.factor, F(1.0).value)
+
 
 if __name__ == '__main__':
     unittest.main()
