@@ -799,7 +799,7 @@ int main(void)
         }
     }
 
-    /* After the first presented frame the probe plays SFX_19 once, waits 400 ms, then plays unlooped SFX_18 once. No new button, and this call does not enter crouch, gait, input, physics, or camera. */
+    /* After the first presented frame the probe holds looped SFX_18 for 2000 ms, steps pitch with Rare's formula, then stops that voice and plays SFX_19 once. No new button, and this call does not enter crouch, gait, input, physics, or camera. */
     sfxProbe3dsInit();
 
     u64 previousFrameMs = osGetTime();
@@ -898,7 +898,7 @@ int main(void)
         if (BANJO_DEBUG_CAMERA || rareCamera.view_ready)
             sceneRender();
         C3D_FrameEnd(0);
-        /* First presented frame starts SFX_19, then 400 ms of silence, then unlooped SFX_18. */
+        /* First presented frame starts looped SFX_18, holds it for 2000 ms, then plays SFX_19 once. */
         sfxProbe3dsFrame();
     }
 

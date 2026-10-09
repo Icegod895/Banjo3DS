@@ -1,40 +1,17 @@
 #ifndef BANJO_SFX_PROBE_H
 #define BANJO_SFX_PROBE_H
 
-/* Two-clip listening probe. Both clips play at the N64 AI output clock,
- * osAiSetFrequency(22000) in code_1D00.c. keyBase 60 and detune 0 are unity.
- * The bank field 22050 and the source loudness integer 28000 are not the rate.
- * SFX_19 plays first, then SFX_PROBE_GAP_MS of silence, then unlooped SFX_18.
- * This state machine does not loop, envelope, or walk the pitch. */
+/* Slide-lifecycle probe constants.
+ * SFX_PROBE_RATE is the N64 AI clock, osAiSetFrequency(22000) in code_1D00.c.
+ * The source integers below are loudness, not sample rates:
+ * basfx_reset sets 28000 on the SFX_18 voice (basfx.c), and the stop callback
+ * basfx_802998D0 plays SFX_19 at the last pitch with 22000.
+ * SFX_PROBE_SLIDE_MS is a fixed probe hold. The original voice lasts as long
+ * as bsslide_update keeps calling basfx_80299AAC. */
 #define SFX_PROBE_RATE 22000
-#define SFX_PROBE_GAP_MS 400
-
-#define SFX_PROBE_CLIP_LANDING 0
-#define SFX_PROBE_CLIP_SLIDE 1
-
-#define SFX_PROBE_IDLE 0
-#define SFX_PROBE_QUEUED 1
-#define SFX_PROBE_GAP 2
-#define SFX_PROBE_DONE 3
-#define SFX_PROBE_SKIPPED 4
-
-typedef struct SfxProbe {
-    int ndsp_ready;
-    int landing_bytes;
-    int slide_bytes;
-    int sample_rate;
-    int phase;
-    int clip;
-    int armed;
-    int queue_count;
-    int release_count;
-    int gap_start_ms;
-} SfxProbe;
-
-void sfxProbeReset(SfxProbe *probe);
-int sfxProbeBind(SfxProbe *probe, int ndsp_ready, int landing_bytes, int slide_bytes, int sample_rate);
-int sfxProbePoll(SfxProbe *probe, int now_ms);
-void sfxProbeComplete(SfxProbe *probe, int now_ms);
-int sfxProbeShutdown(SfxProbe *probe);
+#define SFX_PROBE_SLIDE_MS 2000
+#define SFX_SLIDE_SOURCE_VOLUME 28000
+#define SFX_CLOSER_SOURCE_VOLUME 22000
+#define SFX_LEVEL_TABLE 32767
 
 #endif

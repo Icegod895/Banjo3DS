@@ -71,6 +71,7 @@ class SfxInfo:
     loop_start: int | None
     loop_end: int | None
     loop_count: int | None
+    loop_state: tuple[int, ...] | None
     peak_abs: int
     clipped_samples: int
 
@@ -205,17 +206,52 @@ def extract_sfx(ctl: bytes, tbl: bytes, sfx_id: int) -> tuple[SfxInfo, list[int]
         loop_start=wave.loop_start,
         loop_end=wave.loop_end,
         loop_count=wave.loop_count,
+        loop_state=wave.loop_state,
         peak_abs=peak,
         clipped_samples=clipped,
     )
     return info, pcm
 
 
+def verified_adpcm_loop(
+    pcm: list[int],
+    start: int | None,
+    end: int | None,
+    count: int | None,
+    state: list[int] | tuple[int, ...] | None,
+) -> tuple[list[int], list[int]] | None:
+    """Split a linear decode into the one-shot intro and the looping body.
+
+    n_load.c copies ALADPCMloop.state into the decoder, and n_alAdpcmPull
+    reloads that state at the loop (`n_adpcm.c`, A_LOOP). For SFX_18 that
+    state is the 16 decoded samples of the frame containing loop.start.
+    When it matches the linear frame, re-decoding the loop reproduces the
+    same PCM, so samples [start, end) are the original loop body. A mismatch
+    returns None instead of inventing a seam.
+    """
+    if start is None or end is None or count not in (-1, 0xFFFFFFFF):
+        return None
+    if state is None or len(state) != ADPCM_STATE_SAMPLES:
+        return None
+    if not (0 <= start < end <= len(pcm)):
+        return None
+    frame = (start // ADPCM_FRAME_SAMPLES) * ADPCM_FRAME_SAMPLES
+    if frame + ADPCM_FRAME_SAMPLES > len(pcm):
+        return None
+    if list(pcm[frame : frame + ADPCM_FRAME_SAMPLES]) != list(state):
+        return None
+    return pcm[:start], pcm[start:end]
+
+
 def format_report(info: SfxInfo, pcm_path: Path) -> str:
     """Metadata only. Sample bytes stay out of the report."""
     loop = "no"
     if info.loop_start is not None:
-        loop = f"start {info.loop_start} end {info.loop_end} count {info.loop_count}"
+        state = "absent" if info.loop_state is None else "present"
+        loop = (
+            f"start {info.loop_start} end {info.loop_end} "
+            f"count {info.loop_count} state {state}"
+        )
     order = "none" if info.order is None else str(info.order)
     predictors = "none" if info.npredictors is None else str(info.npredictors)
     rows = [
@@ -376,6 +412,7 @@ class _Wave:
     loop_start: int | None
     loop_end: int | None
     loop_count: int | None
+    loop_state: tuple[int, ...] | None
 
 
 def _parse_bank(ctl: bytes) -> _Bank:
@@ -470,9 +507,13 @@ def _parse_wave(ctl: bytes, tbl: bytes, offset: int) -> _Wave:
         )
     loop_offset, book_offset = struct.unpack_from(">II", ctl, offset + 12)
     loop_start = loop_end = loop_count = None
+    loop_state = None
     if loop_offset != 0:
         _need(ctl, loop_offset, 12, "loop")
         loop_start, loop_end, loop_count = struct.unpack_from(">III", ctl, loop_offset)
+        if wave_type == AL_ADPCM_WAVE:
+            _need(ctl, loop_offset, 44, "adpcm loop")
+            loop_state = struct.unpack_from(">16h", ctl, loop_offset + 12)
     if wave_type == AL_ADPCM_WAVE:
         if book_offset == 0:
             raise SfxBankError("ADPCM wave has no codebook")
@@ -507,6 +548,7 @@ def _parse_wave(ctl: bytes, tbl: bytes, offset: int) -> _Wave:
             loop_start,
             loop_end,
             loop_count,
+            loop_state,
         )
     if wave_type == AL_RAW16_WAVE:
         if length < 2 or length % 2 != 0:
@@ -522,6 +564,7 @@ def _parse_wave(ctl: bytes, tbl: bytes, offset: int) -> _Wave:
             loop_start,
             loop_end,
             loop_count,
+            None,
         )
     raise SfxBankError(f"wavetable type {wave_type} is not ADPCM or RAW16")
 
