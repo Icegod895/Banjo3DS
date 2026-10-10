@@ -21,11 +21,16 @@ from test_world_segment import Model
 from manual_corpus import snapshot,packed,command,schedules
 F=C.c_float
 I=C.c_int
+class Rail(C.Structure):
+    _fields_=[('spline',C.c_int32),('step',F),('param',F),('captured',F*3),('blend',F),('sample',F*3),
+              ('actor',C.c_int32),('phase',C.c_uint8),('previous',C.c_uint8),('allow_zero',C.c_uint8),('allow_one',C.c_uint8),
+              ('lead_near',F),('lead_far',F),('distance',F),('predicate',C.c_int32),
+              ('engage_distance',F),('engage_predicate',C.c_int32)]
 class State(C.Structure):
     _fields_=[('camera',camera.State),('zones',Selection),('post',PostState)]+[(n,F) for n in ref.FIELDS[22:32]]+[
       ('viewport_offset',F*3),('viewport_angles',F*3),('viewport_remaining',F),('viewport_duration',F),
       ('viewport_position',F*3),('viewport_rotation',F*3)]+[(n,F) for n in ref.FIELDS[46:52]]+[
-      ('focus_mode',C.c_uint),('c_complete',C.c_uint),('viewport_state',C.c_uint),('buttons',C.c_uint)]
+      ('focus_mode',C.c_uint),('c_complete',C.c_uint),('viewport_state',C.c_uint),('buttons',C.c_uint),('rail',Rail)]
 class Trace(C.Structure):_fields_=[('free_b',free.Trace),('contact',contact.Trace)]
 
 def values(s,t):
@@ -42,7 +47,7 @@ class ManualCameraTests(unittest.TestCase):
         base=ref.ROOT/'tools/banjo3ds'
         for opt in ('-O0','-O2'):
             so=Path(cls.tmp.name)/(opt+'.so')
-            sources=('camera_manual/manual.c','camera_manual/contact.c','camera/camera.c','camera_contact/contact.c','camera_contact/free_b.c','camera_zones/zones.c','world_query/segment.c')
+            sources=('camera_manual/manual.c','camera_manual/contact.c','camera/camera.c','camera_contact/contact.c','camera_contact/free_b.c','camera_zones/zones.c','camera_rail/rail.c','world_query/segment.c')
             subprocess.run(['cc',*camera.FLAGS,opt,'-Wall','-Wextra','-Werror','-shared','-fPIC',*[str(base/p) for p in sources],'-lm','-o',str(so)],check=True)
             lib=C.CDLL(str(so));fp=C.POINTER(F)
             lib.bm_init.argtypes=[C.POINTER(State),C.POINTER(camera.Math),C.POINTER(camera.Input),fp,fp]

@@ -7,6 +7,7 @@
 #define banjo_camera_finish bm_private_finish
 #define banjo_camera_update bm_private_update
 #define banjo_camera_project bm_private_project
+#define banjo_camera_set_lead_amplitudes bm_private_set_lead
 #include "../camera/camera.c"
 #undef banjo_camera_math_init
 #undef banjo_camera_init
@@ -15,6 +16,7 @@
 #undef banjo_camera_finish
 #undef banjo_camera_update
 #undef banjo_camera_project
+#undef banjo_camera_set_lead_amplitudes
 #include "manual.h"
 
 static void get_focus(BmState *s,const BanjoCameraInput *in){
@@ -31,6 +33,9 @@ static void r_snapshot(BmState *s,const BanjoCameraMath *math,const BanjoCameraI
 }
 static void state(BmState *s,const BanjoCameraMath *math,const BanjoCameraInput *in,int n){
     if(s->camera.state==n)return;
+    /* ncDynamicCamera_setState ends state 0x12 before the next init.
+     * Engagement writes 0x12 directly and does not pass through here. */
+    if(s->camera.state==0x12){br_end(s);bm_private_set_lead(110.f,180.f);}
     if(n==11){
         s->focus_mode=2;get_focus(s,in);s->position_gain=3;s->position_response=8;s->rotation_gain=5;s->rotation_response=10;
         s->camera.orbit_yaw=heading(math,s->camera.position[0]-s->camera.focus[0],s->camera.position[2]-s->camera.focus[2]);
@@ -48,10 +53,14 @@ void bm_init(BmState *s,const BanjoCameraMath *m,const BanjoCameraInput *in,cons
     s->focus_mode=2;s->c_radius=100;s->zoom_timer=.5f;s->radius=850;s->height=375;
     s->position_gain=3;s->position_response=8;s->rotation_gain=5;s->rotation_response=10;
     memcpy(s->viewport_position,eye,12);memcpy(s->viewport_rotation,rot,12);
+    br_reset(&s->rail);
 }
+size_t bm_state_size(void){return sizeof(BmState);}
 static void lead_update(BmState *s,const BanjoCameraInput *in){
     BanjoCamera *c=&s->camera;float dx=in->player[0]-c->position[0],dz=in->player[2]-c->position[2];
-    float amplitude=map(fabsf((float)(angle(c->rotation[1]-in->visible_yaw)-180.0)),0,180,110,180),lead[3];
+    float near_amp=110.f,far_amp=180.f;
+    if(br_bound()){near_amp=s->rail.lead_near;far_amp=s->rail.lead_far;}
+    float amplitude=map(fabsf((float)(angle(c->rotation[1]-in->visible_yaw)-180.0)),0,180,near_amp,far_amp),lead[3];
     vector(lead,in->visible_yaw,map(sqrtf(dx*dx+dz*dz),300,450,0,amplitude));
     for(int i=0;i<3;i++){float d=lead[i]-c->lead[i];d*=.08f;c->lead[i]+=d;}
     get_focus(s,in);
@@ -187,25 +196,41 @@ bool bm_update(BmState *state_in,const BanjoCameraMath *m,const BzData *data,con
     if(!zoom){s.radius=radii[s.zones.profile][s.camera.preset-1];s.height=heights[s.zones.profile][s.camera.preset-1];}
     BanjoCameraZoom empty={0};const BanjoCameraZoom *z=s.zones.last_zoom<0?&empty:&data->nodes[s.zones.last_zoom].zoom;
     if(z->flags&1)return false;
-    if(zoom){state(&s,m,in,17);s.camera.mode=9;s.position_gain=z->position_gains[0];s.position_response=z->position_gains[1];s.rotation_gain=z->rotation_gains[0];s.rotation_response=z->rotation_gains[1];}
-    else if(s.camera.mode==9)s.camera.mode=2;
-    else{
-        int rotated=0;
-        if(s.camera.mode==4){
-            rotated=rotate_buttons(&s,m,in,edges,enabled,o,x,scratch,&t.contact);
-            if(rotated==0){zoom_button(&s,edges,enabled);if(buttons&BM_R)s.r_target=angle(in->visible_yaw+180.0);else if(fabsf(delta(s.r_target,s.r_orbit))<4.0)s.camera.mode=2;}
-        }else if(s.camera.mode==7){
-            zoom_button(&s,edges,enabled);rotated=rotate_buttons(&s,m,in,edges,enabled,o,x,scratch,&t.contact);
-            if(rotated==0 && s.c_complete)s.camera.mode=2;
-        }else if(s.camera.mode==2){
-            if(buttons&BM_R){state(&s,m,in,19);s.camera.mode=4;zoom_button(&s,edges,enabled);}
-            else {rotated=rotate_buttons(&s,m,in,edges,enabled,o,x,scratch,&t.contact);zoom_button(&s,edges,enabled);if(rotated==0)state(&s,m,in,11);}
-        }else return false;
-        if(rotated<0)return false;
+    /* Unbound frames keep the free-camera 110/180 statics. A bound reject
+     * writes 80/200 onto the rail before this second store. */
+    if(!br_bound())bm_private_set_lead(110.f,180.f);
+    else bm_private_set_lead(s.rail.lead_near,s.rail.lead_far);
+    if(br_bound()){
+        if(br_triggers(&s,m,in,o,x)<0)return false;
+        bm_private_set_lead(s.rail.lead_near,s.rail.lead_far);
     }
-    if(s.camera.state==19 || s.camera.state==10){
+    /* Mode 0xA owns this frame, including the actor-0x2A frame that drops
+     * back to mode 2 before the dynamic update. C-up is not one of these bits. */
+    bool suppress=br_bound() && s.camera.mode==0xA;
+    if(suppress && s.rail.actor<1)s.camera.mode=2;
+    if(!suppress){
+        if(zoom){state(&s,m,in,17);s.camera.mode=9;s.position_gain=z->position_gains[0];s.position_response=z->position_gains[1];s.rotation_gain=z->rotation_gains[0];s.rotation_response=z->rotation_gains[1];}
+        else if(s.camera.mode==9)s.camera.mode=2;
+        else{
+            int rotated=0;
+            if(s.camera.mode==4){
+                rotated=rotate_buttons(&s,m,in,edges,enabled,o,x,scratch,&t.contact);
+                if(rotated==0){zoom_button(&s,edges,enabled);if(buttons&BM_R)s.r_target=angle(in->visible_yaw+180.0);else if(fabsf(delta(s.r_target,s.r_orbit))<4.0)s.camera.mode=2;}
+            }else if(s.camera.mode==7){
+                zoom_button(&s,edges,enabled);rotated=rotate_buttons(&s,m,in,edges,enabled,o,x,scratch,&t.contact);
+                if(rotated==0 && s.c_complete)s.camera.mode=2;
+            }else if(s.camera.mode==2){
+                if(buttons&BM_R){state(&s,m,in,19);s.camera.mode=4;zoom_button(&s,edges,enabled);}
+                else {rotated=rotate_buttons(&s,m,in,edges,enabled,o,x,scratch,&t.contact);zoom_button(&s,edges,enabled);if(rotated==0)state(&s,m,in,11);}
+            }else return false;
+            if(rotated<0)return false;
+        }
+    }
+    if(br_bound() && s.camera.state==0x12)br_drive(&s,m,in);
+    else if(s.camera.state==19 || s.camera.state==10){
         if(!manual_dynamic(&s,m,in,o,x,target,scratch,&t.contact))return false;
-    }else{
+    }else if(s.camera.mode==0xA)return false;
+    else{
         BanjoCameraPhase phase;BanjoCamera input=s.camera;
         if(input.state==17 && !zoom)input.mode=9;
         if(!bm_private_prepare_selected(&phase,&input,m,z,in,node,zoom,s.radius,s.height))return false;

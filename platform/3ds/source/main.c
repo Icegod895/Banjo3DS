@@ -779,6 +779,7 @@ int main(void)
         gfxExit();
         return 1;
     }
+    br_bind(&camera_rail_data);
 
     cameraRuntimeSetLearnedAbilities(&rareCamera, BANJO_LEARNED_ABILITIES);
     playerCrouchInstall();

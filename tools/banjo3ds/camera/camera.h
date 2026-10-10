@@ -55,6 +55,9 @@ bool banjo_camera_finish(BanjoCamera *s, const BanjoCameraPhase *phase,
     bool contact_changed, bool recovered, float look_output[3]);
 
 void banjo_camera_math_init(BanjoCameraMath *math);
+/* Free-camera lead map endpoints. Defaults remain Rare's 110 and 180.
+ * The spline rail overwrites them; an unbound frame restores the defaults. */
+void banjo_camera_set_lead_amplitudes(float near_amp, float far_amp);
 /* Explicit initial viewport/probe. Lead/accumulators reset to zero as Rare init.
  * State B starts at its init hook; first zone selection occurs in update. */
 void banjo_camera_init(BanjoCamera *s, const BanjoCameraMath *math,

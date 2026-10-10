@@ -115,7 +115,7 @@ int runtime_cull(const CameraRuntime *s,unsigned cull){return rendererCullMode(c
         sources += ['tools/banjo3ds/camera_first_person/first_person.c']
         sources += ['tools/banjo3ds/'+s for s in ('pose/pose.c','gait/gait.c','gait/gait_motion.c',
             'horizontal/horizontal.c','body/body.c','body/frame.c','ground/ground.c','jump/jump.c','jump/jump_animation.c','camera/camera.c',
-            'camera_contact/contact.c','camera_contact/free_b.c','camera_zones/zones.c',
+            'camera_contact/contact.c','camera_contact/free_b.c','camera_zones/zones.c','camera_rail/rail.c',
             'world_query/segment.c','world_query/floor_state.c','world_query/floor_bridge.c',
             'bridge_state/bridge.c','bridge_state/query_segment.c','bridge_state/query_contact.c',
             'bridge_state/query_free_b.c','bridge_state/query_zones.c',

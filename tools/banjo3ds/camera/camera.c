@@ -79,6 +79,11 @@ static void look(const BanjoCameraMath *m,const float focus[3],const float eye[3
     if (d>0.01) { out[0]=lookup(m,dy/d); if(dy<0) out[0]=360-out[0]; }
     out[0]=angle(-out[0]);out[2]=0;
 }
+static float lead_amplitude_near=110.f, lead_amplitude_far=180.f;
+void banjo_camera_set_lead_amplitudes(float near_amp, float far_amp) {
+    lead_amplitude_near=near_amp;
+    lead_amplitude_far=far_amp;
+}
 static void base_focus(const BanjoCameraInput *in,float f[3]) {
     memcpy(f,in->player,12);
     f[1]=in->floor_height+130.f<in->player[1] ? in->player[1]+(80.f-130.f) : in->floor_height+80.f;
@@ -164,7 +169,7 @@ bool banjo_camera_prepare_selected(BanjoCameraPhase *phase,const BanjoCamera *s,
     else if(next.mode==9)next.mode=2; /* one final zoom update, as Rare */
     else if(next.state!=0xB)enter_free(&next,m,in);
     float dx=in->player[0]-next.position[0],dz=in->player[2]-next.position[2];
-    float amplitude=map(fabsf((float)(angle(next.rotation[1]-in->visible_yaw)-180.0)),0,180,110,180);
+    float amplitude=map(fabsf((float)(angle(next.rotation[1]-in->visible_yaw)-180.0)),0,180,lead_amplitude_near,lead_amplitude_far);
     float length=map(sqrtf(dx*dx+dz*dz),300,450,0,amplitude),lead[3];
     vector(lead,in->visible_yaw,length);
     for(int i=0;i<3;i++) {float d=lead[i]-next.lead[i];d*=.08f;next.lead[i]+=d;}

@@ -1,6 +1,7 @@
 #ifndef BANJO_CAMERA_MANUAL_H
 #define BANJO_CAMERA_MANUAL_H
 #include "../camera_zones/zones.h"
+#include "../camera_rail/rail.h"
 /* Host-only NORMAL dry Banjo. Held logical N64 inputs, NOT a 3DS mapping. */
 enum { BM_R=1, BM_LEFT=2, BM_RIGHT=4, BM_DOWN=8 };
 typedef struct {
@@ -14,6 +15,7 @@ typedef struct {
     float viewport_position[3],viewport_rotation[3];
     float radius,height,position_gain,position_response,rotation_gain,rotation_response;
     uint32_t focus_mode,c_complete,viewport_state,buttons;
+    BrRuntime rail;
 } BmState;
 typedef struct { BcFreeBTrace free_b; BcTrace contact; } BmTrace;
 void bm_init(BmState *,const BanjoCameraMath *,const BanjoCameraInput *,const float eye[3],const float rotation[3]);
@@ -26,4 +28,10 @@ bool bm_update(BmState *,const BanjoCameraMath *,const BzData *,const BanjoCamer
 int bm_gate(const BqModel *,const BqModel *,const float from[3],const float to[3],BcScratch *,BcTrace *);
 int bm_obstruction(const BqModel *,const BqModel *,float camera[3],const float target[3],
     unsigned variant,BcState *,BcScratch *,BcTrace *);
+/* Marker pass before buttons. -1 is a closed segment-domain failure. */
+int br_triggers(BmState *,const BanjoCameraMath *,const BanjoCameraInput *,const BqModel *,const BqModel *);
+void br_drive(BmState *,const BanjoCameraMath *,const BanjoCameraInput *);
+void br_reset(BrRuntime *);
+void br_end(BmState *);
+size_t bm_state_size(void);
 #endif

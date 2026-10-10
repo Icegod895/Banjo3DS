@@ -6,6 +6,7 @@ import sys
 from tools.banjo3ds.world_query_packet import read_model
 from tools.banjo3ds.camera.setup import read_spiral_camera
 from tools.banjo3ds.camera_zones.setup import read_zones
+from tools.banjo3ds.camera_rail.setup import read_rail
 
 PACKET_HASHES = (
     '59d398308ec5ed0fc249f684dfb6726bc77bf645dfd01a0a7976974fc80e6953',
@@ -59,6 +60,34 @@ def export_camera_data(opa_path, xlu_path, setup_path):
                 float(f[6][0]).hex()+'f',float(f[6][1]).hex()+'f',str(f[5])))+'}'
         out.append(f"    [{i}] = {{.type={n['type']},.profile={profile},.zoom={payload}}},")
     out.extend(('};','static const BzData camera_zone_data = {camera_zone_triggers, camera_zone_groups, camera_zone_nodes, 27, 43};'))
+    rail=read_rail(Path(setup_path))
+    out.append('#include "camera_rail/rail.h"')
+    out.append('/* Knot 0 of actor 0xCC is the door sample (0, 1892, -3779). */')
+    out.append('static const float camera_rail_knots[] = {')
+    knot_index=0
+    spline_rows=[]
+    for sp in rail['splines']:
+        spline_rows.append('    {camera_rail_knots+%d,%d,%d,%d,%s},'%(
+            knot_index,len(sp['knots']),sp['actor'],sp['scale'],vec(sp['origin'])))
+        for knot in sp['knots']:
+            out.append('    '+','.join(float(v).hex()+'f' for v in knot)+',')
+            knot_index+=3
+    out.append('};')
+    out.append('static const BrSpline camera_rail_splines[] = {')
+    out.extend(spline_rows)
+    out.append('};')
+    out.append('static const BrVolume camera_rail_volumes[] = {')
+    for v in rail['volumes']:
+        center='{'+','.join(str(int(x)) for x in v['center'])+'}'
+        cube='{'+','.join(str(int(x)) for x in v['cube'])+'}'
+        out.append('    {%s,%d,%d,%d,%d,%s,%d},'%(
+            center,v['radius'],v['actor'],v['marker_bit'],v['spline_actor'],cube,v['prop']))
+    out.append('};')
+    minimum='{'+','.join(str(int(x)) for x in rail['minimum'])+'}'
+    width='{'+','.join(str(int(x)) for x in rail['width'])+'}'
+    stride='{'+','.join(str(int(x)) for x in rail['stride'])+'}'
+    out.append('static const BrData camera_rail_data = {camera_rail_volumes, camera_rail_splines, %d, %d, %s, %s, %s};'%(
+        len(rail['volumes']),len(rail['splines']),minimum,width,stride))
     return '\n'.join(out)+'\n'
 
 
