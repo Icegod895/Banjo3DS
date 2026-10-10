@@ -15,6 +15,7 @@
 #include "generated_camera.h"
 #include "generated_bridge.h"
 #include "sfx_probe_3ds.h"
+#include "footstep_3ds.h"
 #include "../../../tools/banjo3ds/bridge_state/render.h"
 
 /* Temporary diagnostic build choice, not an N64 camera-button mapping. */
@@ -45,6 +46,9 @@ static C3D_Mtx projection, modelView;
 static RendererWindingParity viewWindingParity = RENDERER_WINDING_NORMAL;
 static CameraRuntime rareCamera;
 static PlayerInputState playerInput;
+static BanjoFootState foot_state;
+static BanjoFootPlay foot_plays[2];
+static int foot_play_count;
 /* Explicit debugger-visible failure, never a query-miss debug fallback. */
 static volatile int cameraRuntimeStatus;
 static void *vbo_data;
@@ -802,6 +806,8 @@ int main(void)
 
     /* The voice stays silent until a crouch coast raises the sustain latch. Sustained frames keep looped SFX_18 and step pitch with Rare's formula. The first unsustained frame stops that voice and plays SFX_19 once. No new button, and this call does not enter crouch, gait, input, physics, or camera. */
     sfxProbe3dsInit();
+    banjo_foot_reset(&foot_state);
+    footstep3dsInit();
 
     u64 previousFrameMs = osGetTime();
     u32 previousVi = C3D_FrameCounter(0);
@@ -859,8 +865,27 @@ int main(void)
             cameraApplyRareView();
 
         u64 poseStart = svcGetSystemTick();
+        BanjoFootFrame foot_frame = {0};
+        foot_frame.gait_before = (int)player.gait.gait;
+        foot_frame.phase_before = player.gait.phase;
+        foot_frame.initialized_before = player.gait.initialized ? 1 : 0;
         bool evaluated = playerRuntimeAnimate(&player,
             banjo_runtime_pose, banjo_runtime_pose_size, dt);
+        /* Flags are the body floor query already stored on the bridge.
+         * No second collision query and no coordinate classification. */
+        foot_frame.gait_after = (int)player.gait.gait;
+        foot_frame.phase_after = player.gait.phase;
+        foot_frame.initialized_after = player.gait.initialized ? 1 : 0;
+        foot_frame.animated = evaluated ? 1 : 0;
+        foot_frame.grounded = player.motion.grounded ? 1 : 0;
+        foot_frame.crouch = playerCrouchActive() ? 1 : 0;
+        foot_frame.jumping = player.jumpActive ? 1 : 0;
+        foot_frame.map_id = BANJO_FOOT_MAP_SPIRAL_MOUNTAIN;
+        foot_frame.flags = rareCamera.bridge.floor.flags;
+        foot_frame.floor_y = rareCamera.bridge.floor.height;
+        foot_frame.player_y = player.motion.actor.y;
+        foot_frame.floor_valid = rareCamera.bridge.floor.valid ? 1 : 0;
+        foot_play_count = banjo_foot_observe(&foot_state, &foot_frame, foot_plays, 2);
         u64 poseTicks = svcGetSystemTick() - poseStart;
         if (!C3D_FrameBegin(C3D_FRAME_SYNCDRAW)) continue;
         /* CPU pose evaluation is independent of the GPU. VBO writes wait for
@@ -901,8 +926,10 @@ int main(void)
         C3D_FrameEnd(0);
         /* The crouch-coast latch sustains looped SFX_18. The first frame without it plays SFX_19 once. */
         sfxProbe3dsFrame(playerCrouchSlideSfx());
+        footstep3dsSubmit(foot_plays, foot_play_count);
     }
 
+    footstep3dsExit();
     sceneExit();
     sfxProbe3dsExit();
 

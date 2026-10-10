@@ -302,6 +302,11 @@ void sfxProbe3dsFrame(int sustain)
         finish_closer();
 }
 
+int sfxProbe3dsReady(void)
+{
+    return ndsp_up;
+}
+
 void sfxProbe3dsExit(void)
 {
     int held = sfxVoiceShutdown(&voice);

@@ -26,6 +26,7 @@ BANJO3DS_GENERATED_BRIDGE := $(TOPDIR)/build/generated_bridge.h
 BANJO3DS_GENERATED_MOVEMENT_BRIDGE := $(TOPDIR)/build/generated_bridge_movement.h
 BANJO3DS_GENERATED_CAMERA := $(TOPDIR)/build/generated_camera.h
 BANJO3DS_GENERATED_SFX := $(TOPDIR)/build/generated_sfx_probe.h
+BANJO3DS_GENERATED_FOOT := $(TOPDIR)/build/generated_sfx_foot.h
 BANJO3DS_SFX_ROMS := $(wildcard $(REPO_ROOT)/decompressed.us.v10.z64) $(wildcard $(REPO_ROOT)/decompressed.pal.z64)
 BANJO3DS_CAMERA_SETUP := $(REPO_ROOT)/assets/lvl_setup/071D.lvl_setup.bin
 
@@ -55,9 +56,9 @@ include $(DEVKITARM)/3ds_rules
 #---------------------------------------------------------------------------------
 TARGET		:=	banjo3ds
 BUILD		:=	build
-SOURCES		:=	source ../../tools/banjo3ds/camera_first_person ../../tools/banjo3ds/camera_zones ../../tools/banjo3ds/camera_rail ../../tools/banjo3ds/body ../../tools/banjo3ds/ground ../../tools/banjo3ds/pose ../../tools/banjo3ds/gait ../../tools/banjo3ds/jump ../../tools/banjo3ds/horizontal ../../tools/banjo3ds/camera ../../tools/banjo3ds/camera_contact ../../tools/banjo3ds/world_query ../../tools/banjo3ds/bridge_state ../../tools/banjo3ds/crouch ../../tools/banjo3ds/sfx_probe
+SOURCES		:=	source ../../tools/banjo3ds/camera_first_person ../../tools/banjo3ds/camera_zones ../../tools/banjo3ds/camera_rail ../../tools/banjo3ds/body ../../tools/banjo3ds/ground ../../tools/banjo3ds/pose ../../tools/banjo3ds/gait ../../tools/banjo3ds/jump ../../tools/banjo3ds/horizontal ../../tools/banjo3ds/camera ../../tools/banjo3ds/camera_contact ../../tools/banjo3ds/world_query ../../tools/banjo3ds/bridge_state ../../tools/banjo3ds/crouch ../../tools/banjo3ds/sfx_probe ../../tools/banjo3ds/footstep
 DATA		:=	data
-INCLUDES	:=	include source ../../tools/banjo3ds ../../tools/banjo3ds/pose ../../tools/banjo3ds/gait ../../tools/banjo3ds/jump ../../tools/banjo3ds/horizontal ../../tools/banjo3ds/camera ../../tools/banjo3ds/world_query ../../tools/banjo3ds/sfx_probe
+INCLUDES	:=	include source ../../tools/banjo3ds ../../tools/banjo3ds/pose ../../tools/banjo3ds/gait ../../tools/banjo3ds/jump ../../tools/banjo3ds/horizontal ../../tools/banjo3ds/camera ../../tools/banjo3ds/world_query ../../tools/banjo3ds/sfx_probe ../../tools/banjo3ds/footstep
 GRAPHICS	:=	gfx
 GFXBUILD	:=	$(BUILD)
 #ROMFS		:=	romfs
@@ -186,7 +187,7 @@ endif
 .PHONY: all clean
 
 #---------------------------------------------------------------------------------
-all: $(BANJO3DS_GENERATED_MODEL) $(BANJO3DS_GENERATED_CROUCH) $(BANJO3DS_GENERATED_CAMERA) $(BANJO3DS_GENERATED_BRIDGE) $(BANJO3DS_GENERATED_MOVEMENT_BRIDGE) $(BANJO3DS_GENERATED_SFX) $(BUILD) $(GFXBUILD) $(DEPSDIR) $(ROMFS_T3XFILES) $(T3XHFILES)
+all: $(BANJO3DS_GENERATED_MODEL) $(BANJO3DS_GENERATED_CROUCH) $(BANJO3DS_GENERATED_CAMERA) $(BANJO3DS_GENERATED_BRIDGE) $(BANJO3DS_GENERATED_MOVEMENT_BRIDGE) $(BANJO3DS_GENERATED_SFX) $(BANJO3DS_GENERATED_FOOT) $(BUILD) $(GFXBUILD) $(DEPSDIR) $(ROMFS_T3XFILES) $(T3XHFILES)
 	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile
 
 $(BANJO3DS_GENERATED_BRIDGE): $(BANJO3DS_XLU_MODEL) $(REPO_ROOT)/tools/banjo3ds/bridge_state/render_binding.py $(REPO_ROOT)/tools/banjo3ds/n64_displaylist_decoder.py | $(BUILD)
@@ -205,6 +206,10 @@ $(BANJO3DS_GENERATED_MODEL): $(BANJO3DS_MODEL) $(BANJO3DS_XLU_MODEL) $(BANJO3DS_
 $(BANJO3DS_GENERATED_SFX): $(REPO_ROOT)/tools/banjo3ds/sfx_probe_asset.py $(REPO_ROOT)/tools/banjo3ds/sfx_bank.py $(REPO_ROOT)/tools/banjo3ds/sfx_probe/sfx_probe.h $(BANJO3DS_SFX_ROMS) | $(BUILD)
 	@echo generating $(notdir $@)
 	@cd $(REPO_ROOT) && $(BANJO3DS_PYTHON) -B -m tools.banjo3ds.sfx_probe_asset --out $@ --pcm18 build/sfx/sfx_0018.pcm16 --pcm19 build/sfx/sfx_0019.pcm16
+
+$(BANJO3DS_GENERATED_FOOT): $(REPO_ROOT)/tools/banjo3ds/footstep_asset.py $(REPO_ROOT)/tools/banjo3ds/sfx_bank.py $(REPO_ROOT)/tools/banjo3ds/sfx_probe_asset.py $(BANJO3DS_SFX_ROMS) | $(BUILD)
+	@echo generating $(notdir $@)
+	@cd $(REPO_ROOT) && $(BANJO3DS_PYTHON) -B -m tools.banjo3ds.footstep_asset --out $@
 
 $(BANJO3DS_GENERATED_CROUCH): $(BANJO3DS_CROUCH_ENTER) $(BANJO3DS_CROUCH_TURN) $(BANJO3DS_CROUCH_NOINPUT) $(REPO_ROOT)/tools/banjo3ds/pose_binding.py
 	@echo generating $(notdir $@)

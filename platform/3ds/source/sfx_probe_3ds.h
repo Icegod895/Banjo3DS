@@ -10,5 +10,7 @@
 void sfxProbe3dsInit(void);
 void sfxProbe3dsFrame(int sustain);
 void sfxProbe3dsExit(void);
+/* Read-only. The slide voice still owns ndspInit and ndspExit. */
+int sfxProbe3dsReady(void);
 
 #endif
