@@ -18,10 +18,13 @@
 _Static_assert(BANJO_FOOT_AI_RATE == 22000, "footsteps use the N64 AI clock");
 _Static_assert(SFX_PROBE_RATE == 22000, "the slide clock and the foot clock match");
 _Static_assert(BANJO_FOOT_PCM_COUNT > 0, "the footstep table has a slot");
+_Static_assert(BANJO_FOOT_PCM_COUNT > 3 && BANJO_FOOT_SFX_3_ID == 0x8,
+    "normal-ground landing PCM remains slot 3");
 
 static s16 *pcm_buffers[BANJO_FOOT_PCM_COUNT];
 static u32 pcm_samples[BANJO_FOOT_PCM_COUNT];
 static ndspWaveBuf waves[2];
+static ndspWaveBuf landing_wave;
 static int staged;
 
 static void free_pcm(s16 **pcm)
@@ -134,11 +137,15 @@ void footstep3dsInit(void)
 {
     int index;
 
+    /* Stop an earlier landing before restaging the shared PCM on reinit. */
+    if (staged && sfxProbe3dsReady())
+        ndspChnWaveBufClear(3);
     for (index = 0; index < BANJO_FOOT_PCM_COUNT; index++) {
         free_pcm(&pcm_buffers[index]);
         pcm_samples[index] = 0;
     }
     memset(waves, 0, sizeof(waves));
+    memset(&landing_wave, 0, sizeof(landing_wave));
     staged = 0;
     if (!sfxProbe3dsReady())
         return;
@@ -155,6 +162,7 @@ void footstep3dsInit(void)
     }
     ndspChnReset(1);
     ndspChnReset(2);
+    ndspChnReset(3);
     staged = 1;
 }
 
@@ -168,6 +176,31 @@ void footstep3dsSubmit(const BanjoFootPlay *plays, int count)
         queue_play(&plays[index]);
 }
 
+void footstep3dsLanding(void)
+{
+    const int slot = 3; /* SFX_8_BANJO_LANDING_04, normal surface row. */
+    float level;
+    float rate;
+
+    if (!staged || !sfxProbe3dsReady() || !banjo_foot_pcm[slot].present
+        || !pcm_buffers[slot] || pcm_samples[slot] == 0)
+        return;
+    level = banjo_foot_pcm[slot].volume_known
+        ? (float)sfxSynthVolume(SFX_LEVEL_TABLE, banjo_foot_pcm[slot].attack_volume,
+            9000, banjo_foot_pcm[slot].sample_volume) / 32767.0f
+        : 1.0f;
+    rate = banjo_foot_output_rate(1.0f, banjo_foot_pcm[slot].key_base,
+        banjo_foot_pcm[slot].detune, banjo_foot_pcm[slot].omit_detune);
+    ndspChnWaveBufClear(3); /* Only an earlier landing can be preempted. */
+    configure_channel(3, rate, level);
+    memset(&landing_wave, 0, sizeof(landing_wave));
+    landing_wave.data_pcm16 = pcm_buffers[slot];
+    landing_wave.nsamples = pcm_samples[slot];
+    landing_wave.looping = false;
+    landing_wave.status = NDSP_WBUF_FREE;
+    ndspChnWaveBufAdd(3, &landing_wave);
+}
+
 void footstep3dsExit(void)
 {
     int index;
@@ -175,11 +208,14 @@ void footstep3dsExit(void)
     if (sfxProbe3dsReady()) {
         ndspChnWaveBufClear(1);
         ndspChnWaveBufClear(2);
+        if (staged)
+            ndspChnWaveBufClear(3);
     }
     for (index = 0; index < BANJO_FOOT_PCM_COUNT; index++) {
         free_pcm(&pcm_buffers[index]);
         pcm_samples[index] = 0;
     }
     memset(waves, 0, sizeof(waves));
+    memset(&landing_wave, 0, sizeof(landing_wave));
     staged = 0;
 }

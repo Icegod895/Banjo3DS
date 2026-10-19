@@ -9,6 +9,8 @@
  * A missing sample or a down DSP leaves that step silent. */
 void footstep3dsInit(void);
 void footstep3dsSubmit(const BanjoFootPlay *plays, int count);
+/* One accepted landing; separate owner-managed NDSP channel 3. */
+void footstep3dsLanding(void);
 void footstep3dsExit(void);
 
 #endif

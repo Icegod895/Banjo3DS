@@ -636,8 +636,14 @@ class SfxProbeTriggerTests(unittest.TestCase):
         self.assertNotIn("SFX_PROBE_GAP", audio)
         self.assertIn("configure_channel((float)SFX_PROBE_RATE, 0.0f)", audio)
         self.assertIn("ndspChnSetRate(0, rate)", audio)
-        self.assertEqual(audio.count("looping = false"), 3)
-        self.assertEqual(audio.count("looping = true"), 1)
+        # Check the original slide/closer descriptors by identity. A global
+        # assignment count also includes later Bottles one-shots and loops.
+        for name, looped in (("intro_wave", "false"), ("loop_wave", "true"),
+                             ("once_wave", "false"), ("closer_wave", "false")):
+            self.assertEqual(len(re.findall(rf"(?m)^\s*{name}\.looping = {looped};", audio)), 1)
+            self.assertEqual(audio.count(f"ndspChnWaveBufAdd(0, &{name});"), 1)
+        for name in ("bottles_retreat_loop_wave", "bottles_emergence_loop_wave"):
+            self.assertEqual(audio.count(f"{name}.looping = true;"), 1)
         self.assertEqual(audio.count("ndspInit("), 1)
         self.assertEqual(audio.count("ndspExit("), 1)
         self.assertNotIn("DSP_FlushDataCache(buffer, 0)", audio)
@@ -658,7 +664,8 @@ class SfxProbeTriggerTests(unittest.TestCase):
         self.assertNotIn("140.0f", crouch)
         self.assertNotIn("160.0f", crouch)
         channels = set(re.findall(r"ndspChn\w+\((\d+)", audio))
-        self.assertEqual(channels, {"0"})
+        self.assertEqual(channels, {"0", "4", "5"})
+        self.assertTrue(channels.isdisjoint({"1", "2", "3"}))
         voice_c = (ROOT / "tools/banjo3ds/sfx_probe/sfx_voice.c").read_text(encoding="utf-8")
         self.assertNotIn("ndspChn", voice_c)
         self.assertNotIn("ndspInit", voice_c)

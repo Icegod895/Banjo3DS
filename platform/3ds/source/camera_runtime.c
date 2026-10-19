@@ -1,4 +1,5 @@
 #include "camera_runtime.h"
+/* P27 isolated rebuild: PlayerGroundState layout changed; no camera logic change. */
 #include "../../../tools/banjo3ds/bridge_state/movement_overlay.h"
 #include <assert.h>
 #include <math.h>

@@ -27,6 +27,13 @@ BANJO3DS_GENERATED_MOVEMENT_BRIDGE := $(TOPDIR)/build/generated_bridge_movement.
 BANJO3DS_GENERATED_CAMERA := $(TOPDIR)/build/generated_camera.h
 BANJO3DS_GENERATED_SFX := $(TOPDIR)/build/generated_sfx_probe.h
 BANJO3DS_GENERATED_FOOT := $(TOPDIR)/build/generated_sfx_foot.h
+BANJO3DS_ROM ?=
+BANJO3DS_BOTTLES_GENERATOR := $(REPO_ROOT)/tools/banjo3ds/bottles_audio/generate.py
+BANJO3DS_BOTTLES_HEADERS := $(addprefix $(TOPDIR)/build/,generated_sfx_bottles.h generated_sfx_bottles_remaining.h generated_sfx_bottles_retreat.h)
+BANJO3DS_GENERATED_ACTORS := $(TOPDIR)/build/generated_actors.h
+BANJO3DS_BOTTLES_MODEL := $(REPO_ROOT)/assets/model/0387.model.bin
+BANJO3DS_HILL_MODEL := $(REPO_ROOT)/assets/model/0388.model.bin
+BANJO3DS_BOTTLES_IDLE := $(REPO_ROOT)/assets/anim/013B.anim.bin
 BANJO3DS_SFX_ROMS := $(wildcard $(REPO_ROOT)/decompressed.us.v10.z64) $(wildcard $(REPO_ROOT)/decompressed.pal.z64)
 BANJO3DS_CAMERA_SETUP := $(REPO_ROOT)/assets/lvl_setup/071D.lvl_setup.bin
 
@@ -56,9 +63,9 @@ include $(DEVKITARM)/3ds_rules
 #---------------------------------------------------------------------------------
 TARGET		:=	banjo3ds
 BUILD		:=	build
-SOURCES		:=	source ../../tools/banjo3ds/camera_first_person ../../tools/banjo3ds/camera_zones ../../tools/banjo3ds/camera_rail ../../tools/banjo3ds/body ../../tools/banjo3ds/ground ../../tools/banjo3ds/pose ../../tools/banjo3ds/gait ../../tools/banjo3ds/jump ../../tools/banjo3ds/horizontal ../../tools/banjo3ds/camera ../../tools/banjo3ds/camera_contact ../../tools/banjo3ds/world_query ../../tools/banjo3ds/bridge_state ../../tools/banjo3ds/crouch ../../tools/banjo3ds/sfx_probe ../../tools/banjo3ds/footstep
+SOURCES		:=	source ../../tools/banjo3ds/camera_first_person ../../tools/banjo3ds/camera_zones ../../tools/banjo3ds/camera_rail ../../tools/banjo3ds/body ../../tools/banjo3ds/ground ../../tools/banjo3ds/pose ../../tools/banjo3ds/actor_pose ../../tools/banjo3ds/gait ../../tools/banjo3ds/jump ../../tools/banjo3ds/horizontal ../../tools/banjo3ds/camera ../../tools/banjo3ds/camera_contact ../../tools/banjo3ds/world_query ../../tools/banjo3ds/bridge_state ../../tools/banjo3ds/crouch ../../tools/banjo3ds/sfx_probe ../../tools/banjo3ds/footstep
 DATA		:=	data
-INCLUDES	:=	include source ../../tools/banjo3ds ../../tools/banjo3ds/pose ../../tools/banjo3ds/gait ../../tools/banjo3ds/jump ../../tools/banjo3ds/horizontal ../../tools/banjo3ds/camera ../../tools/banjo3ds/world_query ../../tools/banjo3ds/sfx_probe ../../tools/banjo3ds/footstep
+INCLUDES	:=	include source ../../tools/banjo3ds ../../tools/banjo3ds/pose ../../tools/banjo3ds/actor_pose ../../tools/banjo3ds/gait ../../tools/banjo3ds/jump ../../tools/banjo3ds/horizontal ../../tools/banjo3ds/camera ../../tools/banjo3ds/world_query ../../tools/banjo3ds/sfx_probe ../../tools/banjo3ds/footstep
 GRAPHICS	:=	gfx
 GFXBUILD	:=	$(BUILD)
 #ROMFS		:=	romfs
@@ -76,7 +83,62 @@ CFLAGS	:=	-g -Wall -O2 -mword-relocations \
 BANJO3DS_DEBUG_CAMERA ?= 0
 # Temporary explicit progress input; no save-state integration. Use 0 for tutorial bridge.
 BANJO3DS_LEARNED_ABILITIES ?= 0x9DB1
-CFLAGS	+=	$(INCLUDE) -D__3DS__ -DBANJO_DEBUG_CAMERA=$(BANJO3DS_DEBUG_CAMERA) -DBANJO_LEARNED_ABILITIES=$(BANJO3DS_LEARNED_ABILITIES) -Wextra -Werror -ffp-contract=off -fno-fast-math -fexcess-precision=standard
+# 1 keeps actor bytes linked and compiles out staged actor behaviour.
+BANJO3DS_ACTOR_ISOLATION ?= 1
+# 1 uploads actor textures during startup. 0 with vertex init 0 is the FIX2 control.
+BANJO3DS_ACTOR_TEXTURE_UPLOAD ?= 1
+# 1 allocates the actor vertex buffer and copies the initial vertices once.
+# 0 with texture upload 1 and hill draw 0 is the FIX3 control.
+BANJO3DS_ACTOR_VERTEX_INIT ?= 1
+# 1 draws the original closed molehill. Disable idle and both draws for FIX4.
+BANJO3DS_ACTOR_HILL_DRAW ?= 1
+# 1 enables the FIX6 Bottles renderer. Disable this and idle for FIX5.
+BANJO3DS_ACTOR_STATIC_BOTTLES ?= 1
+# 1 enables only the original seven-second idle; 0 reproduces static FIX6.
+BANJO3DS_ACTOR_IDLE_ANIMATION ?= 1
+# 0 is FIX7; 1 plays original 013D once for 4.5 seconds, then holds CLOSED.
+BANJO3DS_ACTOR_HILL_OPEN_ANIMATION ?= 0
+# 1 gates B2-P1 once playback on selector-2 proximity; 0 preserves boot playback.
+BANJO3DS_ACTOR_HILL_PROXIMITY_TRIGGER ?= 0
+# 1 waits for a fresh SELECT press near selector 2; mutually exclusive with auto proximity.
+BANJO3DS_ACTOR_HILL_MANUAL_TRIGGER ?= 0
+# Opt-in paired emergence hardware diagnostic; 0 retains exact FIX2.
+BANJO3DS_ACTOR_BOTTLES_EMERGENCE ?= 0
+# Opt-in second SELECT exit; 0 retains hardware-approved B2-P2.
+BANJO3DS_ACTOR_BOTTLES_EXIT ?= 0
+# Authorized bounded B adapter; default off reproduces B2-P3.
+BANJO3DS_ACTOR_BOTTLES_B_INTERACTION ?= 0
+# Passive bottom-screen preview; not an original zoombox implementation.
+BANJO3DS_ACTOR_BOTTLES_DIALOGUE_PREVIEW ?= 0
+# Full DF4 diagnostic; off preserves the approved first-speech preview.
+BANJO3DS_ACTOR_BOTTLES_DIALOGUE_SEQUENCE ?= 0
+# Completion bridge; off preserves hardware-approved B3-P2-D.
+BANJO3DS_ACTOR_BOTTLES_DIALOGUE_AUTO_EXIT ?= 0
+# Native dialogue rest adapter; off reproduces hardware-approved B3-P2-E.
+BANJO3DS_ACTOR_BOTTLES_DIALOGUE_PLAYER_LOCK ?= 0
+ifeq ($(BANJO3DS_ACTOR_BOTTLES_DIALOGUE_PLAYER_LOCK),1)
+CFLAGS += -DBANJO3DS_ACTOR_BOTTLES_DIALOGUE_PLAYER_LOCK=1
+endif
+ifeq ($(BANJO3DS_ACTOR_BOTTLES_DIALOGUE_AUTO_EXIT),1)
+CFLAGS += -DBANJO3DS_ACTOR_BOTTLES_DIALOGUE_AUTO_EXIT=1
+endif
+ifeq ($(BANJO3DS_ACTOR_BOTTLES_DIALOGUE_SEQUENCE),1)
+CFLAGS += -DBANJO3DS_ACTOR_BOTTLES_DIALOGUE_SEQUENCE=1
+endif
+ifeq ($(BANJO3DS_ACTOR_BOTTLES_DIALOGUE_PREVIEW),1)
+BANJO3DS_GENERATED_DIALOGUE := $(TOPDIR)/build/generated_dialogue.h
+CFLAGS += -DBANJO3DS_ACTOR_BOTTLES_DIALOGUE_PREVIEW=1
+endif
+ifeq ($(BANJO3DS_ACTOR_BOTTLES_EXIT),1)
+BANJO3DS_GENERATED_EXIT := $(TOPDIR)/build/generated_actor_exit.h
+endif
+ifeq ($(BANJO3DS_ACTOR_BOTTLES_EMERGENCE),1)
+BANJO3DS_GENERATED_BOTTLES_EMERGE := $(TOPDIR)/build/generated_bottles_emerge.h
+endif
+ifeq ($(BANJO3DS_ACTOR_HILL_OPEN_ANIMATION),1)
+BANJO3DS_GENERATED_HILL_OPEN := $(TOPDIR)/build/generated_hill_open.h
+endif
+CFLAGS	+=	$(INCLUDE) -D__3DS__ -DBANJO_DEBUG_CAMERA=$(BANJO3DS_DEBUG_CAMERA) -DBANJO_LEARNED_ABILITIES=$(BANJO3DS_LEARNED_ABILITIES) -DBANJO3DS_ACTOR_ISOLATION=$(BANJO3DS_ACTOR_ISOLATION) -DBANJO3DS_ACTOR_TEXTURE_UPLOAD=$(BANJO3DS_ACTOR_TEXTURE_UPLOAD) -DBANJO3DS_ACTOR_VERTEX_INIT=$(BANJO3DS_ACTOR_VERTEX_INIT) -DBANJO3DS_ACTOR_HILL_DRAW=$(BANJO3DS_ACTOR_HILL_DRAW) -DBANJO3DS_ACTOR_STATIC_BOTTLES=$(BANJO3DS_ACTOR_STATIC_BOTTLES) -DBANJO3DS_ACTOR_IDLE_ANIMATION=$(BANJO3DS_ACTOR_IDLE_ANIMATION) -DBANJO3DS_ACTOR_HILL_OPEN_ANIMATION=$(BANJO3DS_ACTOR_HILL_OPEN_ANIMATION) -DBANJO3DS_ACTOR_HILL_PROXIMITY_TRIGGER=$(BANJO3DS_ACTOR_HILL_PROXIMITY_TRIGGER) -DBANJO3DS_ACTOR_HILL_MANUAL_TRIGGER=$(BANJO3DS_ACTOR_HILL_MANUAL_TRIGGER) -DBANJO3DS_ACTOR_BOTTLES_EMERGENCE=$(BANJO3DS_ACTOR_BOTTLES_EMERGENCE) -DBANJO3DS_ACTOR_BOTTLES_EXIT=$(BANJO3DS_ACTOR_BOTTLES_EXIT) -DBANJO3DS_ACTOR_BOTTLES_B_INTERACTION=$(BANJO3DS_ACTOR_BOTTLES_B_INTERACTION) -Wextra -Werror -ffp-contract=off -fno-fast-math -fexcess-precision=standard
 
 CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions -std=gnu++11
 
@@ -186,9 +248,100 @@ endif
 
 .PHONY: all clean
 
+ifeq ($(BANJO3DS_ACTOR_ISOLATION),1)
+ifeq ($(BANJO3DS_ACTOR_HILL_DRAW),1)
+ifeq ($(BANJO3DS_ACTOR_IDLE_ANIMATION),1)
+$(info actor-isolation: FIX7 Bottles idle only (IDLE_ANIMATION=1))
+else ifeq ($(BANJO3DS_ACTOR_STATIC_BOTTLES),1)
+$(info actor-isolation: FIX6 closed molehill and static Bottles (ISOLATION=1 TEXTURE_UPLOAD=1 VERTEX_INIT=1 HILL_DRAW=1 STATIC_BOTTLES=1))
+else
+$(info actor-isolation: FIX5 closed molehill only (ISOLATION=1 TEXTURE_UPLOAD=1 VERTEX_INIT=1 HILL_DRAW=1))
+endif
+else
+ifeq ($(BANJO3DS_ACTOR_VERTEX_INIT),1)
+ifeq ($(BANJO3DS_ACTOR_TEXTURE_UPLOAD),1)
+$(info actor-isolation: vertex buffer init (BANJO3DS_ACTOR_ISOLATION=1 BANJO3DS_ACTOR_TEXTURE_UPLOAD=1 BANJO3DS_ACTOR_VERTEX_INIT=1))
+else
+$(info actor-isolation: vertex buffer init without textures (BANJO3DS_ACTOR_ISOLATION=1 BANJO3DS_ACTOR_TEXTURE_UPLOAD=0 BANJO3DS_ACTOR_VERTEX_INIT=1))
+endif
+else ifeq ($(BANJO3DS_ACTOR_TEXTURE_UPLOAD),1)
+$(info actor-isolation: texture upload only (BANJO3DS_ACTOR_ISOLATION=1 BANJO3DS_ACTOR_TEXTURE_UPLOAD=1))
+else
+$(info actor-isolation: ALL actor runtime disabled (BANJO3DS_ACTOR_ISOLATION=1 BANJO3DS_ACTOR_TEXTURE_UPLOAD=0))
+endif
+endif
+else
+$(info actor-isolation: actor runtime ENABLED (BANJO3DS_ACTOR_ISOLATION=$(BANJO3DS_ACTOR_ISOLATION)))
+endif
+
 #---------------------------------------------------------------------------------
-all: $(BANJO3DS_GENERATED_MODEL) $(BANJO3DS_GENERATED_CROUCH) $(BANJO3DS_GENERATED_CAMERA) $(BANJO3DS_GENERATED_BRIDGE) $(BANJO3DS_GENERATED_MOVEMENT_BRIDGE) $(BANJO3DS_GENERATED_SFX) $(BANJO3DS_GENERATED_FOOT) $(BUILD) $(GFXBUILD) $(DEPSDIR) $(ROMFS_T3XFILES) $(T3XHFILES)
+all: $(BANJO3DS_GENERATED_DIALOGUE) $(BANJO3DS_GENERATED_EXIT) $(BANJO3DS_GENERATED_BOTTLES_EMERGE) $(BANJO3DS_GENERATED_HILL_OPEN) $(BANJO3DS_GENERATED_MODEL) $(BANJO3DS_GENERATED_CROUCH) $(BANJO3DS_GENERATED_CAMERA) $(BANJO3DS_GENERATED_BRIDGE) $(BANJO3DS_GENERATED_MOVEMENT_BRIDGE) $(BANJO3DS_GENERATED_SFX) $(BANJO3DS_GENERATED_FOOT) $(BANJO3DS_BOTTLES_HEADERS) $(BANJO3DS_GENERATED_ACTORS) $(BUILD) $(GFXBUILD) $(DEPSDIR) $(ROMFS_T3XFILES) $(T3XHFILES)
 	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile
+ifeq ($(BANJO3DS_ACTOR_ISOLATION),1)
+	@echo actor-isolation: checking $(notdir $(OUTPUT)).elf
+	@$(DEVKITARM)/bin/arm-none-eabi-nm $(OUTPUT).elf | grep -q ' actor_isolation_banner$$'
+	@! $(DEVKITARM)/bin/arm-none-eabi-nm $(OUTPUT).elf | grep -E ' (sceneDrawPlacedActors|actorDiagStage|actorDiagClear|actor_pose_placement)([.]|$$)'
+ifeq ($(BANJO3DS_ACTOR_BOTTLES_EXIT),1)
+	@for symbol in bottlesExitPrepare bottlesExitPublish; do $(DEVKITARM)/bin/arm-none-eabi-nm $(OUTPUT).elf | grep -q " $$symbol\$$" || exit 1; done
+else
+	@! $(DEVKITARM)/bin/arm-none-eabi-nm $(OUTPUT).elf | grep -E ' (bottlesExit|hillClose|actor_bottles_exit_packet|actor_hill_close_packet)'
+endif
+ifeq ($(BANJO3DS_ACTOR_HILL_OPEN_ANIMATION),1)
+	@for symbol in hillOpenPrepare hillOpenPublish; do $(DEVKITARM)/bin/arm-none-eabi-nm $(OUTPUT).elf | grep -q " $$symbol\$$" || exit 1; done
+else
+	@! $(DEVKITARM)/bin/arm-none-eabi-nm $(OUTPUT).elf | grep -E ' (hillOpen|actor_hill_open_packet)'
+endif
+ifneq ($(filter 1,$(BANJO3DS_ACTOR_HILL_PROXIMITY_TRIGGER) $(BANJO3DS_ACTOR_HILL_MANUAL_TRIGGER)),)
+	@$(DEVKITARM)/bin/arm-none-eabi-nm $(OUTPUT).elf | grep -q ' hillOpenTriggered$$'
+else
+	@! $(DEVKITARM)/bin/arm-none-eabi-nm $(OUTPUT).elf | grep -E ' (hillOpenTriggered|hillOpenInRange)([.]|$$)'
+endif
+ifeq ($(BANJO3DS_ACTOR_BOTTLES_EMERGENCE),1)
+	@for symbol in bottlesEmergencePrepare bottlesEmergencePublish actor_pose_evaluate_blend; do $(DEVKITARM)/bin/arm-none-eabi-nm $(OUTPUT).elf | grep -q " $$symbol\$$" || exit 1; done
+	@! $(DEVKITARM)/bin/arm-none-eabi-nm $(OUTPUT).elf | grep -E ' (bottlesIdlePrepare|bottlesIdlePublish)([.]|$$)'
+else
+	@! $(DEVKITARM)/bin/arm-none-eabi-nm $(OUTPUT).elf | grep -E ' (bottlesEmergence|actor_pose_evaluate_blend|actor_bottles_emerge_packet)'
+ifeq ($(BANJO3DS_ACTOR_IDLE_ANIMATION),1)
+	@for symbol in bottlesIdlePrepare bottlesIdlePublish actor_pose_evaluate actor_pose_scatter actor_pose_advance; do $(DEVKITARM)/bin/arm-none-eabi-nm $(OUTPUT).elf | grep -q " $$symbol\$$" || exit 1; done
+else
+	@! $(DEVKITARM)/bin/arm-none-eabi-nm $(OUTPUT).elf | grep -E ' (bottlesIdlePrepare|bottlesIdlePublish|actor_pose_evaluate|actor_pose_scatter|actor_pose_advance)([.]|$$)'
+endif
+endif
+ifeq ($(BANJO3DS_ACTOR_STATIC_BOTTLES),1)
+	@$(DEVKITARM)/bin/arm-none-eabi-nm $(OUTPUT).elf | grep -q ' sceneDrawStaticBottles$$'
+else
+	@! $(DEVKITARM)/bin/arm-none-eabi-nm $(OUTPUT).elf | grep -E ' sceneDrawStaticBottles([.]|$$)'
+endif
+ifeq ($(BANJO3DS_ACTOR_HILL_DRAW),1)
+	@$(DEVKITARM)/bin/arm-none-eabi-nm $(OUTPUT).elf | grep -q ' sceneDrawClosedMolehill$$'
+else
+	@! $(DEVKITARM)/bin/arm-none-eabi-nm $(OUTPUT).elf | grep -E ' (sceneDrawClosedMolehill|sceneDrawActorRange)([.]|$$)'
+endif
+ifeq ($(BANJO3DS_ACTOR_VERTEX_INIT),1)
+	@$(DEVKITARM)/bin/arm-none-eabi-nm $(OUTPUT).elf | grep -q ' actor_vbo$$'
+	@$(DEVKITARM)/bin/arm-none-eabi-nm $(OUTPUT).elf | grep -q ' initActorVertexBuffer$$'
+else
+	@! $(DEVKITARM)/bin/arm-none-eabi-nm $(OUTPUT).elf | grep -E ' (actor_vbo|initActorVertexBuffer)$$'
+endif
+ifeq ($(BANJO3DS_ACTOR_TEXTURE_UPLOAD),1)
+	@$(DEVKITARM)/bin/arm-none-eabi-nm $(OUTPUT).elf | grep -q ' uploadActorTextures$$'
+else
+	@! $(DEVKITARM)/bin/arm-none-eabi-nm $(OUTPUT).elf | grep -E ' uploadActorTextures$$'
+endif
+ifeq ($(BANJO3DS_ACTOR_IDLE_ANIMATION),1)
+	@echo actor-isolation: FIX7 idle updates linked, staged actors absent
+else ifeq ($(BANJO3DS_ACTOR_STATIC_BOTTLES),1)
+	@echo actor-isolation: FIX6 static Bottles and molehill linked, staged draws and pose symbols absent
+else ifeq ($(BANJO3DS_ACTOR_HILL_DRAW),1)
+	@echo actor-isolation: FIX5 molehill draw linked, Bottles and pose symbols absent
+else ifeq ($(BANJO3DS_ACTOR_VERTEX_INIT),1)
+	@echo actor-isolation: vertex buffer init linked, draw and pose symbols absent
+else ifeq ($(BANJO3DS_ACTOR_TEXTURE_UPLOAD),1)
+	@echo actor-isolation: texture upload linked, draw and pose symbols absent
+else
+	@echo actor-isolation: runtime symbols absent
+endif
+endif
 
 $(BANJO3DS_GENERATED_BRIDGE): $(BANJO3DS_XLU_MODEL) $(REPO_ROOT)/tools/banjo3ds/bridge_state/render_binding.py $(REPO_ROOT)/tools/banjo3ds/n64_displaylist_decoder.py | $(BUILD)
 	@cd $(REPO_ROOT) && $(BANJO3DS_PYTHON) -B -m tools.banjo3ds.bridge_state.render_binding $(BANJO3DS_XLU_MODEL) $@
@@ -210,6 +363,35 @@ $(BANJO3DS_GENERATED_SFX): $(REPO_ROOT)/tools/banjo3ds/sfx_probe_asset.py $(REPO
 $(BANJO3DS_GENERATED_FOOT): $(REPO_ROOT)/tools/banjo3ds/footstep_asset.py $(REPO_ROOT)/tools/banjo3ds/sfx_bank.py $(REPO_ROOT)/tools/banjo3ds/sfx_probe_asset.py $(BANJO3DS_SFX_ROMS) | $(BUILD)
 	@echo generating $(notdir $@)
 	@cd $(REPO_ROOT) && $(BANJO3DS_PYTHON) -B -m tools.banjo3ds.footstep_asset --out $@
+
+# Grouped output: removal of any one header regenerates the complete set.
+$(BANJO3DS_BOTTLES_HEADERS) &: $(BANJO3DS_BOTTLES_GENERATOR) $(REPO_ROOT)/tools/banjo3ds/sfx_bank.py $(if $(strip $(BANJO3DS_ROM)),$(BANJO3DS_ROM)) | $(BUILD)
+	@test -n "$(BANJO3DS_ROM)" || { echo 'Set BANJO3DS_ROM to the verified local US v1.0 cartridge or decompressed ROM' >&2; exit 2; }
+	@cd $(REPO_ROOT) && $(BANJO3DS_PYTHON) -B -m tools.banjo3ds.bottles_audio.generate --rom "$(BANJO3DS_ROM)" --output-dir "$(TOPDIR)/build"
+
+ifeq ($(BANJO3DS_ACTOR_HILL_OPEN_ANIMATION),1)
+$(BANJO3DS_GENERATED_HILL_OPEN): $(BANJO3DS_HILL_MODEL) $(REPO_ROOT)/assets/anim/013D.anim.bin $(REPO_ROOT)/tools/banjo3ds/actor_mesh.py $(REPO_ROOT)/tools/banjo3ds/n64_displaylist_decoder.py $(REPO_ROOT)/tools/banjo3ds/static_idle.py $(REPO_ROOT)/tools/banjo3ds/canonical_banjo.py | $(BUILD)
+	@cd $(REPO_ROOT) && $(BANJO3DS_PYTHON) -B -m tools.banjo3ds.actor_mesh --hill-open-header $@ --hill $(BANJO3DS_HILL_MODEL) --hill-open-animation $(REPO_ROOT)/assets/anim/013D.anim.bin
+endif
+
+ifeq ($(BANJO3DS_ACTOR_BOTTLES_EMERGENCE),1)
+$(BANJO3DS_GENERATED_BOTTLES_EMERGE): $(BANJO3DS_BOTTLES_MODEL) $(REPO_ROOT)/assets/anim/013A.anim.bin $(REPO_ROOT)/tools/banjo3ds/actor_mesh.py $(REPO_ROOT)/tools/banjo3ds/n64_displaylist_decoder.py $(REPO_ROOT)/tools/banjo3ds/static_idle.py $(REPO_ROOT)/tools/banjo3ds/canonical_banjo.py | $(BUILD)
+	@cd $(REPO_ROOT) && $(BANJO3DS_PYTHON) -B -m tools.banjo3ds.actor_mesh --bottles-emerge-header $@ --bottles $(BANJO3DS_BOTTLES_MODEL) --bottles-emerge-animation $(REPO_ROOT)/assets/anim/013A.anim.bin
+endif
+
+ifeq ($(BANJO3DS_ACTOR_BOTTLES_EXIT),1)
+$(BANJO3DS_GENERATED_EXIT): $(BANJO3DS_BOTTLES_MODEL) $(BANJO3DS_HILL_MODEL) $(REPO_ROOT)/assets/anim/0139.anim.bin $(REPO_ROOT)/assets/anim/013C.anim.bin $(REPO_ROOT)/tools/banjo3ds/actor_mesh.py $(REPO_ROOT)/tools/banjo3ds/n64_displaylist_decoder.py $(REPO_ROOT)/tools/banjo3ds/static_idle.py $(REPO_ROOT)/tools/banjo3ds/canonical_banjo.py | $(BUILD)
+	@cd $(REPO_ROOT) && $(BANJO3DS_PYTHON) -B -m tools.banjo3ds.actor_mesh --exit-header $@ --bottles $(BANJO3DS_BOTTLES_MODEL) --hill $(BANJO3DS_HILL_MODEL) --bottles-exit-animation $(REPO_ROOT)/assets/anim/0139.anim.bin --hill-close-animation $(REPO_ROOT)/assets/anim/013C.anim.bin
+endif
+
+ifeq ($(BANJO3DS_ACTOR_BOTTLES_DIALOGUE_PREVIEW),1)
+$(BANJO3DS_GENERATED_DIALOGUE): $(REPO_ROOT)/assets/dialog/0DF4.dialog $(REPO_ROOT)/assets/dialog/0DF5.dialog $(REPO_ROOT)/assets/dialog/0D38.dialog $(REPO_ROOT)/tools/banjo3ds/dialogue_import.py | $(BUILD)
+	@cd $(REPO_ROOT) && $(BANJO3DS_PYTHON) -B -m tools.banjo3ds.dialogue_import --output $@
+endif
+
+$(BANJO3DS_GENERATED_ACTORS): $(BANJO3DS_BOTTLES_MODEL) $(BANJO3DS_HILL_MODEL) $(BANJO3DS_BOTTLES_IDLE) $(REPO_ROOT)/tools/banjo3ds/actor_mesh.py $(REPO_ROOT)/tools/banjo3ds/n64_displaylist_decoder.py $(REPO_ROOT)/tools/banjo3ds/export_3ds_model.py $(REPO_ROOT)/tools/banjo3ds/static_idle.py $(REPO_ROOT)/tools/banjo3ds/canonical_banjo.py | $(BUILD)
+	@echo generating $(notdir $@)
+	@cd $(REPO_ROOT) && $(BANJO3DS_PYTHON) -B -m tools.banjo3ds.actor_mesh --header $@ --bottles $(BANJO3DS_BOTTLES_MODEL) --hill $(BANJO3DS_HILL_MODEL) --idle $(BANJO3DS_BOTTLES_IDLE)
 
 $(BANJO3DS_GENERATED_CROUCH): $(BANJO3DS_CROUCH_ENTER) $(BANJO3DS_CROUCH_TURN) $(BANJO3DS_CROUCH_NOINPUT) $(REPO_ROOT)/tools/banjo3ds/pose_binding.py
 	@echo generating $(notdir $@)

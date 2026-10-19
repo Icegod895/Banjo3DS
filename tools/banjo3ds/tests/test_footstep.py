@@ -425,7 +425,11 @@ class FootstepIntegrationTests(unittest.TestCase):
         self.assertNotIn("looping = true", audio)
         self.assertNotIn("ndsp", logic)
         self.assertNotIn("sfxVoiceSustain", logic)
-        self.assertEqual(set(re.findall(r"ndspChn\w+\((\d+)", probe)), {"0"})
+        # Slide/closer remains on 0; Bottles one-shots and its overlapping
+        # emergence loop own 4/5. None may claim footstep/landing channels.
+        self.assertEqual(set(re.findall(r"ndspChn\w+\((\d+)", probe)), {"0", "4", "5"})
+        self.assertIsNone(re.search(r"ndspChn\w+\(\s*[123]\s*[,)]", probe))
+        self.assertIsNone(re.search(r"ndspChn\w+\(\s*[045]\s*[,)]", audio))
         self.assertEqual(probe.count("ndspInit("), 1)
         self.assertEqual(probe.count("ndspExit("), 1)
         self.assertEqual(probe.count("sfxVoiceSustain"), 1)

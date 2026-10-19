@@ -39,7 +39,9 @@ class RuntimeModel(Model):
 ROOT=reference.ROOT
 from ground_corpus import State as GroundPhase
 class GroundRuntime(C.Structure):
-    _fields_=[('phase',GroundPhase),('fall_request',C.c_uint32),('jump_flight',C.c_bool)]
+    _fields_=[('phase',GroundPhase),('fall_request',C.c_uint32),('jump_flight',C.c_bool),
+              ('recoil',C.c_int),('recoil_frames',C.c_uint),
+              ('recoil_dx',F),('recoil_dz',F),('recoil_heading',F),('recoil_face',F)]
 from test_camera_manual import State as ManualState
 class Runtime(C.Structure):
     _fields_=[('math',cam.Math),('manual',ManualState),('manual_buttons',C.c_uint32),('manual_enabled',C.c_uint32),('bridge',Bridge),('opa',RuntimeModel),('xlu',RuntimeModel),

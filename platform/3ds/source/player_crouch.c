@@ -1,4 +1,5 @@
 #include "player_crouch.h"
+/* P27 isolated rebuild: PlayerGroundState layout changed; no crouch logic change. */
 #include "player_ground.h"
 #include "player_input.h"
 #include <math.h>
